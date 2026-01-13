@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
+import 'package:go_router/go_router.dart';
 
 /// Premium Animation Utilities
 class PremiumAnimations {
@@ -281,7 +282,7 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
           animation: _titleAnimation,
           builder: (context, child) {
             return Transform.translate(
-              offset: Offset(0, 30 * (1 - _titleAnimation.value)),
+              offset: Offset(25, 30 * (1 - _titleAnimation.value)),
               child: Opacity(
                 opacity: _titleAnimation.value,
                 child: child,
@@ -292,40 +293,25 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
             children: [
               PremiumAnimations.pulse(
                 active: true,
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppTheme.gold, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.gold.withAlpha(80),
-                        blurRadius: 10,
-                        spreadRadius: 1,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: () => context.push('/settings'),
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      width: 34,
+                      height: 34,
+                      child: Image.asset(
+                        'assets/icon/setting_icon.png',
+                        fit: BoxFit.cover,
+                        color: isDark ? null : Colors.black.withAlpha(200),
                       ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(17),
-                    child: Image.asset(
-                      'assets/icon/wolf.png',
-                      fit: BoxFit.cover,
-                      color: isDark ? null : Colors.black.withAlpha(200),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 4),
-              if (widget.showSettings && widget.onMenuPressed == null)
-                _buildScaleOnTapIcon(
-                  onTap: () => Navigator.of(context).pushNamed('/settings'),
-                  icon: const Icon(Icons.settings_outlined),
-                  color: theme.colorScheme.onSurface.withAlpha(180),
-                  tooltip: 'الإعدادات',
-                ),
-              ...?widget.actions,
             ],
           ),
         ),
@@ -354,7 +340,6 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
                         fontWeight: FontWeight.w600,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'ابحث بالاسم أو ID',
                         hintStyle: TextStyle(
                           color: theme.colorScheme.onSurface.withAlpha(100),
                           fontWeight: FontWeight.w500,
@@ -677,31 +662,41 @@ class PremiumLoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           PremiumAnimations.pulse(
             active: true,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.gold, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.gold.withAlpha(128),
-                    blurRadius: 20,
-                    spreadRadius: 5,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => Navigator.of(context).pushNamed('/settings'),
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.gold, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.gold.withAlpha(80),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(60),
-                child: Image.asset(
-                  'assets/icon/wolf.png',
-                  fit: BoxFit.cover,
+                  child: Image.asset(
+                    'assets/icon/setting_icon.png',
+                    fit: BoxFit.cover,
+                    color: isDark ? null : Colors.black.withAlpha(200),
+                  ),
                 ),
               ),
             ),
@@ -711,10 +706,9 @@ class PremiumLoadingScreen extends StatelessWidget {
             isLoading: true,
             child: Text(
               message ?? 'جاري التحميل...',
-              style: const TextStyle(
-                fontSize: 18,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: colorScheme.primary,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.gold,
               ),
             ),
           ),
@@ -725,9 +719,9 @@ class PremiumLoadingScreen extends StatelessWidget {
               width: 60,
               height: 60,
               child: CircularProgressIndicator(
-                color: AppTheme.gold,
+                color: colorScheme.primary,
                 strokeWidth: 3,
-                backgroundColor: AppTheme.gold.withAlpha(25),
+                backgroundColor: colorScheme.primary.withAlpha(25),
               ),
             ),
           ),

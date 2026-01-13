@@ -7,6 +7,7 @@ class Product {
   double sizeValue;
   String sizeUnit;
   String image;
+  String thumb; // grid/thumbnail
   String description;
   String category;
   bool productActive;
@@ -76,6 +77,7 @@ class Product {
     required this.sizeValue,
     required this.sizeUnit,
     required this.image,
+    this.thumb = '',
     required this.description,
     required this.category,
     required this.productActive,
@@ -134,6 +136,7 @@ class Product {
       "sizevalue": sizeValue, // lowercase (wie in Sheet)
       "sizeunit": sizeUnit,   // lowercase (wie in Sheet)
       "image": image,
+      "thumb": thumb,
       "description": description,
       "category": category,
 
@@ -167,6 +170,7 @@ class Product {
       sizeUnit: (_pick(row, 'sizeunit', 'sizeunit'))?.toString() ?? '',
 
       image: (_pick(row, 'image', 'image'))?.toString() ?? '',
+      thumb: (_pick(row, 'thumb', 'thumb') ?? row['thrumb'])?.toString() ?? '',
       description: (_pick(row, 'description', 'description'))?.toString() ?? '',
       category: (_pick(row, 'category', 'category'))?.toString() ?? '',
 
@@ -208,6 +212,7 @@ class Product {
     double? sizeValue,
     String? sizeUnit,
     String? image,
+    String? thumb,
     String? description,
     String? category,
     bool? productActive,
@@ -227,6 +232,7 @@ class Product {
       sizeValue: sizeValue ?? this.sizeValue,
       sizeUnit: sizeUnit ?? this.sizeUnit,
       image: image ?? this.image,
+      thumb: thumb ?? this.thumb,
       description: description ?? this.description,
       category: category ?? this.category,
       productActive: productActive ?? this.productActive,

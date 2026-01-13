@@ -11,14 +11,23 @@ import 'screens/add_product.dart';
 import 'theme.dart';
 import 'screens/categories.dart';
 import 'screens/products.dart';
-import 'app_theme_mode.dart'; // ✅ Neuer Import
-import './screens/customer_message.dart';
+import 'app_theme_mode.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'screens/customer_message.dart';
 import 'screens/login.dart';
-
-
+import 'screens/register_screen.dart';
+import 'screens/forgot_password.dart';
+import 'screens/reset_password.dart';
+import 'screens/verify_email.dart';
+import 'screens/payment_screen.dart'; // NEU: Payment Screen
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'core/paywall_messages.dart';
+import 'core/access_manager.dart';
 
 class ThemePrefs {
   static const _k = 'theme_mode';
+
   static Future<AppThemeMode> load() async {
     final sp = await SharedPreferences.getInstance();
     final v = sp.getString(_k) ?? 'system';
@@ -34,57 +43,100 @@ class ThemePrefs {
   }
 }
 
-// ✅ _toThemeMode wurde in app_theme_mode.dart verschoben
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ StoreId / Basis-Init
-  await ApiService.init();
+  // ✅ 1. Hive ZUERST initialisieren (wird von CacheStore benötigt)
+  await Hive.initFlutter();
+  await Hive.openBox('cache');
 
-  // ✅ AUTH beim App-Start laden (Token + Login-State)
+  // ✅ 2. TrialWelcomeManager laden
+  await TrialWelcomeManager.load();
+
+  // ✅ 3. Firebase initialisieren
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // ✅ 4. ApiService + Access initialisieren
+  await ApiService.init();
+  await AccessManager.loadFromCache();
+
+  // ✅ 5. Auth-State beim App-Start laden
   await ApiService.bootstrapAuth();
 
-  // ✅ Theme laden
+  // ✅ 6. Theme laden
   final saved = await ThemePrefs.load();
 
   runApp(MyApp(initialTheme: saved));
 }
 
-
 class MyApp extends StatefulWidget {
   final AppThemeMode initialTheme;
   const MyApp({super.key, required this.initialTheme});
 
+
+  // -------------------------
+  // ✅ Router mit Payment-Route
+  // -------------------------
   static final GoRouter _router = GoRouter(
     initialLocation: '/login',
-
-    refreshListenable: ApiService.authTick, // ⭐ wichtig
+    refreshListenable: ApiService.authTick,
 
     redirect: (context, state) {
       final loggedIn = ApiService.isLoggedIn;
+      final emailVerified = ApiService.isEmailVerified;
+
+      final storeId = (ApiService.storeId ?? '').trim();
+      final hasStore = storeId.isNotEmpty;
+
       final loc = state.matchedLocation;
 
-      final goingLogin = loc == '/login';
-      final goingSetup = loc == '/setup';
+      bool isAt(String p) => loc == p;
 
-      // 🔓 Nicht eingeloggt:
-      // Erlaube /login und /setup
+      final goingLogin    = isAt('/login');
+      final goingSetup    = isAt('/setup');
+      final goingVerify   = isAt('/verify-email');
+      final goingForgot   = isAt('/forgot-password');
+      final goingReset    = isAt('/reset-password');
+      final goingRegister = isAt('/register');
+      final goingPayment  = isAt('/payment');
+
+      // -------------------------
+      // 1) 🔴 NOT logged in
+      // -------------------------
       if (!loggedIn) {
-        if (goingLogin || goingSetup) return null;
+        // Allow public routes:
+        // - login/register/forgot/reset/setup immer
+        // - verify-email nur, wenn wir einen storeId haben (Option A)
+        if (goingLogin || goingRegister || goingForgot || goingReset || goingSetup) return null;
+        if (goingVerify && hasStore) return null;
+
+        // Optional: Wenn wir einen Store haben und Email nicht verified, direkt zu verify
+        if (hasStore && !emailVerified) return '/verify-email';
+
         return '/login';
       }
 
-      // 🔒 Eingeloggt:
-      // Blockiere /login und /setup
-      if (loggedIn && (goingLogin || goingSetup)) {
+      // -------------------------
+      // 2) 🟠 Logged in, but email NOT verified
+      // -------------------------
+      if (!emailVerified) {
+        // allow verify + forgot/reset + payment
+        if (goingVerify || goingForgot || goingReset || goingPayment) return null;
+        return '/verify-email';
+      }
+
+      // -------------------------
+      // 3) 🟢 Logged in + email verified
+      // -------------------------
+      // block auth screens
+      if (goingLogin || goingRegister || goingVerify) {
         return '/home';
       }
 
       return null;
     },
-
-
 
     routes: [
       GoRoute(
@@ -105,7 +157,6 @@ class MyApp extends StatefulWidget {
         path: '/products',
         builder: (context, state) => const ProductsScreen(),
       ),
-
       GoRoute(
         path: '/add',
         builder: (context, state) => const AddProductScreen(),
@@ -126,26 +177,104 @@ class MyApp extends StatefulWidget {
         path: '/customer-message',
         builder: (context, state) => const CustomerMessageScreen(),
       ),
+
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
       ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (context, state) {
+          final extra = state.extra;
+          String username = '';
 
+          if (extra is Map) {
+            username = (extra['username'] ?? '').toString();
+          }
 
+          return ResetPasswordScreen(username: username);
+        },
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+
+      GoRoute(
+        path: '/verify-email',
+        builder: (context, state) {
+          final extra = state.extra;
+
+          String storeId = '';
+          String username = '';
+
+          if (extra is Map) {
+            storeId = (extra['storeId'] ?? '').toString().trim();
+            username = (extra['username'] ?? '').toString().trim();
+          }
+
+          // fallback: redirect kann ohne extra kommen
+          if (storeId.isEmpty) {
+            storeId = (ApiService.storeId ?? '').trim();
+          }
+
+          return EmailVerifyScreen(
+            storeId: storeId,
+            username: username.isEmpty ? null : username,
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/payment',
+        builder: (context, state) {
+          final extra = state.extra;
+
+          String plan = 'premium_monthly';
+          String returnUrl = '/home';
+
+          if (extra is Map) {
+            plan = (extra['plan'] ?? plan).toString();
+            returnUrl = (extra['returnUrl'] ?? returnUrl).toString();
+          }
+
+          return PaymentScreen(plan: plan, returnUrl: returnUrl);
+        },
+      ),
     ],
   );
+
 
   @override
   State<MyApp> createState() => _MyAppState();
 
-  static _MyAppState? of(BuildContext context) =>
-      context.findAncestorStateOfType<_MyAppState>();
+
+  /// Theme lesen (optional)
+  static AppThemeMode? themeOf(BuildContext context) =>
+      context.findAncestorStateOfType<_MyAppState>()?.mode;
+
+  /// Theme setzen (von überall in der App)
+  static Future<void> setThemeOf(BuildContext context, AppThemeMode mode) async {
+    final state = context.findAncestorStateOfType<_MyAppState>();
+    if (state == null) return;
+    await state.setTheme(mode);
+  }
 }
 
 class _MyAppState extends State<MyApp> {
-  late AppThemeMode _mode = widget.initialTheme;
+  late AppThemeMode _mode;
 
   AppThemeMode get mode => _mode;
+
+  @override
+  void initState() {
+    super.initState();
+    _mode = widget.initialTheme;
+  }
 
   Future<void> setTheme(AppThemeMode mode) async {
     setState(() => _mode = mode);
@@ -159,7 +288,7 @@ class _MyAppState extends State<MyApp> {
       title: 'إدارة المنتجات',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: toThemeMode(_mode), // ✅ Verwende die importierte Funktion
+      themeMode: toThemeMode(_mode),
 
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar')],
@@ -187,5 +316,22 @@ class _MyAppState extends State<MyApp> {
 
       routerConfig: MyApp._router,
     );
+  }
+
+}
+
+class LocalePrefs {
+  static const _k = 'app_locale';
+
+  static Future<Locale?> load() async {
+    final sp = await SharedPreferences.getInstance();
+    final code = sp.getString(_k);
+    if (code == null || code.isEmpty) return null;
+    return Locale(code);
+  }
+
+  static Future<void> save(Locale locale) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_k, locale.languageCode);
   }
 }

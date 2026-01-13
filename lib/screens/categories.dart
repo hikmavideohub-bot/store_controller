@@ -72,7 +72,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     }
 
     try {
-      await ApiService.init();
       final data = await ApiService.fetchProducts();
       if (!mounted) return;
       setState(() {
@@ -88,10 +87,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       });
 
       if (!showedCache && _products.isEmpty) {
-        final ctx = _scaffoldKey.currentContext;
-        if (ctx == null) return;
+        if (!mounted) return;
 
-        final messenger = ScaffoldMessenger.of(ctx);
+        final messenger = ScaffoldMessenger.of(context);
         messenger.hideCurrentSnackBar();
         messenger.showSnackBar(
           SnackBar(
@@ -705,7 +703,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 }
-
 class CategoryProductsScreen extends StatelessWidget {
   final String category;
   final List<Product> products;
@@ -725,93 +722,14 @@ class CategoryProductsScreen extends StatelessWidget {
         showSettings: false,
       ),
       body: products.isEmpty
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inventory_2_outlined,
-              size: 60,
-              color: AppTheme.muted.withAlpha(100),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'لا توجد منتجات في هذه الفئة',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'يمكنك إضافة منتجات جديدة من الشاشة الرئيسية',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.muted,
-              ),
-            ),
-          ],
-        ),
-      )
-          : ListView.separated(
-        padding: const EdgeInsets.all(16),
+          ? const Center(child: Text('لا توجد منتجات'))
+          : ListView.builder(
         itemCount: products.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
           final p = products[index];
-          return Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: AppTheme.outline, width: 1),
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              leading: p.image.isNotEmpty
-                  ? ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  p.image,
-                  width: 50,
-                  height: 50,
-                  fit: BoxFit.cover,
-                  errorBuilder: (ctx, error, stackTrace) => Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface2,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.image_not_supported, color: AppTheme.muted),
-                  ),
-                ),
-              )
-                  : Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppTheme.surface2,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.image_not_supported, color: AppTheme.muted),
-              ),
-              title: Text(
-                p.name,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                '${p.price} € / ${p.sizeValue} ${p.sizeUnit}',
-                style: TextStyle(color: AppTheme.muted, fontSize: 12),
-              ),
-              trailing: Icon(
-                p.productActive ? Icons.check_circle : Icons.cancel,
-                color: p.productActive ? Colors.green : Colors.red,
-                size: 20,
-              ),
-              onTap: () => context.push('/edit/${p.id}', extra: p),
-            ),
+          return ListTile(
+            title: Text(p.name),
+            onTap: () => context.push('/edit/${p.id}', extra: p),
           );
         },
       ),

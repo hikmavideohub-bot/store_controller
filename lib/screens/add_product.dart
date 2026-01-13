@@ -5,6 +5,14 @@ import '../config.dart';
 import '../widgets/premium_app_bar.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
+import '../services/store_config_service.dart';
+import '../core/access_manager.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:uuid/uuid.dart';
+import '../storage/store_prefs.dart';
+
+
 
 class CommaDecimalFormatter extends TextInputFormatter {
   final int decimalDigits;
@@ -54,11 +62,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
   late final TextEditingController _bundleQtyController;
   late final TextEditingController _bundlePriceController;
   late final TextEditingController _categoryController;
+  late final TextEditingController _thumbController; // grid
+
 
   final FocusNode _priceFocusNode = FocusNode();
   final FocusNode _weightFocusNode = FocusNode();
   final FocusNode _categoryFocusNode = FocusNode();
   final FocusNode _descFocusNode = FocusNode();
+
+
+  bool _uploadingImage = false;
+  double _uploadProgress = 0.0;
+
+  // Optional: Schnelle Vorschau (z.B. Thumb), auch wenn Full noch erstellt wird
+  String? _previewImageUrl;
+
+
+// Für neue Produkte: stabile ID VOR dem Speichern
+  String? _draftProductId;
+
 
   String? _selectedCategory;
   List<String> _categories = [];
@@ -80,7 +102,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   // Premium Theme Colors
   static const Color _gold = Color(0xFFD4AF37);
-  static const Color _goldSoft = Color(0xFFC9B458);
   static const Color _activeGreen = Color(0xFF2E7D32);
   static const Color _inactiveGrey = Color(0xFF7A7A7A);
   static const Color _border = Color(0xFF2A2A2A);
@@ -89,15 +110,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Color _a(Color c, double alpha01) => c.withAlpha((alpha01 * 255).toInt());
 
+  void _onImageUrlChanged() {
+    // Wenn der Nutzer die URL manuell ändert, wollen wir nicht an einer alten Vorschau festhalten.
+    if (!_uploadingImage && _previewImageUrl != null) {
+      _previewImageUrl = null;
+    }
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+
     final p = widget.productToEdit;
 
     _nameController = TextEditingController(text: p?.name ?? '');
     _priceController = TextEditingController(text: _formatNumToText(p?.price));
     _sizeValueController = TextEditingController(text: _formatNumToText(p?.sizeValue));
     _imageController = TextEditingController(text: p?.image ?? '');
+    _thumbController = TextEditingController(text: (p?.thumb ?? ''));
     _descriptionController = TextEditingController(text: p?.description ?? '');
     _percentController = TextEditingController(
       text: (p != null && (p.percent) > 0) ? _formatNumToText(p.percent) : '',
@@ -112,6 +143,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
 
     _categoryController = TextEditingController(text: p?.category ?? '');
+
+    // ✅ Listener NACH Erstellung
+    _imageController.addListener(_onImageUrlChanged);
 
     _selectedUnit = (p?.sizeUnit.isNotEmpty == true) ? p!.sizeUnit : 'kg';
     _selectedCategory = (p?.category.isNotEmpty == true) ? p!.category : null;
@@ -132,35 +166,38 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _loadCategories();
 
     _priceFocusNode.addListener(() {
-      if (!_priceFocusNode.hasFocus) {
-        _normalizePriceText();
-      }
+      if (!_priceFocusNode.hasFocus) _normalizePriceText();
     });
 
     _weightFocusNode.addListener(() {
-      if (!_weightFocusNode.hasFocus) {
-        _normalizeWeightText();
-      }
+      if (!_weightFocusNode.hasFocus) _normalizeWeightText();
     });
   }
 
+
   @override
   void dispose() {
+    _imageController.removeListener(_onImageUrlChanged);
+
     _nameController.dispose();
     _priceController.dispose();
     _sizeValueController.dispose();
     _imageController.dispose();
+    _thumbController.dispose();
     _descriptionController.dispose();
     _percentController.dispose();
     _bundleQtyController.dispose();
     _bundlePriceController.dispose();
     _categoryController.dispose();
+
     _priceFocusNode.dispose();
     _weightFocusNode.dispose();
     _categoryFocusNode.dispose();
     _descFocusNode.dispose();
     super.dispose();
   }
+
+
 
   DateTime _parseDateSafe(String s, DateTime fallback) {
     final v = s.trim();
@@ -183,6 +220,215 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     return fallback;
   }
+
+  String _safeUrl(String raw) {
+    final u = raw.trim();
+    if (u.isEmpty) return '';
+    final uri = Uri.tryParse(u);
+    return uri?.toString() ?? u;
+  }
+
+
+
+  String get _effectiveProductId {
+    final existing = widget.productToEdit?.id.trim() ?? '';
+    if (existing.isNotEmpty) return existing;
+    return _draftProductId ??= const Uuid().v4();
+  }
+
+  bool _isFirebaseStorageUrl(String url) {
+    final u = url.trim();
+    return u.contains('firebasestorage.googleapis.com') || u.startsWith('gs://');
+  }
+
+  Future<void> _deleteOldImageIfFirebase(String oldUrl, {String? newUrl}) async {
+    final old = oldUrl.trim();
+    if (old.isEmpty) return;
+    if (!_isFirebaseStorageUrl(old)) return;
+
+    final next = (newUrl ?? '').trim();
+    if (next.isNotEmpty && _isFirebaseStorageUrl(next)) {
+      try {
+        final oldRef = FirebaseStorage.instance.refFromURL(old);
+        final newRef = FirebaseStorage.instance.refFromURL(next);
+        if (oldRef.bucket == newRef.bucket && oldRef.fullPath == newRef.fullPath) {
+          return;
+        }
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    try {
+      await FirebaseStorage.instance.refFromURL(old).delete();
+    } catch (_) {
+      // ignore: already deleted / permission / invalid url
+    }
+  }
+
+  Future<void> _deleteProductImageSet({
+    required String storeId,
+    required String productId,
+  }) async {
+    final storage = FirebaseStorage.instanceFor(
+      bucket: 'gs://aldeebtech-images-eu',
+    );
+
+    final base = storage.ref('stores/$storeId/products/$productId');
+    final legacy = storage.ref('stores/$storeId/products/$productId.jpg');
+
+    // Extension erzeugt bei dir .jpeg (siehe Screenshot). Wir löschen beides (.jpg & .jpeg),
+    // damit alte Sets sicher weg sind.
+    final refs = <Reference>[
+      // Originale (falls vorhanden)
+      base.child('image.jpg'),
+      base.child('image.jpeg'),
+
+      // Thumbs
+      base.child('image_360x360.jpg'),
+      base.child('image_360x360.jpeg'),
+
+      // Full
+      base.child('image_1600x1600.jpg'),
+      base.child('image_1600x1600.jpeg'),
+
+      // Legacy
+      legacy,
+    ];
+
+    for (final r in refs) {
+      try {
+        await r.delete();
+      } catch (_) {
+        // ignore
+      }
+    }
+  }
+
+
+  Future<String?> _waitForDownloadUrl(
+      Reference ref, {
+        int maxAttempts = 20,
+      }) async {
+    var delayMs = 350;
+    for (var i = 0; i < maxAttempts; i++) {
+      try {
+        return await ref.getDownloadURL();
+      } catch (_) {
+        await Future.delayed(Duration(milliseconds: delayMs));
+        if (delayMs < 1200) delayMs = (delayMs * 1.4).round();
+      }
+    }
+    return null;
+  }
+
+  Future<void> _pickAndUploadImage({required ImageSource source}) async {
+    final picker = ImagePicker();
+
+    final XFile? file = await picker.pickImage(
+      source: source,
+      imageQuality: 95,
+      maxWidth: 2200,
+    );
+    if (file == null) return;
+
+    final storeId = await StorePrefs.getStoreId();
+    if (storeId == null || storeId.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('معرّف المتجر غير موجود، لا يمكن تحميل البيانات')),
+      );
+      return;
+    }
+
+    final productId = _effectiveProductId;
+
+    setState(() {
+      _uploadingImage = true;
+      _uploadProgress = 0.0;
+      _previewImageUrl = null;
+    });
+
+    final oldFullUrl = _imageController.text.trim();
+    final oldThumbUrl = _thumbController.text.trim();
+
+    try {
+      final storage = FirebaseStorage.instanceFor(bucket: 'gs://aldeebtech-images-eu');
+
+      final baseRef = storage.ref('stores/$storeId/products/$productId');
+      final imageRef = baseRef.child('image.jpg'); // trigger extension
+
+      // extension outputs
+      final thumbRef = baseRef.child('image_360x360.jpeg');
+      final fullRef  = baseRef.child('image_1600x1600.jpeg');
+
+      await _deleteProductImageSet(storeId: storeId, productId: productId);
+
+      final meta = SettableMetadata(contentType: 'image/jpeg');
+
+      final bytes = await file.readAsBytes();
+      final task = imageRef.putData(bytes, meta);
+
+      task.snapshotEvents.listen((s) {
+        final total = s.totalBytes;
+        if (total > 0 && mounted) {
+          setState(() => _uploadProgress = s.bytesTransferred / total);
+        }
+      });
+
+      await task;
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم رفع الصورة ✅ جارٍ تجهيزها للعرض...')),
+      );
+
+      // thumb first (fast preview)
+      final readyThumbUrl = await _waitForDownloadUrl(thumbRef, maxAttempts: 50);
+      if (readyThumbUrl != null && mounted) {
+        setState(() => _previewImageUrl = readyThumbUrl);
+      }
+
+      // full for saving
+      final readyFullUrl = await _waitForDownloadUrl(fullRef, maxAttempts: 80);
+
+      final thumbUrl = (readyThumbUrl ?? '').trim();
+      final fullUrl  = (readyFullUrl ?? '').trim();
+
+      final finalFull  = fullUrl.isNotEmpty ? fullUrl : thumbUrl;
+      final finalThumb = thumbUrl.isNotEmpty ? thumbUrl : finalFull;
+
+      // optional cleanup if old URLs were pointing somewhere else
+      if (oldFullUrl.isNotEmpty && oldFullUrl != finalFull) {
+        await _deleteOldImageIfFirebase(oldFullUrl, newUrl: finalFull);
+      }
+      if (oldThumbUrl.isNotEmpty && oldThumbUrl != finalThumb) {
+        await _deleteOldImageIfFirebase(oldThumbUrl, newUrl: finalThumb);
+      }
+
+      _imageController.text = finalFull;     // Sheet: image
+      _thumbController.text = finalThumb;    // Sheet: thumb
+
+      if (mounted) {
+        setState(() => _previewImageUrl = finalThumb.isNotEmpty ? finalThumb : finalFull);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ الصورة ✅')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('فشل تحميل $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingImage = false);
+    }
+  }
+
+
+
 
   String _formatNumToText(dynamic value) {
     if (value == null) {
@@ -552,6 +798,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     });
 
     try {
+      await _deleteOldImageIfFirebase(p.image);
       final success = await ApiService.deleteProduct(p.id);
       if (!mounted) {
         return;
@@ -591,6 +838,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Future<void> _submit() async {
+    debugPrint('ACCESS=${ApiService.access}');
+    debugPrint('canWriteAdmin=${ApiService.canWriteAdmin()}');
+
     if (_isSaving) {
       return;
     }
@@ -617,6 +867,28 @@ class _AddProductScreenState extends State<AddProductScreen> {
       );
       return;
     }
+    // ✅ Access/Trial sicherstellen (besonders wichtig auf Web / bei Direkt-URL /add)
+    try {
+      await StoreConfigService.load(allowNetworkIfEmpty: true);
+    } catch (_) {}
+
+    final status = AccessManager.status.toLowerCase();
+    final canWrite = AccessManager.canWriteAdmin || status == 'trial';
+
+    if (!canWrite) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: _errorBg,
+          content: const Text(
+            'المتجر غير مفعل — يرجى التفعيل',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
 
     final isEditing = widget.productToEdit != null;
     final String action = isEditing ? 'تحديث' : 'حفظ';
@@ -633,6 +905,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         sizeValue: _parsePrice(_sizeValueController.text),
         sizeUnit: _selectedUnit,
         image: _imageController.text.trim(),
+        thumb: _thumbController.text.trim(),
         description: _descriptionController.text.trim(),
         category: categoryToUse,
         productActive: _productActive,
@@ -654,6 +927,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
         offerEndDate: _hasOffer ? _formatDate(_offerEndDate) : '',
         offerActive: _hasOffer ? _offerActive : false,
       );
+
+      final oldUrl = widget.productToEdit?.image.trim() ?? '';
+      final newUrl = _imageController.text.trim();
+      final imageChanged = isEditing && oldUrl.isNotEmpty && oldUrl != newUrl;
+      if (imageChanged) {
+        await _deleteOldImageIfFirebase(oldUrl, newUrl: newUrl);
+      }
 
       final bool success = isEditing
           ? await ApiService.updateProduct(productToSave)
@@ -822,6 +1102,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     const offerTypes = ['percent', 'bundle'];
     final safeOfferType = offerTypes.contains(_offerType) ? _offerType : 'percent';
+
+    // Wenn gerade ein Upload läuft, kann Thumb schon da sein bevor Full-URL gesetzt ist.
+    final imageUrl = _safeUrl(_previewImageUrl ?? _imageController.text);
 
     final safeCategory = (uniqueCategories.contains(_categoryController.text.trim()))
         ? _categoryController.text.trim()
@@ -1175,6 +1458,84 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+
+              const SizedBox(height: 10),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48), // gleiche Höhe
+                      ),
+                      onPressed: _uploadingImage
+                          ? null
+                          : () => _pickAndUploadImage(source: ImageSource.gallery),
+                      icon: const Icon(Icons.upload),
+                      label: const Text('اختيار من الصور'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48), // gleiche Höhe
+                      ),
+                      onPressed: _uploadingImage
+                          ? null
+                          : () async {
+                        final old = _imageController.text.trim();
+                        _imageController.clear();
+                        if (mounted) {
+                          setState(() => _previewImageUrl = null);
+                        }
+
+                        final storeId = await StorePrefs.getStoreId();
+                        if (storeId != null && storeId.trim().isNotEmpty) {
+                          final productId = _effectiveProductId;
+                          await _deleteProductImageSet(
+                            storeId: storeId.trim(),
+                            productId: productId,
+                          );
+                        }
+
+                        // Falls es eine alte/andere Firebase-URL war (z.B. legacy), auch versuchen zu löschen
+                        await _deleteOldImageIfFirebase(old);
+
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('تم حذف الصورة ✅')),
+                        );
+                      },
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('إزالة'),
+                    ),
+                  ),
+                ],
+              ),
+
+              if (_uploadingImage) ...[
+                const SizedBox(height: 10),
+                LinearProgressIndicator(value: _uploadProgress),
+              ],
+
+
+              if (imageUrl.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    imageUrl,
+                    height: 140,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox(
+                      height: 140,
+                      child: Center(child: Text('عرض الصورة غير متاح')),
+                    ),
+                  ),
+                ),
+              ],
+
 
               const SizedBox(height: 16),
 
@@ -1596,7 +1957,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton(
-                  onPressed: _isSaving ? null : _submit,
+                  // Während Bild-Upload läuft, blocken wir Speichern, damit nicht versehentlich
+                  // eine leere/halbe URL gespeichert wird.
+                  onPressed: (_isSaving || _uploadingImage) ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _gold,
                     foregroundColor: Colors.black,

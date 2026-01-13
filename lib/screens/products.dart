@@ -7,6 +7,8 @@ import '../services/store_config_service.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
 import '../widgets/app_drawer.dart';
+import '../storage/store_prefs.dart';
+
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
 
@@ -21,6 +23,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
   List<Product> _products = [];
   bool _loading = true;
   bool _actionBusy = false;
+  String? _storeId;
+  bool _missingStore = false;
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _searchCtrl = TextEditingController();
@@ -38,6 +42,36 @@ class _ProductsScreenState extends State<ProductsScreen> {
   // =======================
   ScaffoldMessengerState? _messenger;
   GoRouter? _router;
+
+  // =======================
+  // ✅ REV BUNDLE / v= (FIX B)
+  // =======================
+  // Das ist der Query-Parameter der in /s/data/<slug>.json?v=<...> genutzt wird.
+  // Idealerweise ist das rev.bundle aus dem Bundle (vom Worker/Script).
+  // Fallback: Zeitstempel (damit Cache immer gebustet werden kann, selbst wenn rev.bundle noch nicht genutzt wird).
+  String? _revBundle;
+  String _vParam = '';
+
+  // (optional) wenn du dafür schon einen StorePrefs key hast:
+  // - wenn nicht, bleibt es einfach leer und wir nutzen fallback.
+  Future<void> _initVParam() async {
+    // Wenn du rev.bundle bereits irgendwo speicherst, z.B. in StorePrefs:
+    // final saved = await StorePrefs.getRevBundle();
+    // _revBundle = saved;
+
+    _revBundle = null; // <-- lässt sich ohne StorePrefs-Methoden nicht sicher lesen
+    _vParam = (_revBundle != null && _revBundle!.trim().isNotEmpty)
+        ? _revBundle!.trim()
+        : DateTime.now().millisecondsSinceEpoch.toString();
+  }
+
+  void _bustVParam() {
+    // Nach jeder Mutation (delete/update/toggle) setzen wir v neu,
+    // damit der nächste fetch garantiert frisch ist.
+    _vParam = (_revBundle != null && _revBundle!.trim().isNotEmpty)
+        ? _revBundle!.trim()
+        : DateTime.now().millisecondsSinceEpoch.toString();
+  }
 
   String _currency() {
     final settings = StoreConfigService.store;
@@ -58,23 +92,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     final end = _parseDateSafe(p.offerEndDate, DateTime.now());
 
-    // Wir formatieren es so, dass es in der arabischen Anzeige (RTL) korrekt erscheint
     final dd = end.day.toString().padLeft(2, '0');
     final mm = end.month.toString().padLeft(2, '0');
     final yy = end.year.toString();
 
-    // Das Datum wird von rechts nach links korrekt als DD/MM/YYYY angezeigt
     return 'حتى $dd/$mm/$yy';
   }
 
   String _offerText(Product p) {
-    // Nur Text bauen – Berechnung vom Preis NICHT nötig.
     if (p.offerType == 'percent') {
       return 'خصم ${_sizeFmt.format(p.percent)}%';
     }
     if (p.offerType == 'bundle') {
       final cur = _currency();
-      // Beispiel: "3 بـ 6 €"
       return '${_sizeFmt.format(p.bundleQty)} بـ ${_moneyFmt.format(p.bundlePrice)} $cur';
     }
     return 'عرض';
@@ -120,7 +150,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProducts();
+    _boot();
   }
 
   @override
@@ -132,12 +162,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
   // =======================
   // ACTION WRAPPER (LOGIC)
   // =======================
-  Future<void> _runAction(Future<void> Function() fn) async {
-    if (_actionBusy) return;
+  Future<T?> _runAction<T>(Future<T> Function() fn) async {
+    if (_actionBusy) return null;
 
     setState(() => _actionBusy = true);
     try {
-      await fn();
+      return await fn();
     } finally {
       if (mounted) setState(() => _actionBusy = false);
     }
@@ -146,6 +176,25 @@ class _ProductsScreenState extends State<ProductsScreen> {
   // =======================
   // DATA (LOGIC)
   // =======================
+  Future<void> _boot() async {
+    await _initVParam();
+
+    final id = await StorePrefs.getStoreId();
+    if (!mounted) return;
+
+    if (id == null) {
+      setState(() {
+        _missingStore = true;
+        _loading = false;
+      });
+      return;
+    }
+
+    _storeId = id;
+
+    await _loadProducts();
+  }
+
   Future<void> _loadProducts({bool silent = false}) async {
     bool showedCache = false;
 
@@ -167,8 +216,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final messenger = _messenger;
 
     try {
-      await ApiService.init();
-      final data = await ApiService.fetchProducts();
+      // ✅ FIX B: v= Parameter benutzen (rev.bundle / fallback timestamp)
+      // Voraussetzung: ApiService.fetchProducts hat optional {String? v}
+      final data = await ApiService.fetchProducts(v: _vParam);
+
       if (!mounted) return;
 
       setState(() {
@@ -226,7 +277,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ),
         );
       }
+      return;
     }
+
+    // ✅ Nach erfolgreicher Mutation: v neu (damit nächster Fetch garantiert frisch)
+    _bustVParam();
   }
 
   Future<void> _toggleOffer(Product p) async {
@@ -260,12 +315,83 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ),
         );
       }
+      return;
+    }
+
+    // ✅
+    _bustVParam();
+  }
+
+  // =======================
+  // DELETE FUNCTIONS (FIXED - SINGLE DELETE FLOW)
+  // =======================
+  Future<bool> _deleteProductNow(Product p) async {
+    final success = await ApiService.deleteProduct(p.id);
+    if (!mounted) return false;
+
+    if (success) {
+      setState(() => _products.removeWhere((x) => x.id == p.id));
+      _snack('تم حذف المنتج بنجاح', _warnBg);
+      _bustVParam();
+      return true;
+    } else {
+      _snack('فشل حذف المنتج', _errorBg);
+      return false;
     }
   }
 
-  Future<void> _deleteProduct(Product p) async {
-    await _confirmAndDelete(p);
-    await _loadProducts(silent: true);
+  Future<bool> _confirmDelete(Product p) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) {
+        final dialogNav = Navigator.of(dialogCtx);
+        return AlertDialog(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: _a(_border, 0.90)),
+          ),
+          title: Text(
+            'حذف المنتج',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          content: Text(
+            'هل تريد حذف "${p.name}"؟',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => dialogNav.pop(false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () => dialogNav.pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.surface,
+                foregroundColor: Colors.redAccent,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                side: BorderSide(color: _a(Colors.redAccent, 0.35)),
+              ),
+              child: const Text('حذف', style: TextStyle(fontWeight: FontWeight.w900)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (ok != true) return false;
+
+    // FIX: Verwende _runAction mit korrektem Return-Wert
+    final deleted = await _runAction(() => _deleteProductNow(p));
+    return deleted == true;
   }
 
   // =======================
@@ -330,35 +456,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Widget _offerChip(Product p) {
     if (!_isOfferInDateRange(p)) return const SizedBox.shrink();
 
-    // Nutzt die neue Datums-Funktion
     final label = _offerUntilText(p);
 
-    if (p.image.isNotEmpty) {
-      precacheImage(NetworkImage(p.image), context);
-    }
-
-    // Die neue Wunschfarbe
     const purpleColor = Color(0xFFFF9800);
 
     return Container(
       decoration: BoxDecoration(
-        // Hintergrund leicht transparent (10% Deckkraft)
-        color: purpleColor.withValues(alpha:0.1),
+        color: purpleColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
-        // Rahmen mit 40% Deckkraft
-        border: Border.all(color: purpleColor.withValues(alpha:0.4), width: 1.1),
+        // FIX: Border.all() statt BorderSide()
+        border: Border.all(color: purpleColor.withValues(alpha: 0.4), width: 1.1),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Kalender Icon in der neuen Farbe
           const Icon(Icons.calendar_today, size: 13, color: purpleColor),
           const SizedBox(width: 6),
           Text(
             label,
             style: const TextStyle(
-              color: purpleColor, // Text in der neuen Farbe
+              color: purpleColor,
               fontWeight: FontWeight.w900,
               fontSize: 11.5,
               letterSpacing: 0.2,
@@ -367,150 +485,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
         ],
       ),
     );
-  }
-
-
-  // =======================
-  // DIALOGS
-  // =======================
-  Future<void> _confirmAndDelete(Product p) async {
-    final messenger = _messenger;
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) {
-        final dialogNav = Navigator.of(dialogCtx);
-        return AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: _a(_border, 0.90)),
-          ),
-          title: Text(
-            'حذف المنتج',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          content: Text(
-            'هل أنت متأكد أنك تريد حذف "${p.name}"؟',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => dialogNav.pop(false),
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7),
-              ),
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              onPressed: () => dialogNav.pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                foregroundColor: Colors.redAccent,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                side: BorderSide(color: _a(Colors.redAccent, 0.35)),
-              ),
-              child: const Text('حذف', style: TextStyle(fontWeight: FontWeight.w900)),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (ok != true) return;
-
-    final success = await ApiService.deleteProduct(p.id);
-    if (!mounted) return;
-
-    if (success) {
-      setState(() => _products.removeWhere((x) => x.id == p.id));
-      if (messenger != null) {
-        messenger.hideCurrentSnackBar();
-        messenger.showSnackBar(
-          const SnackBar(
-            backgroundColor: _warnBg,
-            content: Text('تم حذف المنتج بنجاح',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-          ),
-        );
-      }
-    } else {
-      if (messenger != null) {
-        messenger.hideCurrentSnackBar();
-        messenger.showSnackBar(
-          const SnackBar(
-            backgroundColor: _errorBg,
-            content: Text('فشل حذف المنتج',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<bool> _confirmDeleteSwipe(Product p) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) {
-        final dialogNav = Navigator.of(dialogCtx);
-        return AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: _a(_border, 0.90)),
-          ),
-          title: Text(
-            'حذف المنتج',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          content: Text(
-            'هل تريد حذف "${p.name}"؟',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => dialogNav.pop(false),
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7),
-              ),
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              onPressed: () => dialogNav.pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                foregroundColor: Colors.redAccent,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                side: BorderSide(color: _a(Colors.redAccent, 0.35)),
-              ),
-              child: const Text('حذف', style: TextStyle(fontWeight: FontWeight.w900)),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (ok == true) {
-      await _confirmAndDelete(p);
-      return true;
-    }
-    return false;
   }
 
   // =======================
@@ -534,7 +508,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         InputDecoration deco(String label) => InputDecoration(
           labelText: label,
           labelStyle: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             fontWeight: FontWeight.w700,
           ),
           filled: true,
@@ -645,7 +619,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                             side: BorderSide(color: _a(_border, 0.95)),
-                            foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7),
+                            foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                           child: const Text('إعادة ضبط', style: TextStyle(fontWeight: FontWeight.w900)),
                         ),
@@ -687,7 +661,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   // PRODUCT ACTIONS SHEET
   // =======================
   void _openProductActions(Product p) {
-    final messenger = _messenger;
+    // FIX: messenger-Variable entfernt, da nicht verwendet
     final router = _router;
 
     showModalBottomSheet(
@@ -716,7 +690,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ),
                 subtitle: Text(
                   'ID: ${p.id}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7)),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
                 ),
               ),
               Divider(height: 1, color: _a(_border, 0.90)),
@@ -778,7 +752,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 enabled: !_actionBusy,
                 leading: Icon(
                   Icons.edit,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 title: Text(
                   'تعديل',
@@ -802,6 +776,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       if (i != -1) _products[i] = result;
                     });
                     _snack('تم تحديث المنتج بنجاح', _successBg);
+
+                    // ✅
+                    _bustVParam();
                   }
                 },
               ),
@@ -817,10 +794,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     ? null
                     : () async {
                   sheetNav.pop();
-                  final ok = await _confirmDeleteSwipe(p);
-                  if (ok == true) {
-                    await _runAction(() => _deleteProduct(p));
-                  }
+                  await _confirmDelete(p);
                 },
               ),
               const SizedBox(height: 10),
@@ -916,12 +890,23 @@ class _ProductsScreenState extends State<ProductsScreen> {
           if (_actionBusy) return false;
 
           if (direction == DismissDirection.startToEnd) {
-            return await _confirmDeleteSwipe(p);
+            // ✅ FIX: Wir löschen selbst per setState, also Dismissible NICHT automatisch dismissen lassen
+            await _confirmDelete(p);
+            return false;
           }
 
           if (direction == DismissDirection.endToStart) {
             if (router != null) {
-              await router.push('/edit/${p.id}', extra: p);
+              final result = await router.push('/edit/${p.id}', extra: p);
+              if (!mounted) return false;
+              if (result is Product) {
+                setState(() {
+                  final i = _products.indexWhere((x) => x.id == result.id);
+                  if (i != -1) _products[i] = result;
+                });
+                _snack('تم تحديث المنتج بنجاح', _successBg);
+                _bustVParam();
+              }
             }
             return false;
           }
@@ -947,6 +932,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
             child: Stack(
               children: [
                 InkWell(
+                  onLongPress: () {
+                    if (_actionBusy) return;
+                    _openProductActions(p);
+                  },
                   onTap: () async {
                     if (_actionBusy) return;
                     if (router == null) return;
@@ -960,16 +949,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         if (i != -1) _products[i] = result;
                       });
                       _snack('تم تحديث المنتج بنجاح', _successBg);
+
+                      // ✅
+                      _bustVParam();
                     }
                   },
-
                   borderRadius: BorderRadius.circular(18),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Image block (modern + badge)
                         Stack(
                           children: [
                             Container(
@@ -982,9 +972,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
-                                child: p.image.isNotEmpty
+                                child: (p.thumb.isNotEmpty || p.image.isNotEmpty)
                                     ? Image.network(
-                                  p.image,
+                                  (p.thumb.isNotEmpty ? p.thumb : p.image),
                                   fit: BoxFit.cover,
                                   errorBuilder: (ctx, error, stackTrace) {
                                     return Center(
@@ -1004,7 +994,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               ),
                             ),
 
-                            // Offer badge on image (small + premium)
                             if (hasOfferToday)
                               Positioned(
                                 top: 6,
@@ -1052,12 +1041,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                 ),
                               ),
 
-                              // ✅ Offer content as a clean line (not only chip)
                               if (offerLine != null) ...[
                                 const SizedBox(height: 6),
                                 Row(
                                   children: [
-                                    const Icon(Icons.history_toggle_off, size: 16, color: Color(0xFFFF9800)), // Neue Farbe
+                                    const Icon(Icons.history_toggle_off, size: 16, color: Color(0xFFFF9800)),
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
@@ -1065,7 +1053,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                         style: const TextStyle(
                                           fontSize: 12.5,
                                           fontWeight: FontWeight.w900,
-                                          color: Color(0xFFFF9800), // Neue Farbe
+                                          color: Color(0xFFFF9800),
                                         ),
                                       ),
                                     ),
@@ -1091,14 +1079,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   ),
                 ),
 
-                // Delete button (same logic, nicer touch target)
                 Positioned(
                   top: 10,
                   left: 10,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Toggle (oben)
                       GestureDetector(
                         onTap: _actionBusy ? null : () => _runAction(() => _toggleActive(p)),
                         child: AnimatedContainer(
@@ -1143,16 +1129,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 6), // 👈 dichter Abstand
+                      const SizedBox(height: 6),
 
-                      // Delete (unten)
                       IconButton(
                         tooltip: 'حذف',
-                        padding: EdgeInsets.zero, // 👈 kompakt
-                        constraints: const BoxConstraints(), // 👈 verhindert extra Platz
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                         onPressed: () async {
-                          if (messenger == null) return;
-                          await _confirmAndDelete(p);
+                          await _confirmDelete(p);
                         },
                         icon: Container(
                           padding: const EdgeInsets.all(6),
@@ -1223,16 +1207,53 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
-
-
-
-
-
   // =======================
   // BUILD
   // =======================
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: _gold)),
+      );
+    }
+
+    if (_missingStore) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.store, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                const Text(
+                  'لم يتم العثور على متجر',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'قد تكون بيانات التطبيق قد حُذفت.\nيرجى تسجيل الدخول أو إعداد المتجر من جديد.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => context.go('/setup'),
+                  child: const Text('إعداد المتجر'),
+                ),
+                TextButton(
+                  onPressed: () => context.go('/login'),
+                  child: const Text('تسجيل الدخول من جديد'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final categories = _products
         .map((p) => p.category.trim())
         .where((c) => c.isNotEmpty)

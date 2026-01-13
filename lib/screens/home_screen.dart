@@ -6,6 +6,12 @@ import '../models/product.dart';
 import '../services/store_config_service.dart';
 import '../theme.dart'; // ✅ Korrekte Import-Syntax
 import '../widgets/app_drawer.dart';
+import 'package:url_launcher/url_launcher.dart'; // launchUrl, canLaunchUrl, LaunchMode
+import 'package:flutter/services.dart';          // Clipboard
+import '../storage/store_prefs.dart';
+
+
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,18 +22,47 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _loading = true;
-  List<Product> _products = [];
   bool _hasInternet = true;
+  bool _missingStore = false;
+
+  String? _storeId;
+  List<Product> _products = [];
+
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _boot();
   }
 
+  /// =========================
+  /// App-Start / Screen-Start
+  /// =========================
+  Future<void> _boot() async {
+    final id = await StorePrefs.getStoreId();
+    if (!mounted) return;
+
+    if (id == null) {
+      setState(() {
+        _missingStore = true;
+        _loading = false; // 🔴 wichtig: sonst Endlos-Spinner
+      });
+      return;
+    }
+
+    _storeId = id;
+
+    // normaler Ablauf
+    await _load(silent: true);
+  }
+
+  /// =========================
+  /// Produkte laden
+  /// =========================
   Future<void> _load({bool silent = false}) async {
     final cached = ApiService.cachedProducts;
+
     if (!silent && cached != null && cached.isNotEmpty) {
       setState(() {
         _products = cached;
@@ -39,10 +74,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     try {
-      await ApiService.init();
       await StoreConfigService.load(allowNetworkIfEmpty: true);
+
       final data = await ApiService.fetchProducts();
       if (!mounted) return;
+
       setState(() {
         _products = data.isNotEmpty ? data : _products;
         _hasInternet = true;
@@ -50,22 +86,24 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (_) {
       if (!mounted) return;
+
       setState(() {
         _hasInternet = false;
         _loading = false;
       });
     }
+
+
   }
+
+
 
   // ==============================
   // DRAWER (Kebab-Menü)
   // ==============================
-
-
-
-
-
   void _showAboutDialog(BuildContext context) {
+    final storeName = ApiService.storeName ?? 'Store Controller';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -81,23 +119,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(15),
                   color: AppTheme.gold.withValues(alpha: 0.1),
                 ),
-                child: Image.asset('assets/icon/wolf.png'),
+                child: Image.asset(
+                  'assets/icon/wolf.png',
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Al-Deeb Store Controller',
+
+            // ✅ اسم المتجر الحقيقي
+            Text(
+              storeName,
               textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+              ),
             ),
+
             const SizedBox(height: 8),
             const Text(
-              'تطبيق متكامل لإدارة متجرك بكل سهولة و احترافية. يمكنك إدارة المنتجات، الفئات، العروض والمزيد.',
+              'تطبيق متكامل لإدارة متجرك بكل سهولة واحترافية.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             const Text(
-              'المطور: Al-Deeb Team\nالإصدار: 2.1.0',
+              'الإصدار: 2.1.0',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
@@ -111,6 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
 
   void _showAdvancedStats(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -170,6 +218,31 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  void _copyToClipboard(String text) {
+    if (text.trim().isEmpty) return;
+
+    Clipboard.setData(ClipboardData(text: text.trim()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم نسخ الرابط')),
+    );
+  }
+
+  Future<void> _openExternalUrl(String url) async {
+    final u = url.trim();
+    if (u.isEmpty) return;
+
+    final uri = Uri.tryParse(u);
+    if (uri == null) return;
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر فتح الرابط')),
+      );
+    }
   }
 
   void _showLogoutDialog(BuildContext context) {
@@ -282,6 +355,56 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+
+  Widget buildStoreWebsiteCard() {
+    final s = StoreConfigService.store;
+    final publicUrl = (s?['public_store_url'] ?? '').toString().trim();
+
+    // Wichtig: NIEMALS SnackBar hier – nur ausblenden
+    if (publicUrl.isEmpty) return const SizedBox();
+
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '🌍 رابط متجرك',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            SelectableText(
+              publicUrl,
+              style: const TextStyle(color: Colors.blue),
+            ),
+            const SizedBox(height: 12),
+
+            // ✅ استخدم فقط أزرار بسيطة داخل Row
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => _openExternalUrl(publicUrl),
+                  icon: const Icon(Icons.open_in_new),
+                  label: const Text('فتح الموقع'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _copyToClipboard(publicUrl),
+                  icon: const Icon(Icons.copy),
+                  label: const Text('نسخ الرابط'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildStatisticsGrid(BuildContext context) {
     final total = _products.length;
@@ -520,26 +643,80 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 1️⃣ Loading (wie vorher: kompletter Screen)
+    if (_loading) {
+      return Scaffold(
+        key: _scaffoldKey,
+        drawer: AppDrawer(
+          currentRoute: '/home',
+          headerSubtitle: 'لوحة التحكم',
+          onSync: _syncAllData,
+        ),
+        appBar: PremiumAnimatedAppBar(
+          title: 'الرئيسية',
+          showSettings: false,
+          onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(
+            color: AppTheme.gold,
+            strokeWidth: 2.5,
+          ),
+        ),
+      );
+    }
+
+    // 2️⃣ Store fehlt
+    if (_missingStore) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.store, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                const Text(
+                  'لم يتم العثور على متجر',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'قد تكون بيانات التطبيق قد حُذفت.\nيرجى تسجيل الدخول أو إعداد المتجر من جديد.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => context.go('/setup'),
+                  child: const Text('إعداد المتجر'),
+                ),
+                TextButton(
+                  onPressed: () => context.go('/login'),
+                  child: const Text('تسجيل الدخول من جديد'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 3️⃣ Normaler Zustand (Dashboard)
     return Scaffold(
       key: _scaffoldKey,
       drawer: AppDrawer(
         currentRoute: '/home',
         headerSubtitle: 'لوحة التحكم',
-        onSync: () async => _syncAllData(),
+        onSync: _syncAllData,
       ),
       appBar: PremiumAnimatedAppBar(
         title: 'الرئيسية',
         showSettings: false,
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
       ),
-      body: _loading
-          ? const Center(
-        child: CircularProgressIndicator(
-          color: AppTheme.gold,
-          strokeWidth: 2.5,
-        ),
-      )
-          : RefreshIndicator(
+      body: RefreshIndicator(
         color: AppTheme.gold,
         backgroundColor: Theme.of(context).colorScheme.surface,
         onRefresh: () => _load(silent: true),
@@ -548,20 +725,30 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+
+
   Widget _buildHomeContent(BuildContext context) {
+    final publicUrl =
+    (StoreConfigService.store?['public_store_url'] ?? '')
+        .toString()
+        .trim();
+
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       children: [
-        // Willkommensnachricht
         _buildWelcomeMessage(),
-
         _buildElegantDivider(context),
         const SizedBox(height: 16),
 
+        if (publicUrl.isNotEmpty) ...[
+          _section('رابط متجرك', context),
+          buildStoreWebsiteCard(),
+          const SizedBox(height: 16),
+        ],
+
         _section('إحصائيات المتجر', context),
         const SizedBox(height: 12),
-
         _buildStatisticsGrid(context),
 
         const SizedBox(height: 24),
@@ -570,7 +757,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
         _section('إجراءات سريعة', context),
         const SizedBox(height: 12),
-
         Column(
           children: [
             _quickActionButton(
@@ -592,19 +778,6 @@ class _HomeScreenState extends State<HomeScreen> {
               title: 'إدارة الفئات',
               icon: Icons.grid_view_outlined,
               onTap: () => context.push('/categories'),
-            ),
-            const SizedBox(height: 10),
-            _quickActionButton(
-              title: 'عرض الموقع',
-              icon: Icons.public_rounded,
-              onTap: () {
-                final s = StoreConfigService.store;
-                final websiteUrl = (s?['store_website'] ?? '').toString().trim();
-                if (websiteUrl.isNotEmpty) {
-                  // Hier später URL öffnen Logic einfügen
-                }
-              },
-              color: Colors.blue,
             ),
           ],
         ),

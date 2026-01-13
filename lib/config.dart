@@ -1,24 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../services/store_config_service.dart';
 
 /// =====================================================
 /// AppConfig
 /// -----------------------------------------------------
-/// ❗ GLOBAL & FIX
-/// ❗ NICHT store-spezifisch
+/// Globale App-Konstanten (NICHT store-spezifisch)
+/// Auth wird von Firebase Auth + StorePrefs gehandhabt
 /// =====================================================
 class AppConfig {
   // =====================================================
-  // 🌍 BACKEND
-  // =====================================================
-
-  /// Google Apps Script Web App URL
-  static const String apiBaseUrl =
-      'https://script.google.com/macros/s/AKfycbxmTLI6-1V7tELp7uvkDnCAMDCp6M5ZPsl4lZFL6KmaBRH9Hc9dqQdsgRDs0deca4RV6w/exec';
-
-  // =====================================================
-  // 🏷 APP BRANDING (DEIN PRODUKT)
+  // 🏷 APP BRANDING
   // =====================================================
 
   static const String appName = 'إدارة المنتجات';
@@ -34,11 +24,11 @@ class AppConfig {
   static const TextDirection textDirection = TextDirection.rtl;
 
   // =====================================================
-  // 🎨 DESIGN (GLOBAL)
+  // 🎨 DESIGN
   // =====================================================
 
   static const Color primaryColor = Color(0xFF1EA54C);
-  static const Color accentColor  = Colors.amber;
+  static const Color accentColor = Colors.amber;
 
   static const LinearGradient appGradient = LinearGradient(
     begin: Alignment.topCenter,
@@ -51,11 +41,11 @@ class AppConfig {
   );
 
   // =====================================================
-  // ⚖️ UNITS (UI-HILFE, NICHT STORE-DATEN)
+  // ⚖️ UNITS
   // =====================================================
 
   static const Map<String, String> unitLabels = {
-    'g': 'غ',
+    'g': 'غرام',
     'kg': 'كغ',
     'ml': 'مل',
     'l': 'لتر',
@@ -66,38 +56,6 @@ class AppConfig {
     final k = raw.trim().toLowerCase();
     return unitLabels[k] ?? raw;
   }
-
-  // =====================================================
-  // 🆔 STORE ID (ZENTRAL)
-  // =====================================================
-
-  static const String _storeIdKey = 'store_id';
-
-  static Future<String?> getStoreId() async {
-    final sp = await SharedPreferences.getInstance();
-    return sp.getString(_storeIdKey);
-  }
-
-  static Future<void> setStoreId(String id) async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.setString(_storeIdKey, id);
-  }
-
-  static Future<void> clearStoreId() async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.remove(_storeIdKey);
-  }
-  static Future<void> clearToken() async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.remove('token');
-  }
-  static Future<String?> getToken() async {
-    final sp = await SharedPreferences.getInstance();
-    return sp.getString('token');
-  }
-
-
-
 
   // =====================================================
   // 🐞 DEBUG
