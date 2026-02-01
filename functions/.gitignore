@@ -1,0 +1,37 @@
+# Firebase service account keys
+functions/serviceKey.json
+**/serviceKey.json
+**/*serviceAccount*.json
+**/*serviceKey*.json
+**/.firebase-keys/**
+local.properties
+
+
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub/
+build/
+coverage/
+
+# Platform build caches
+.gradle/
+android/.gradle/
+ios/Pods/
+ios/.symlinks/
+macos/Pods/
+
+# Firebase local
+.firebase/
+.firebaserc
+
+# IDE
+.vscode/
+.idea/
+
+# Claude/temp folders
+.claude/
+tmpclaude-*/
+android/tmpclaude-*/
+nul
+
