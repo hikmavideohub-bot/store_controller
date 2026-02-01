@@ -1,844 +1,599 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../widgets/premium_app_bar.dart';
-import '../services/api_service.dart';
-import '../models/product.dart';
-import '../services/store_config_service.dart';
-import '../theme.dart'; // ✅ Korrekte Import-Syntax
 import '../widgets/app_drawer.dart';
-import 'package:url_launcher/url_launcher.dart'; // launchUrl, canLaunchUrl, LaunchMode
-import 'package:flutter/services.dart';          // Clipboard
-import '../storage/store_prefs.dart';
+import '../viewmodels/home_viewmodel.dart';
+import '../models/product.dart';
 
-
-
-
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => HomeViewModel(),
+      child: const _HomeScreenContent(),
+    );
+  }
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  bool _loading = true;
-  bool _hasInternet = true;
-  bool _missingStore = false;
+class _HomeScreenContent extends StatefulWidget {
+  const _HomeScreenContent();
 
-  String? _storeId;
-  List<Product> _products = [];
+  @override
+  State<_HomeScreenContent> createState() => _HomeScreenContentState();
+}
 
+class _HomeScreenContentState extends State<_HomeScreenContent> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
-  void initState() {
-    super.initState();
-    _boot();
-  }
-
-  /// =========================
-  /// App-Start / Screen-Start
-  /// =========================
-  Future<void> _boot() async {
-    final id = await StorePrefs.getStoreId();
-    if (!mounted) return;
-
-    if (id == null) {
-      setState(() {
-        _missingStore = true;
-        _loading = false; // 🔴 wichtig: sonst Endlos-Spinner
-      });
-      return;
-    }
-
-    _storeId = id;
-
-    // normaler Ablauf
-    await _load(silent: true);
-  }
-
-  /// =========================
-  /// Produkte laden
-  /// =========================
-  Future<void> _load({bool silent = false}) async {
-    final cached = ApiService.cachedProducts;
-
-    if (!silent && cached != null && cached.isNotEmpty) {
-      setState(() {
-        _products = cached;
-        _loading = false;
-        _hasInternet = true;
-      });
-    } else if (!silent) {
-      setState(() => _loading = true);
-    }
-
-    try {
-      await StoreConfigService.load(allowNetworkIfEmpty: true);
-
-      final data = await ApiService.fetchProducts();
-      if (!mounted) return;
-
-      setState(() {
-        _products = data.isNotEmpty ? data : _products;
-        _hasInternet = true;
-        _loading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        _hasInternet = false;
-        _loading = false;
-      });
-    }
-
-
-  }
-
-
-
-  // ==============================
-  // DRAWER (Kebab-Menü)
-  // ==============================
-  void _showAboutDialog(BuildContext context) {
-    final storeName = ApiService.storeName ?? 'Store Controller';
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('عن التطبيق'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(15),
-                  color: AppTheme.gold.withValues(alpha: 0.1),
-                ),
-                child: Image.asset(
-                  'assets/icon/wolf.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // ✅ اسم المتجر الحقيقي
-            Text(
-              storeName,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-            const Text(
-              'تطبيق متكامل لإدارة متجرك بكل سهولة واحترافية.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'الإصدار: 2.1.0',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('حسناً'),
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  void _showAdvancedStats(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('سيتم إضافة الإحصائيات المتقدمة في التحديث القادم')),
-    );
-  }
-
-  Future<void> _syncAllData() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('جاري مزامنة البيانات...')),
-    );
-    await _load(silent: false);
-  }
-
-  void _rateApp(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('قيم التطبيق'),
-        content: const Text('هل ترغب في تقييم التطبيق في متجر التطبيقات؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('لاحقاً'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('شكراً لك على دعمك!')),
-              );
-            },
-            child: const Text('تقييم'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showHelp(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('المساعدة والدعم'),
-        content: const Text(
-          'للحصول على المساعدة:\n\n'
-              '• support@aldeeb.com\n'
-              '• +123 456 7890\n'
-              '• FAQ متاحة على الموقع\n\n'
-              'ساعات العمل: 9 صباحاً - 6 مساءً',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('حسناً'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _copyToClipboard(String text) {
-    if (text.trim().isEmpty) return;
-
-    Clipboard.setData(ClipboardData(text: text.trim()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم نسخ الرابط')),
-    );
-  }
-
-  Future<void> _openExternalUrl(String url) async {
-    final u = url.trim();
-    if (u.isEmpty) return;
-
-    final uri = Uri.tryParse(u);
-    if (uri == null) return;
-
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر فتح الرابط')),
-      );
-    }
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('تسجيل الخروج'),
-        content: const Text('هذه الوظيفة قيد التطوير. سيتم تفعيلها قريباً.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('حسناً'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ==============================
-  // STATISTIKEN & UI-ELEMENTE
-  // ==============================
-
-  Widget _buildElegantDivider(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      height: 1,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.transparent,
-            AppTheme.gold.withValues(alpha: isDark ? 0.2 : 0.1),
-            AppTheme.gold.withValues(alpha: isDark ? 0.4 : 0.2),
-            AppTheme.gold.withValues(alpha: isDark ? 0.2 : 0.1),
-            Colors.transparent,
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _statCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required VoidCallback onTap,
-    Color? iconColor,
-    String? subValue,
-  }) {
-    final theme = Theme.of(context);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.gold.withValues(alpha: 0.12), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: (iconColor ?? AppTheme.gold).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 16, color: iconColor ?? AppTheme.gold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (subValue != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                subValue,
-                style: TextStyle(
-                  fontSize: 9,
-                  color: AppTheme.gold.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-
-  Widget buildStoreWebsiteCard() {
-    final s = StoreConfigService.store;
-    final publicUrl = (s?['public_store_url'] ?? '').toString().trim();
-
-    // Wichtig: NIEMALS SnackBar hier – nur ausblenden
-    if (publicUrl.isEmpty) return const SizedBox();
-
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '🌍 رابط متجرك',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            SelectableText(
-              publicUrl,
-              style: const TextStyle(color: Colors.blue),
-            ),
-            const SizedBox(height: 12),
-
-            // ✅ استخدم فقط أزرار بسيطة داخل Row
-            Wrap(
-              spacing: 12,
-              runSpacing: 10,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => _openExternalUrl(publicUrl),
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('فتح الموقع'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _copyToClipboard(publicUrl),
-                  icon: const Icon(Icons.copy),
-                  label: const Text('نسخ الرابط'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-  Widget _buildStatisticsGrid(BuildContext context) {
-    final total = _products.length;
-    final activeItems = _products.where((p) => p.productActive).length;
-    final inactiveItems = total - activeItems;
-    final withOffer = _products.where((p) => p.hasOffer && p.offerActive).length;
-    final noImage = _products.where((p) => p.image.trim().isEmpty).length;
-
-    final catCount = <String, int>{};
-    for (final p in _products) {
-      final c = p.category.trim();
-      if (c.isEmpty) continue;
-      catCount[c] = (catCount[c] ?? 0) + 1;
-    }
-
-    String topCat = '-';
-    int topCatN = 0;
-    catCount.forEach((k, v) {
-      if (v > topCatN) { topCat = k; topCatN = v; }
-    });
-
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      childAspectRatio: 0.85,
-      padding: const EdgeInsets.only(bottom: 16),
-      children: [
-        _statCard(
-          title: 'المنتجات',
-          value: '$total',
-          icon: Icons.inventory_2_rounded,
-          onTap: () => context.push('/products'),
-          iconColor: AppTheme.gold,
-        ),
-        _statCard(
-          title: 'نشط',
-          value: '$activeItems',
-          icon: Icons.check_circle_outline_rounded,
-          onTap: () => _showProductsByFilter(
-              context,
-              'نشط',
-              _products.where((p) => p.productActive).toList()
-          ),
-          iconColor: Colors.green,
-        ),
-        _statCard(
-          title: 'غير نشط',
-          value: '$inactiveItems',
-          icon: Icons.pause_circle_outline_rounded,
-          onTap: () => _showProductsByFilter(
-              context,
-              'غير نشط',
-              _products.where((p) => !p.productActive).toList()
-          ),
-          iconColor: Colors.orange,
-        ),
-        _statCard(
-          title: 'عروض',
-          value: '$withOffer',
-          icon: Icons.local_offer_outlined,
-          onTap: () => _showProductsByFilter(
-              context,
-              'عروض',
-              _products.where((p) => p.hasOffer && p.offerActive).toList()
-          ),
-          iconColor: Colors.purple,
-        ),
-        _statCard(
-          title: 'بدون صورة',
-          value: '$noImage',
-          icon: Icons.no_photography_outlined,
-          onTap: () => _showProductsByFilter(
-              context,
-              'بدون صورة',
-              _products.where((p) => p.image.trim().isEmpty).toList()
-          ),
-          iconColor: Colors.blueGrey,
-        ),
-        _statCard(
-          title: 'أكبر فئة',
-          value: topCat.length > 6 ? '${topCat.substring(0, 6)}...' : topCat,
-          icon: Icons.auto_awesome_motion_rounded,
-          subValue: topCatN > 0 ? '$topCatN منتج' : '',
-          onTap: topCat != '-' ? () => _showProductsByFilter(
-              context,
-              'فئة: $topCat',
-              _products.where((p) => p.category.trim() == topCat).toList()
-          ) : () {},
-          iconColor: Colors.teal,
-        ),
-      ],
-    );
-  }
-
-  Widget _section(String title, BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 4),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-      ),
-    );
-  }
-
-  Widget _quickActionButton({
-    required String title,
-    required IconData icon,
-    required VoidCallback onTap,
-    Color? color,
-  }) {
-    final theme = Theme.of(context);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.gold.withValues(alpha: 0.12), width: 1),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: (color ?? AppTheme.gold).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color ?? AppTheme.gold, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-            ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showProductsByFilter(BuildContext context, String filterTitle, List<Product> filteredProducts) {
-    if (filteredProducts.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('لا توجد منتجات في $filterTitle'),
-          backgroundColor: AppTheme.gold,
-        ),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: PremiumAnimatedAppBar(
-            title: filterTitle,
-            showBackButton: true,
-            showSettings: false,
-          ),
-          body: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: filteredProducts.length,
-            itemBuilder: (context, index) {
-              final product = filteredProducts[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  leading: product.image.isNotEmpty
-                      ? ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      product.image,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, error, stackTrace) => Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: AppTheme.surface2,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(Icons.image_not_supported, color: AppTheme.muted),
-                      ),
-                    ),
-                  )
-                      : Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface2,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.image_not_supported, color: AppTheme.muted),
-                  ),
-                  title: Text(
-                    product.name,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    '${product.price} € / ${product.sizeValue} ${product.sizeUnit}',
-                    style: TextStyle(color: AppTheme.muted, fontSize: 12),
-                  ),
-                  trailing: Icon(
-                    product.productActive ? Icons.check_circle : Icons.cancel,
-                    color: product.productActive ? Colors.green : Colors.red,
-                    size: 20,
-                  ),
-                  onTap: () => context.push('/edit/${product.id}', extra: product),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ==============================
-  // MAIN BUILD METHOD
-  // ==============================
-
-  @override
   Widget build(BuildContext context) {
-    // 1️⃣ Loading (wie vorher: kompletter Screen)
-    if (_loading) {
+    final vm = context.watch<HomeViewModel>();
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final s = AppLocalizations.of(context)!;
+
+    if (vm.loading) {
       return Scaffold(
         key: _scaffoldKey,
-        drawer: AppDrawer(
-          currentRoute: '/home',
-          headerSubtitle: 'لوحة التحكم',
-          onSync: _syncAllData,
-        ),
-        appBar: PremiumAnimatedAppBar(
-          title: 'الرئيسية',
-          showSettings: false,
-          onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(
-            color: AppTheme.gold,
-            strokeWidth: 2.5,
-          ),
-        ),
+        appBar: PremiumAnimatedAppBar(title: s.homeTitle, onMenuPressed: () => _scaffoldKey.currentState?.openDrawer()),
+        body: Center(child: CircularProgressIndicator(color: colors.primary)),
       );
     }
 
-    // 2️⃣ Store fehlt
-    if (_missingStore) {
-      return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.store, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text(
-                  'لم يتم العثور على متجر',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'قد تكون بيانات التطبيق قد حُذفت.\nيرجى تسجيل الدخول أو إعداد المتجر من جديد.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => context.go('/setup'),
-                  child: const Text('إعداد المتجر'),
-                ),
-                TextButton(
-                  onPressed: () => context.go('/login'),
-                  child: const Text('تسجيل الدخول من جديد'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // 3️⃣ Normaler Zustand (Dashboard)
     return Scaffold(
       key: _scaffoldKey,
-      drawer: AppDrawer(
-        currentRoute: '/home',
-        headerSubtitle: 'لوحة التحكم',
-        onSync: _syncAllData,
-      ),
-      appBar: PremiumAnimatedAppBar(
-        title: 'الرئيسية',
-        showSettings: false,
-        onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
-      ),
+      drawer: AppDrawer(currentRoute: '/home', headerSubtitle: s.dashboardTitle, onSync: () => vm.syncAllData(s)),
+      appBar: PremiumAnimatedAppBar(title: s.dashboardTitle, showSettings: false, onMenuPressed: () => _scaffoldKey.currentState?.openDrawer()),
       body: RefreshIndicator(
-        color: AppTheme.gold,
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        onRefresh: () => _load(silent: true),
-        child: _buildHomeContent(context),
-      ),
-    );
-  }
-
-
-
-  Widget _buildHomeContent(BuildContext context) {
-    final publicUrl =
-    (StoreConfigService.store?['public_store_url'] ?? '')
-        .toString()
-        .trim();
-
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      children: [
-        _buildWelcomeMessage(),
-        _buildElegantDivider(context),
-        const SizedBox(height: 16),
-
-        if (publicUrl.isNotEmpty) ...[
-          _section('رابط متجرك', context),
-          buildStoreWebsiteCard(),
-          const SizedBox(height: 16),
-        ],
-
-        _section('إحصائيات المتجر', context),
-        const SizedBox(height: 12),
-        _buildStatisticsGrid(context),
-
-        const SizedBox(height: 24),
-        _buildElegantDivider(context),
-        const SizedBox(height: 20),
-
-        _section('إجراءات سريعة', context),
-        const SizedBox(height: 12),
-        Column(
+        onRefresh: () => vm.syncAllData(s),
+        color: colors.primary,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 140 + MediaQuery.of(context).viewPadding.bottom),
           children: [
-            _quickActionButton(
-              title: 'رسالة إلى العملاء',
-              icon: Icons.campaign_outlined,
-              onTap: () => context.push('/customer-message'),
-              color: Colors.teal,
-            ),
+            _buildHeader(context, s),
+            const SizedBox(height: 24),
 
+            // 1. STATISTIKEN ZUERST
+            _sectionHeader(context, s.liveStatsTitle),
+            _buildStatisticsGrid(context, vm, s),
 
-            const SizedBox(height: 10),
-            _quickActionButton(
-              title: 'تصفح المنتجات',
-              icon: Icons.storefront_rounded,
-              onTap: () => context.push('/products'),
-            ),
-            const SizedBox(height: 10),
-            _quickActionButton(
-              title: 'إدارة الفئات',
-              icon: Icons.grid_view_outlined,
-              onTap: () => context.push('/categories'),
-            ),
+            const SizedBox(height: 24),
+
+            // 2. KUNDENNACHRICHT
+            _buildCustomerMessagePreview(context, vm, s),
+
+            const SizedBox(height: 16),
+
+            // 3. STORE LINK
+            _buildStoreLinkCard(context, vm, s),
           ],
         ),
-
-        SizedBox(height: MediaQuery.of(context).viewPadding.bottom + 16),
-      ],
+      ),
     );
   }
 
-  Widget _buildWelcomeMessage() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16, top: 4),
+  Widget _buildHeader(BuildContext context, AppLocalizations s) {
+    final vm = context.watch<HomeViewModel>();
+    final displayName = vm.storeName ?? s.defaultStoreName;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(s.welcomeStoreName(displayName), style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface)),
+      const SizedBox(height: 4),
+      Text(s.dashboardSubtitle, style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
+    ]);
+  }
+
+  Widget _buildStoreLinkCard(BuildContext context, HomeViewModel vm, AppLocalizations s) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final url = vm.publicStoreUrl ?? s.noLinkYet;
+
+    return _PremiumCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'مرحباً بك!',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'إدارة متجرك أصبحت أسهل',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.gold.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppTheme.gold.withValues(alpha: 0.2)),
+                  color: colors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text(
-                  '${_products.length} منتج',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.gold,
-                  ),
-                ),
+                child: Icon(Icons.link_rounded, color: colors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                s.publicStoreLink,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    url,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: vm.publicStoreUrl != null ? colors.primary : theme.hintColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (vm.publicStoreUrl != null) ...[
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    onPressed: () async {
+                      final ok = await vm.copyToClipboard(url);
+                      if (ok && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(s.copyLinkSuccess),
+                            backgroundColor: colors.primary,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                    tooltip: s.copyLinkSuccess,
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                    onPressed: () => vm.openExternalUrl(url),
+                    tooltip: s.viewProductsAction,
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: vm.publicStoreUrl != null ? () => vm.shareStore(s) : null,
+              icon: const Icon(Icons.share_rounded, size: 18),
+              label: Text(s.shareStoreInvite),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primary,
+                foregroundColor: colors.onPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerMessagePreview(BuildContext context, HomeViewModel vm, AppLocalizations s) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    final msg = vm.customerMessage;
+    final hasMsg = msg.isNotEmpty;
+
+    return GestureDetector(
+      // HIER IST DER FIX: await push -> dann refreshMessage
+      onTap: () async {
+        await context.push('/customer-message');
+        vm.refreshMessage(); // Aktualisiert sofort wenn du zurückkommst
+      },
+      child: _PremiumCard(
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12)
+              ),
+              child: Icon(Icons.campaign_rounded, color: colors.primary),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(s.customerMessageTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const SizedBox(height: 4),
+                  Text(
+                    hasMsg ? msg : s.customerMessagePlaceholder,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: hasMsg ? colors.onSurface : theme.hintColor,
+                      fontStyle: hasMsg ? FontStyle.normal : FontStyle.italic,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, size: 14, color: theme.hintColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionHeader(BuildContext context, String title) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+        padding: const EdgeInsets.only(bottom: 16, right: 4),
+        child: Row(
+            children: [
+              Container(
+                  width: 4, height: 18,
+                  decoration: BoxDecoration(color: colors.primary, borderRadius: BorderRadius.circular(2))
+              ),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))
+            ]
+        )
+    );
+  }
+
+  void _showProductsByFilter(BuildContext context, String title, List<Product> list, AppLocalizations s) {
+    if (list.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.noProductsFoundTitle(title)), backgroundColor: Theme.of(context).colorScheme.primary, behavior: SnackBarBehavior.floating));
+      return;
+    }
+    Navigator.push(context, MaterialPageRoute(builder: (context) => _FilteredProductsScreen(title: title, products: list)));
+  }
+
+  void _showCategoriesWithOffers(BuildContext context, HomeViewModel vm, AppLocalizations s) {
+    final cats = vm.categoriesWithFullOffersList;
+    if (cats.isEmpty) return;
+
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final accent = colors.tertiary;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final currentCats = vm.categoriesWithFullOffersList;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(ctx).viewPadding.bottom),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.deepOrange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.bolt_rounded, color: Colors.deepOrange)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(s.categoryOffersTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                  Text(s.categoryOffersSubtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ])),
+              ]),
+              const SizedBox(height: 20),
+              if (currentCats.isEmpty)
+                Center(child: Padding(padding: const EdgeInsets.all(20), child: Text(s.noCategoryOffers, style: const TextStyle(color: Colors.grey))))
+              else
+                ...currentCats.map((cat) => Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: accent.withValues(alpha: 0.2)),
+                  ),
+                  child: InkWell(
+                    onTap: () {
+                      final products = vm.getProductsByCategory(cat);
+                      Navigator.pop(context);
+                      _showProductsByFilter(context, s.filterCategoryPrefix(cat), products, s);
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(children: [
+                        Icon(Icons.category_rounded, color: accent, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(cat, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
+                        TextButton.icon(
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (dctx) => AlertDialog(
+                                title: Text(s.stopOfferAction),
+                                content: Text(s.stopCategoryOfferConfirm),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(dctx, false), child: Text(s.cancelButton)),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(dctx, true),
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                                    child: Text(s.stopOfferAction),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirm != true) return;
+
+                            final success = await vm.disableOffersForCategory(s, cat);
+                            if (ctx.mounted) {
+                              if (success) {
+                                setSheetState(() {});
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(s.categoryOffersDisabledMsg(cat)),
+                                    backgroundColor: Colors.green,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(s.categoryOffersDisableFail),
+                                    backgroundColor: Colors.red,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.power_settings_new_rounded, size: 18),
+                          label: Text(s.stopOfferAction),
+                          style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        ),
+                      ]),
+                    ),
+                  ),
+                )),
+              const SizedBox(height: 10),
+            ]),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatisticsGrid(BuildContext context, HomeViewModel vm, AppLocalizations s) {
+    final colors = Theme.of(context).colorScheme;
+    final top = vm.topCategory;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // Responsive Anpassung: max 3 Spalten auf Handys, mehr auf Tablets/Desktop
+    int crossAxisCount = 3;
+    if (screenWidth >= 600 && screenWidth < 900) {
+      crossAxisCount = 4; // kleine Tablets
+    } else if (screenWidth >= 900) {
+      crossAxisCount = 6; // große Tablets / Desktop
+    }
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.9, // leicht angepasst für bessere Optik
+      ),
+      itemCount: 7,
+      itemBuilder: (context, index) {
+        switch (index) {
+          case 0:
+            return _StatCard(
+              title: s.statsTotalProducts,
+              value: '${vm.totalProducts}',
+              icon: Icons.inventory_2_rounded,
+              iconColor: colors.primary,
+              onTap: () => _showProductsByFilter(context, s.filterAllProducts, vm.products, s),
+            );
+          case 1:
+            return _StatCard(
+              title: s.statsAvailable,
+              value: '${vm.activeProducts}',
+              icon: Icons.check_circle_rounded,
+              iconColor: Colors.green,
+              onTap: () => _showProductsByFilter(context, s.filterAvailable, vm.getActiveProducts(), s),
+            );
+          case 2:
+            return _StatCard(
+              title: s.statsUnavailable,
+              value: '${vm.inactiveProducts}',
+              icon: Icons.pause_circle_rounded,
+              iconColor: Colors.orange,
+              onTap: () => _showProductsByFilter(context, s.filterUnavailable, vm.getInactiveProducts(), s),
+            );
+          case 3:
+            return _StatCard(
+              title: s.statsOffers,
+              value: '${vm.productsWithOffer}',
+              icon: Icons.local_offer_rounded,
+              iconColor: Colors.purple,
+              onTap: () => _showProductsByFilter(context, s.filterActiveOffers, vm.getProductsWithOffer(), s),
+            );
+          case 4:
+            return _StatCard(
+              title: s.statsCategoryOffers,
+              value: '${vm.categoriesWithFullOffers}',
+              icon: Icons.bolt_rounded,
+              iconColor: Colors.deepOrange,
+              onTap: vm.categoriesWithFullOffers > 0
+                  ? () => _showCategoriesWithOffers(context, vm, s)
+                  : null,
+            );
+          case 5:
+            return _StatCard(
+              title: s.statsNoImage,
+              value: '${vm.productsWithoutImage}',
+              icon: Icons.no_photography_rounded,
+              iconColor: Colors.blueGrey,
+              onTap: () => _showProductsByFilter(context, s.filterNoImage, vm.getProductsWithoutImage(), s),
+            );
+        }
+        return null;
+      },
+    );
+  }
+
+}
+
+class _PremiumCard extends StatelessWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+
+  const _PremiumCard({
+    super.key,
+    required this.child,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.outline.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String title, value;
+  final String? subValue;
+  final IconData icon;
+  final Color iconColor;
+  final VoidCallback? onTap;
+
+  const _StatCard({
+    super.key,
+    required this.title,
+    required this.value,
+    this.subValue,
+    required this.icon,
+    required this.iconColor,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Material(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colors.outline.withValues(alpha: theme.brightness == Brightness.dark ? 0.3 : 0.1)),
+            ),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: Icon(icon, size: 20, color: iconColor)),
+              const SizedBox(height: 10),
+              Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 2),
+              Text(title, style: TextStyle(fontSize: 10, color: theme.hintColor, fontWeight: FontWeight.w600), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+              if (subValue != null) Text(subValue!, style: TextStyle(fontSize: 9, color: colors.tertiary, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilteredProductsScreen extends StatelessWidget {
+  final String title;
+  final List<Product> products;
+
+  const _FilteredProductsScreen({required this.title, required this.products});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Scaffold(
+      appBar: PremiumAnimatedAppBar(title: title, showBackButton: true, showSettings: false),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: products.length,
+        itemBuilder: (context, index) {
+          final p = products[index];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(12),
+              leading: Container(
+                width: 60, height: 60,
+                decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12)
+                ),
+                child: p.image.isNotEmpty
+                    ? ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(p.image, fit: BoxFit.cover, errorBuilder: (_,__,___)=>const Icon(Icons.image_not_supported)))
+                    : const Icon(Icons.image_not_supported),
+              ),
+              title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+              subtitle: Text(
+                  '${p.price} € / ${p.sizeValue} ${p.sizeUnit}',
+                  style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold)
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+              onTap: () => context.push('/edit/${p.id}', extra: p),
+            ),
+          );
+        },
       ),
     );
   }

@@ -1,0 +1,48 @@
+# Default: keep LF in repo
+* text=auto eol=lf
+
+# Windows scripts
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.pdf binary
+
+
+# Flutter / Dart
+.dart_tool/
+.build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE / OS
+.vscode/
+.idea/
+*.iml
+.DS_Store
+
+# Android / Gradle
+.gradle/
+android/.gradle/
+local.properties
+**/GeneratedPluginRegistrant.*
+
+# Firebase / Tools
+.firebase/
+.firebaserc
+
+# Node
+node_modules/
+package-lock.json
+
+# Temp / Claude / random
+.claude/
+tmpclaude-*/
+android/tmpclaude-*/
+nul
+tatus

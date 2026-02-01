@@ -2,166 +2,82 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Brand-Palette (Wolf / Gold / Dark)
-  static const Color bg = Color(0xFF0B0B0D);          // fast schwarz
-  static const Color surface = Color(0xFF141418);     // Cards / Flächen
-  static const Color surface2 = Color(0xFF1B1B22);    // leicht heller
-  static const Color gold = Color(0xFFFFC24A);        // Hauptgold
-  static const Color gold2 = Color(0xFFFFD77A);       // Highlight-Gold
-  static const Color text = Color(0xFFF2F2F2);        // Text hell
-  static const Color muted = Color(0xFFB8B8C2);       // Subtext
-  static const Color danger = Color(0xFFE0474C);      // Fehler
-  static const Color outline = Color(0xFF2A2A33);     // Borders
-  static const Color darkGold = Color(0xFF8C6A2B);
+  // --- NEUE FARBPALETTE (Modern & Premium) ---
 
+  // Primärfarbe: "Royal Indigo" - Stark, modern, vertrauenswürdig
+  static const _primaryLight = Color(0xFF0288D1); // Ruhiges Blau-Aqua
+  static const _primaryDark  = Color(0xFF00ACC1); // Helleres Petrol
+
+
+
+  // Hintergrund: "Slate" (Kühles, modernes Grau statt schmutziges Braun-Grau)
+// "Royal White": Rein, hell, mit einem luxuriösen, warmen Gold-Unterton.
+  static const _bgLight = Color(0xFFFFFEFA);      // "Snow with Gold" - Fast Weiß, sehr edel.
+  static const _bgDark = Color(0xFF14120E);       // "Onyx" - Ein sehr tiefes, warmes Schwarz.
+  // Oberflächen
+  static const _surfaceLight = Color(0xFFFFFFFF); // Reinweiß für maximalen Kontrast
+  static const _surfaceDark = Color(0xFF1E293B);  // Slate 800 (sichtbar heller als BG)
+
+  // Premium / Akzent (Gold - angepasst für Blau)
+  static const _gold = Color(0xFFFFD700);         // Helles Gold
+  static const _goldDark = Color(0xFFD4AF37);     // Metallic Gold
+
+  // Fehler
+  static const _danger = Color(0xFFEF4444);       // Modernes, klares Rot
+
+  // --- THEME DATA BUILDER ---
+
+  static ThemeData light() {
+    return _buildTheme(
+      brightness: Brightness.light,
+      colorScheme: const ColorScheme.light(
+        primary: _primaryLight,
+        onPrimary: Colors.white,
+        secondary: _primaryLight,
+        onSecondary: Colors.white,
+        tertiary: _goldDark,
+        surface: _surfaceLight,
+        onSurface: Color(0xFF0F172A), // Fast schwarz, sehr gut lesbar
+        error: _danger,
+        outline: Color(0xFFE2E8F0),   // Sehr subtile Ränder
+      ),
+      scaffoldBg: _bgLight,
+    );
+  }
 
   static ThemeData dark() {
+    return _buildTheme(
+      brightness: Brightness.dark,
+      colorScheme: const ColorScheme.dark(
+        primary: _primaryDark,
+        onPrimary: Colors.black, // Schwarzer Text auf hellem Indigo liest sich besser
+        secondary: _primaryDark,
+        onSecondary: Colors.black,
+        tertiary: _gold,
+        surface: _surfaceDark,
+        onSurface: Color(0xFFF1F5F9), // Helles Grauweiß
+        error: _danger,
+        outline: Color(0xFF334155),
+      ),
+      scaffoldBg: _bgDark,
+    );
+  }
+
+  static ThemeData _buildTheme({
+    required Brightness brightness,
+    required ColorScheme colorScheme,
+    required Color scaffoldBg,
+  }) {
     final base = ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      textTheme: GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme).apply(
-        bodyColor: text,
-        displayColor: text,
+      brightness: brightness,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: scaffoldBg,
+      textTheme: GoogleFonts.cairoTextTheme(
+        brightness == Brightness.dark
+            ? ThemeData.dark().textTheme
+            : ThemeData.light().textTheme,
       ),
-      colorScheme: const ColorScheme.dark(
-        primary: gold,
-        secondary: gold2,
-        surface: surface,
-        error: danger,
-        onPrimary: Colors.black,
-        onSecondary: Colors.black,
-        onSurface: text,
-        onError: Colors.white,
-      ),
-    );
-
-    return base.copyWith(
-      scaffoldBackgroundColor: bg,
-
-      // AppBar
-      appBarTheme: const AppBarTheme(
-        backgroundColor: bg,
-        foregroundColor: text,
-        centerTitle: true,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-      ),
-
-      // Cards
-      cardTheme: CardThemeData(
-        color: surface,
-        elevation: 0,
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: outline, width: 1),
-        ),
-      ),
-
-      // Divider / Outline
-      dividerTheme: const DividerThemeData(
-        color: outline,
-        thickness: 1,
-        space: 24,
-      ),
-
-      // Buttons
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: gold,
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 0,
-        ),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: gold,
-          foregroundColor: Colors.black,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: gold,
-          side: const BorderSide(color: gold, width: 1.2),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-      ),
-
-      // FAB
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: Color(0xFFFFC24A),
-        foregroundColor: Colors.black,
-        elevation: 0,
-      ),
-
-
-      // Inputs (TextField etc.)
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: surface2,
-        hintStyle: const TextStyle(color: muted),
-        labelStyle: const TextStyle(color: muted),
-        prefixIconColor: muted,
-        suffixIconColor: muted,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: outline),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: outline),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: gold, width: 1.6),
-        ),
-      ),
-
-      // Switch / Checkbox / Radio
-      switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((s) {
-          if (s.contains(WidgetState.selected)) return gold;
-          return muted;
-        }),
-        trackColor: WidgetStateProperty.resolveWith((s) {
-          if (s.contains(WidgetState.selected)) return gold.withValues(alpha:0.35);
-          return outline;
-        }),
-      ),
-      checkboxTheme: CheckboxThemeData(
-        fillColor: WidgetStateProperty.resolveWith((s) {
-          if (s.contains(WidgetState.selected)) return gold;
-          return Colors.transparent;
-        }),
-        checkColor: WidgetStateProperty.all(Colors.black),
-        side: const BorderSide(color: outline, width: 1.2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-      ),
-
-      // Snackbars
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: surface2,
-        contentTextStyle: const TextStyle(color: text),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-
-      // Icons
-      iconTheme: const IconThemeData(color: text),
-
-      // BottomNavigation (wichtig, weil HomeShell)
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: bg,
-        selectedItemColor: gold,
-        unselectedItemColor: muted,
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-      ),
-
-      // Page transitions (optional, fühlt sich “smooth” an)
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
@@ -169,118 +85,91 @@ class AppTheme {
         },
       ),
     );
-  }
-
-  // Optional: Light (falls du es behalten willst). Sonst kannst du es löschen.
-  static ThemeData light() {
-    // Porcelain Light
-    const bg = Color(0xFFF6F5F2);
-    const surface = Color(0xFFFFFFFF);
-    const surface2 = Color(0xFFF1F0EB);
-    const outline = Color(0xFFE6E3DC);
-    const Color _darkGold = Color(0xFF8C6A2B);
-
-
-    const text = Color(0xFF141416);
-    const muted = Color(0xFF6E6E78);
-
-    final base = ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      textTheme: GoogleFonts.cairoTextTheme(ThemeData.light().textTheme).apply(
-        bodyColor: text,
-        displayColor: text,
-      ),
-      colorScheme: const ColorScheme.light(
-        primary: gold,       // ✅ dein Gold bleibt "Premium-Akzent"
-        secondary: gold2,
-        surface: surface,
-        error: danger,
-        onPrimary: Colors.black,
-        onSecondary: Colors.black,
-        onSurface: text,
-        onError: Colors.white,
-      ),
-    );
 
     return base.copyWith(
-      scaffoldBackgroundColor: bg,
-
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent, // ✅ wirkt "leicht"
-        foregroundColor: text,
-        centerTitle: true,
+      // AppBar: Clean & Modern
+      appBarTheme: AppBarTheme(
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
         elevation: 0,
+        centerTitle: true,
+        scrolledUnderElevation: 0, // Flach bleiben, auch beim Scrollen
         surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: colorScheme.onSurface),
       ),
 
+      // Cards: Etwas modernerer Schatten
       cardTheme: CardThemeData(
-        color: surface,
-        elevation: 0,
+        color: colorScheme.surface,
+        elevation: 0, // Flat Design Trend (oder sehr niedrig)
         margin: const EdgeInsets.symmetric(vertical: 8),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: outline, width: 1),
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: colorScheme.outline.withAlpha(50), // Feine Outline statt fetter Schatten
+            width: 1,
+          ),
         ),
       ),
 
-      dividerTheme: const DividerThemeData(
-        color: outline,
-        thickness: 1,
-        space: 24,
-      ),
-
+      // Buttons: Kräftiger und runder
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: gold,
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 0,
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: text,
-          side: const BorderSide(color: outline, width: 1.2),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 2,
+          shadowColor: colorScheme.primary.withAlpha(100), // Farbiger Schatten (Glow-Effekt)
+          textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
 
+      // Floating Action Button
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+
+      // Inputs: Sehr clean
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surface2,
-        hintStyle: const TextStyle(color: muted),
-        labelStyle: const TextStyle(color: muted),
-        prefixIconColor: muted,
-        suffixIconColor: muted,
+        fillColor: brightness == Brightness.dark
+            ? const Color(0xFF0F172A) // Dunkler als Surface für Tiefe
+            : Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: outline),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: colorScheme.outline),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: outline),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: colorScheme.outline), // Subtiler Rahmen
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: gold, width: 1.6),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: colorScheme.primary, width: 2),
         ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       ),
 
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: surface,
-        contentTextStyle: const TextStyle(color: text),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: surface,
-        selectedItemColor: gold,
-        unselectedItemColor: muted,
+      // Bottom Nav
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: colorScheme.surface,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: Colors.grey.shade600,
         type: BottomNavigationBarType.fixed,
-        elevation: 0,
+        elevation: 0, // Modernes Flat-Design (kein Schatten oben)
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+      ),
+
+      // Dialoge
+      dialogTheme: DialogThemeData(
+        backgroundColor: colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        elevation: 10,
       ),
     );
   }

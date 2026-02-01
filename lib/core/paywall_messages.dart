@@ -1,11 +1,10 @@
-// lib/core/paywall_messages.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// افترضت وجود ملف الترجمة الخاص بك هنا
+import 'package:store_controller/l10n/generated/app_localizations.dart';
 import 'access_manager.dart';
-
-const int _kTrialDays = 30;
 
 class TrialWelcomeManager {
   static const String _shownKey = 'trial_welcome_shown_v2';
@@ -40,13 +39,9 @@ class PaywallMessage {
   final String key;
   final String title;
   final String body;
-
   final String? ctaText;
   final IconData? icon;
-
-  /// ✅ Fix für HomeShell: msg.iconColor
   final Color? iconColor;
-
   final bool showFeatures;
   final bool showInFab;
 
@@ -62,152 +57,84 @@ class PaywallMessage {
   });
 }
 
-DateTime _serverNowUtc() {
-  final raw = AccessManager.access?['server_time'];
-  if (raw is String && raw.isNotEmpty) {
-    final dt = DateTime.tryParse(raw);
-    if (dt != null) return dt.toUtc();
-  }
-  return DateTime.now().toUtc();
-}
-
-DateTime? _parseIso(dynamic v) {
-  if (v is! String) return null;
-  final s = v.trim();
-  if (s.isEmpty) return null;
-  return DateTime.tryParse(s);
-}
-
-int? _daysUntil(DateTime? target, DateTime nowUtc) {
-  if (target == null) return null;
-  final sec = target.toUtc().difference(nowUtc).inSeconds;
-  if (sec <= 0) return 0;
-  return (sec / 86400).ceil();
-}
-
-String _arabicDays(int d) {
-  if (d <= 0) return 'اليوم';
-  if (d == 1) return 'يوم واحد';
-  if (d == 2) return 'يومين';
-  if (d >= 3 && d <= 10) return '$d أيام';
-  return '$d يوم';
-}
-
-int? _trialDaysRemaining(DateTime nowUtc) {
-  // bevorzugt admin-date (wenn vorhanden), sonst fallback daysRemaining vom Server
-  final start = _parseIso(AccessManager.access?['trial_start_at']);
-  if (start == null) return AccessManager.daysRemaining;
-  final end = start.toUtc().add(const Duration(days: _kTrialDays));
-  return _daysUntil(end, nowUtc);
-}
-
-/// Kern: Status + Stage + DaysRemaining => Message
-PaywallMessage? buildPaywallMessage({bool forFab = false}) {
+/// بناء الرسالة باستخدام BuildContext لجلب النصوص المترجمة
+PaywallMessage? buildPaywallMessage(BuildContext context, {bool forFab = false}) {
   if (!AccessManager.isLoaded) return null;
 
+  final l10n = AppLocalizations.of(context)!;
   final status = AccessManager.status;
   final stage = AccessManager.stage;
-  final nowUtc = _serverNowUtc();
 
-  // Active: keine Paywall
   if (status == 'active') return null;
 
-  // Suspended: KEIN Payment-CTA (sonst würdest du /payment öffnen)
   if (status == 'suspended') {
-    return const PaywallMessage(
+    return PaywallMessage(
       key: 'SUSPENDED',
-      title: '⚠️ المتجر موقوف مؤقتاً',
-      body:
-      'تم إيقاف المتجر مؤقتاً.\n'
-          'إذا كنت تعتقد أن ذلك خطأ، تواصل مع الدعم وسنساعدك بسرعة.',
+      title: l10n.paywall_suspended_title,
+      body: l10n.paywall_suspended_body,
       icon: Icons.support_agent_rounded,
       iconColor: Colors.redAccent,
       ctaText: null,
-      showFeatures: false,
       showInFab: true,
     );
   }
 
-  // Trial (stage 0): friendly, ohne Druck
   if (status == 'trial' && stage == 0) {
-    final left = _trialDaysRemaining(nowUtc);
-    final hint = (left == null) ? '' : '⏳ متبقي: ${_arabicDays(left)}';
-    final suffix = hint.isEmpty ? '' : '\n\n$hint';
-
     return PaywallMessage(
       key: 'TRIAL_WELCOME',
-      title: '🎁 أهلاً بك! التجربة مفعّلة',
-      body:
-      'ابدأ بإضافة منتجاتك ومشاركة رابط متجرك مع الزبائن.\n'
-          'نصيحة: أضف 5–10 منتجات كبداية ليظهر متجرك بشكل رائع.$suffix',
+      title: l10n.paywall_trial_welcome_title,
+      body: l10n.paywall_trial_welcome_body,
       icon: Icons.celebration_rounded,
       iconColor: const Color(0xFFFFD700),
       ctaText: null,
-      showFeatures: false,
-      showInFab: false, // لا نزعج المستخدم بزر الإضافة
+      showInFab: false,
     );
   }
 
-  // Expired: kundenfreundlich + Nutzen + klare CTA
   if (status == 'expired') {
     if (stage == 1) {
-      return const PaywallMessage(
+      return PaywallMessage(
         key: 'EXPIRED_STAGE_1',
-        title: 'انتهت التجربة المجانية',
-        body:
-        'متجرك ما زال ظاهرًا للزبائن، لكن الأسعار والمقاسات مخفية مؤقتاً.\n\n'
-            'فعّل الاشتراك لتعود جميع المزايا فوراً.',
-        ctaText: 'تفعيل الآن',
+        title: l10n.paywall_expired_s1_title,
+        body: l10n.paywall_expired_s1_body,
+        ctaText: l10n.paywall_cta_activate_now,
         icon: Icons.price_change_rounded,
-        iconColor: Color(0xFFFFD700),
+        iconColor: const Color(0xFFFFD700),
         showFeatures: true,
-        showInFab: true,
       );
     }
 
     if (stage == 2) {
-      return const PaywallMessage(
+      return PaywallMessage(
         key: 'EXPIRED_STAGE_2',
-        title: 'الصور متوقفة مؤقتاً',
-        body:
-        'متجرك ما زال ظاهرًا للزبائن، لكن صور المنتجات مخفية مؤقتاً.\n\n'
-            'فعّل الاشتراك لتعود الصور وباقي المزايا فوراً.',
-        ctaText: 'تفعيل الآن',
+        title: l10n.paywall_expired_s2_title,
+        body: l10n.paywall_expired_s2_body,
+        ctaText: l10n.paywall_cta_activate_now,
         icon: Icons.image_not_supported_rounded,
-        iconColor: Color(0xFFFFD700),
+        iconColor: const Color(0xFFFFD700),
         showFeatures: true,
-        showInFab: true,
       );
     }
 
-    return const PaywallMessage(
+    return PaywallMessage(
       key: 'EXPIRED_STAGE_3',
-      title: 'المتجر غير نشط حالياً',
-      body:
-      'تم تقييد بعض الميزات مؤقتاً بعد انتهاء التجربة.\n\n'
-          'فعّل الاشتراك لاستمرار العمل وعرض المتجر بشكل كامل.',
-      ctaText: 'تفعيل المتجر',
+      title: l10n.paywall_expired_s3_title,
+      body: l10n.paywall_expired_s3_body,
+      ctaText: l10n.paywall_cta_activate_store,
       icon: Icons.lock_rounded,
       iconColor: Colors.redAccent,
       showFeatures: true,
-      showInFab: true,
     );
   }
 
   return null;
 }
 
-bool shouldShowPaywallForFab() {
-  final msg = buildPaywallMessage(forFab: true);
-  if (msg == null) return false;
-  if (!msg.showInFab) return false;
-  return true;
-}
-
 Future<void> showFabPaywallDialog(BuildContext context) async {
-  final msg = buildPaywallMessage(forFab: true);
+  final msg = buildPaywallMessage(context, forFab: true);
   if (msg == null) return;
 
+  final l10n = AppLocalizations.of(context)!;
   final isPayment = msg.key.startsWith('EXPIRED');
   final accent = msg.iconColor ?? const Color(0xFFFFD700);
 
@@ -228,7 +155,7 @@ Future<void> showFabPaywallDialog(BuildContext context) async {
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 10),
-                _buildFeaturesList(),
+                _buildFeaturesList(context),
               ],
             ],
           ),
@@ -236,7 +163,7 @@ Future<void> showFabPaywallDialog(BuildContext context) async {
         actions: [
           OutlinedButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('لاحقاً'),
+            child: Text(l10n.common_later),
           ),
           if (isPayment && msg.ctaText != null)
             ElevatedButton(
@@ -254,14 +181,13 @@ Future<void> showFabPaywallDialog(BuildContext context) async {
                 backgroundColor: accent,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('حسناً'),
+              child: Text(l10n.common_ok),
             ),
         ],
       ),
     ),
   );
 
-  // ✅ Fix: kein BuildContext nach async-gap ohne mounted-check
   if (!context.mounted) return;
 
   if (result == true && isPayment) {
@@ -272,39 +198,38 @@ Future<void> showFabPaywallDialog(BuildContext context) async {
   }
 }
 
-
-Widget _buildFeaturesList() {
-  const items = <(IconData, String)>[
-    (Icons.visibility_rounded, 'إظهار الأسعار والمقاسات والخيارات'),
-    (Icons.image_rounded, 'إظهار صور المنتجات'),
-    (Icons.edit_rounded, 'إضافة وتعديل المنتجات'),
-    (Icons.support_agent_rounded, 'دعم أسرع عند الحاجة'),
+Widget _buildFeaturesList(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  final items = <(IconData, String)>[
+    (Icons.visibility_rounded, l10n.feature_show_prices),
+    (Icons.image_rounded, l10n.feature_show_images),
+    (Icons.edit_rounded, l10n.feature_edit_products),
+    (Icons.support_agent_rounded, l10n.feature_faster_support),
   ];
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Align(
+      Align(
         alignment: Alignment.centerRight,
         child: Text(
-          'بالتفعيل ستحصل على:',
-          style: TextStyle(fontWeight: FontWeight.w800),
+          l10n.paywall_features_header,
+          style: const TextStyle(fontWeight: FontWeight.w800),
           textAlign: TextAlign.right,
         ),
       ),
       const SizedBox(height: 10),
-      ...items.map(
-            (e) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Row(
-            textDirection: TextDirection.rtl,
-            children: [
-              Icon(e.$1, size: 18),
-              const SizedBox(width: 10),
-              Expanded(child: Text(e.$2, textAlign: TextAlign.right)),
-            ],
-          ),
+      ...items.map((e) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            Icon(e.$1, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(e.$2, textAlign: TextAlign.right)),
+          ],
         ),
+      ),
       ),
     ],
   );
@@ -313,11 +238,10 @@ Widget _buildFeaturesList() {
 Future<void> showTrialWelcomePopup(BuildContext context) async {
   if (!TrialWelcomeManager.shouldShow) return;
 
-  final nowUtc = _serverNowUtc();
-  final left = _trialDaysRemaining(nowUtc);
-  final hint = (left == null)
-      ? ''
-      : (left <= 0 ? 'اليوم آخر يوم في التجربة.' : 'متبقي ${_arabicDays(left)} في التجربة.');
+  final l10n = AppLocalizations.of(context)!;
+
+  // Zeige immer "فترة تجريبية مجانية" statt der verbleibenden Tage
+  final String hint = l10n.freeTrial;
 
   await showDialog(
     context: context,
@@ -327,21 +251,13 @@ Future<void> showTrialWelcomePopup(BuildContext context) async {
       child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         icon: const Icon(Icons.celebration_rounded, size: 44, color: Color(0xFFFFD700)),
-        title: const Text('مرحباً بك في التجربة 🎉', textAlign: TextAlign.right),
+        title: Text(l10n.trial_popup_title, textAlign: TextAlign.right),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'يمكنك الآن تجربة جميع المزايا:\n'
-                  '• إضافة المنتجات\n'
-                  '• مشاركة رابط متجرك\n'
-                  '• عرض المتجر للزبائن',
-              textAlign: TextAlign.right,
-            ),
-            if (hint.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text('⏳ $hint', textAlign: TextAlign.right),
-            ],
+            Text(l10n.trial_popup_body, textAlign: TextAlign.right),
+            const SizedBox(height: 12),
+            Text('🎁 $hint', textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [
@@ -351,7 +267,7 @@ Future<void> showTrialWelcomePopup(BuildContext context) async {
               backgroundColor: const Color(0xFFFFD700),
               foregroundColor: Colors.black,
             ),
-            child: const Text('تمام'),
+            child: Text(l10n.common_ok),
           ),
         ],
       ),

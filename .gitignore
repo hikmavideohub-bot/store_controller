@@ -43,3 +43,88 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+# === Secrets / Local ===
+**/serviceKey.json
+**/*.serviceAccount.json
+.firebase-keys/
+*.pem
+*.p12
+.env
+.env.*
+android/local.properties
+local.properties
+
+# === Flutter / Dart ===
+
+build/
+.flutter-plugins
+
+.packages
+
+# === Gradle / IDE ===
+.gradle/
+**/.gradle/
+android/.gradle/
+
+.vscode/
+
+# === Temporary / Claude stuff ===
+tmpclaude-*/
+android/tmpclaude-*/
+nul
+tatus
+
+# === Node ===
+node_modules/
+npm-debug.log*
+package-lock.json
+
+
+# Firebase service account keys
+functions/serviceKey.json
+
+**/*serviceAccount*.json
+**/*serviceKey*.json
+**/.firebase-keys/**
+
+
+
+# Flutter / Dart
+
+coverage/
+
+ios/Pods/
+ios/.symlinks/
+macos/Pods/
+
+# Firebase local
+.firebase/
+.firebaserc
+
+# IDE
+
+
+# Claude/temp folders
+.claude/
+
+# Claude temp
+
+
+# Flutter generated/localization output
+lib/generated/
+lib/l10n/
+
+# Just in case
+
+**/serviceAccount*.json
+
+
+# Claude temp folders
+tmpclaude-*
+
+android/tmpclaude-*
+
+**/tmpclaude-*
+**/tmpclaude-*/

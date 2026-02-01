@@ -2,7 +2,7 @@ name: store_controller
 description: "Store Controller App"
 publish_to: "none"
 
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ">=3.10.4 <4.0.0"
@@ -11,11 +11,18 @@ environment:
 # DEPENDENCIES
 # =====================================================
 dependencies:
+  package_info_plus: ^8.0.0
+  emoji_picker_flutter: ^4.4.0
+  font_awesome_flutter: ^10.6.0
+  country_picker: ^2.0.27
+  dio: ^5.3.2
   # Firebase (Web + Mobile)
   firebase_core: ^3.0.0
   firebase_auth: ^5.0.0       # Für Login/Registrierung
   cloud_firestore: ^5.0.0    # Deine neue Datenbank (ersetzt Sheets)
   firebase_storage: ^12.0.0  # Für Produktbilder
+  cloud_functions: ^5.0.0    # Für Stripe Checkout
+  google_sign_in: ^6.2.1     # Google Sign-in
 
   exif: ^2.0.1
   flutter:
@@ -33,6 +40,7 @@ dependencies:
   # Navigation & UI
   go_router: any
   google_fonts: any
+  provider: ^6.1.2  # Für MVVM State Management
   cupertino_icons: ^1.0.8
   lottie: ^3.1.0
 
@@ -44,13 +52,16 @@ dependencies:
   # Network & System
   url_launcher: ^6.2.5
   connectivity_plus: ^6.0.5
+  share_plus: ^10.1.0
 
   # Location (optional)
+  google_maps_flutter: ^2.5.0 # oder aktuellste Version
   geolocator: ^13.0.0
   geocoding: ^3.0.0
 
   # Media
   image_picker: ^1.1.2
+  flutter_launcher_icons: ^0.14.4
 
 
 
@@ -62,7 +73,6 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^6.0.0
-  flutter_launcher_icons: ^0.13.1
 
 # =====================================================
 # FLUTTER CONFIG
@@ -94,23 +104,29 @@ flutter:
 
   # Assets
   assets:
-    - assets/icon/apps_icon.png
-    - assets/icon/Aldeep.png
-    - assets/icon/setting_icon.png
+    - assets/icon/app_icon.png
     - assets/icon/wolf.png
+    - assets/icon/google_logo.png
 
 # =====================================================
 # FLUTTER LAUNCHER ICONS
 # (ANDROID / IOS / WEB)  ✅ KORREKT
 # =====================================================
 flutter_launcher_icons:
-  android: true
+  android: "launcher_icon"
   ios: true
-  remove_alpha_ios: true
-  image_path: "assets/icon/apps_icon.png"
+  # Hier ist der neue Pfad mit "/icon/":
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21
 
+  # Auch hier den neuen Pfad eintragen:
+  adaptive_icon_background: "assets/icon/app_icon.png"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
+
+
+  # --------------------------
   web:
     generate: true
-    image_path: "assets/icon/apps_icon.png"
+    image_path: "assets/icon/app_icon.png"
     background_color: "#FFFFFF"
     theme_color: "#FFFFFF"

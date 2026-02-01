@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:store_controller/l10n/generated/app_localizations.dart';
 
 class ResetPasswordScreen extends StatelessWidget {
   final String username;
@@ -7,25 +8,31 @@ class ResetPasswordScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // الوصول إلى ألوان السمة الحالية
+    final colors = Theme.of(context).colorScheme;
+    final s = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إعادة تعيين كلمة المرور', textDirection: TextDirection.rtl),
+        title: Text(s.resetPasswordTitle),
+        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.mark_email_read_outlined, size: 80, color: Colors.green),
+            // استخدام اللون الأساسي (Teal) بدلاً من الأخضر الصلب
+            Icon(Icons.mark_email_read_outlined, size: 80, color: colors.primary),
             const SizedBox(height: 24),
-            const Text(
-              'تم إرسال رابط إعادة التعيين',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              s.resetLinkSentTitle,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             Text(
-              'يرجى التحقق من بريدك الإلكتروني ($username) واتباع الرابط لتغيير كلمة المرور الخاصة بك.',
+              s.checkEmailForResetMsg(username),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 16),
             ),
@@ -35,11 +42,12 @@ class ResetPasswordScreen extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () => context.go('/login'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
+                  backgroundColor: colors.primary, // Teal بدلاً من الأسود
+                  foregroundColor: colors.onPrimary, // أبيض
                   padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('العودة إلى تسجيل الدخول'),
+                child: Text(s.backToLoginButton),
               ),
             ),
           ],

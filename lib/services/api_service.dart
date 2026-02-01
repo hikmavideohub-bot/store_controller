@@ -245,6 +245,18 @@ class ApiService {
   static String? _storeName;
   static String? get storeName => (_storeName ?? '').trim().isEmpty ? null : _storeName;
 
+  /// ValueNotifier für Store-Name - ermöglicht sofortige UI-Updates
+  static final ValueNotifier<String?> storeNameNotifier = ValueNotifier<String?>(null);
+
+  /// Setzt den Store-Namen und benachrichtigt Listener
+  static void _setStoreName(String? name) {
+    _storeName = name;
+    storeNameNotifier.value = name;
+    if (name != null && name.isNotEmpty) {
+      CacheStore.saveString('storeName', name);
+    }
+  }
+
   static final ValueNotifier<int> authTick = ValueNotifier<int>(0);
 
   static Map<String, dynamic>? _access;
@@ -271,7 +283,7 @@ class ApiService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   static Future<void> init() async {
-    _storeName = CacheStore.readString('storeName');
+    _setStoreName(CacheStore.readString('storeName'));
     _auth.userChanges().listen((user) async {
       if (user != null && !_isProcessingAuth) {
         await fetchStoreConfig();
@@ -303,7 +315,7 @@ class ApiService {
     hasStore = false;
     await _auth.signOut();
     await signOutGoogle();
-    _storeName = null;
+    _setStoreName(null);
     _cachedProducts = null;
     _access = null;
     _pendingGoogleCredential = null;
@@ -954,7 +966,7 @@ class ApiService {
         if (privateDoc.exists) ...privateDoc.data()!,
       };
 
-      _storeName = data['store_name'];
+      _setStoreName(data['store_name']?.toString());
 
       // -----------------------------------------------------------------------
       // FIX: Explizite Konvertierung statt Cast (Verhindert den Map-Fehler)
@@ -1029,8 +1041,7 @@ class ApiService {
       await batch.commit();
 
       if (data.containsKey('store_name')) {
-        _storeName = data['store_name'];
-        CacheStore.saveString('storeName', _storeName!);
+        _setStoreName(data['store_name']?.toString());
       }
 
       return true;

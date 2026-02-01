@@ -1,1 +1,60 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"aldeebtech-1ec64","appId":"1:536854500452:android:c68359be9f2dafa9f73b71","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"aldeebtech-1ec64","configurations":{"android":"1:536854500452:android:c68359be9f2dafa9f73b71","ios":"1:536854500452:ios:fcabdca551b31f3ff73b71","macos":"1:536854500452:ios:fcabdca551b31f3ff73b71","web":"1:536854500452:web:29fdc67a039cc4ccf73b71","windows":"1:536854500452:web:69ee9cc6a59f5a87f73b71"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "aldeebtech-1ec64",
+          "appId": "1:536854500452:android:3bad7c5852183165f73b71",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "aldeebtech-1ec64",
+          "configurations": {
+            "android": "1:536854500452:android:3bad7c5852183165f73b71",
+            "ios": "1:536854500452:ios:fcabdca551b31f3ff73b71",
+            "macos": "1:536854500452:ios:fcabdca551b31f3ff73b71",
+            "web": "1:536854500452:web:29fdc67a039cc4ccf73b71",
+            "windows": "1:536854500452:web:69ee9cc6a59f5a87f73b71"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "functions": {
+    "source": "functions",
+    "predeploy": []
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/images/**",
+        "function": {
+          "functionId": "cdnImageProxy",
+          "region": "europe-west3"
+        }
+      }
+    ],
+    "headers": [
+      {
+        "source": "/images/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, s-maxage=31536000, immutable"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          }
+        ]
+      }
+    ]
+  }
+}

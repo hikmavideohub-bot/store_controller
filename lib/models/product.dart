@@ -7,7 +7,7 @@ class Product {
   double sizeValue;
   String sizeUnit;
   String image;
-  String thumb; // grid/thumbnail
+  String thumb;
   String description;
   String category;
   bool productActive;
@@ -18,57 +18,11 @@ class Product {
   double percent;
   int bundleQty;
   double bundlePrice;
+  int bulkQty;
+  double bulkPrice;
   String offerStartDate;
   String offerEndDate;
   bool offerActive;
-
-  static String _normalizeDate(dynamic v) {
-    if (v == null) return '';
-
-    // Google Sheets kann auch Zahlen liefern (Seriennummer)
-    if (v is num) {
-      // Google Sheets Date serial: days since 1899-12-30
-      final base = DateTime(1899, 12, 30);
-      final dt = base.add(Duration(days: v.round()));
-      return _fmtYmd(dt);
-    }
-
-    final s = v.toString().trim();
-    if (s.isEmpty) return '';
-
-    // 1) ISO / Timestamp versuchen
-    final dt = DateTime.tryParse(s);
-    if (dt != null) {
-      // ✅ entscheidend: erst local machen, dann Datum nehmen
-      return _fmtYmd(dt.toLocal());
-    }
-
-    // 2) Wenn nur "yyyy-MM-dd..." kommt
-    final mIso = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(s);
-    if (mIso != null) {
-      return '${mIso.group(1)}-${mIso.group(2)}-${mIso.group(3)}';
-    }
-
-    // 3) dd.MM.yyyy unterstützen
-    final mDe = RegExp(r'^(\d{1,2})\.(\d{1,2})\.(\d{4})$').firstMatch(s);
-    if (mDe != null) {
-      final d = int.parse(mDe.group(1)!);
-      final mo = int.parse(mDe.group(2)!);
-      final y = int.parse(mDe.group(3)!);
-      return _fmtYmd(DateTime(y, mo, d));
-    }
-
-    // fallback: 그대로
-    return s;
-  }
-
-  static String _fmtYmd(DateTime dt) {
-    final y = dt.year.toString().padLeft(4, '0');
-    final m = dt.month.toString().padLeft(2, '0');
-    final d = dt.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
-  }
-
 
   Product({
     required this.id,
@@ -86,13 +40,15 @@ class Product {
     required this.percent,
     required this.bundleQty,
     required this.bundlePrice,
+    required this.bulkQty,
+    required this.bulkPrice,
     required this.offerStartDate,
     required this.offerEndDate,
     required this.offerActive,
   });
 
   // ===============================================
-  // Helpers (robustes Parsing)
+  // Helpers
   // ===============================================
 
   static double _toDouble(dynamic v) {
@@ -117,94 +73,77 @@ class Product {
     return s == 'true' || s == '1' || s == 'yes' || s == 'y' || s == 'on';
   }
 
-  /// Nimmt zuerst camelCase (Apps Script Response),
-  /// fallback auf snake_case (Sheet / ältere Responses).
-  static dynamic _pick(Map<String, dynamic> row, String camel, String snake) {
-    if (row.containsKey(camel) && row[camel] != null) return row[camel];
-    if (row.containsKey(snake) && row[snake] != null) return row[snake];
-    return null;
+  static String _normalizeDate(dynamic v) {
+    if (v == null) return '';
+    final s = v.toString().trim();
+    if (s.isEmpty) return '';
+
+    final dt = DateTime.tryParse(s);
+    if (dt != null) {
+      final local = dt.toLocal();
+      return '${local.year.toString().padLeft(4, '0')}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
+    }
+    return s;
   }
 
   // ===============================================
-  // API: toJson (Senden -> snake_case wie im Sheet)
+  // Firebase Serialization
   // ===============================================
   Map<String, dynamic> toJson() {
     return {
       "id": id,
       "name": name,
       "price": price,
-      "sizevalue": sizeValue, // lowercase (wie in Sheet)
-      "sizeunit": sizeUnit,   // lowercase (wie in Sheet)
+      "size_value": sizeValue,
+      "size_unit": sizeUnit,
       "image": image,
       "thumb": thumb,
       "description": description,
       "category": category,
-
-      // ✅ snake_case wie in Sheet
       "product_active": productActive,
       "has_offer": hasOffer,
       "offer_type": offerType,
       "percent": percent,
       "bundle_qty": bundleQty,
       "bundle_price": bundlePrice,
+      "bulk_qty": bulkQty,
+      "bulk_price": bulkPrice,
       "offer_start_date": offerStartDate,
       "offer_end_date": offerEndDate,
-
-      // ✅ dein Sheet-Tippfehler bleibt unterstützt
-      "offer_aktive": offerActive,
+      "offer_active": offerActive,
     };
   }
 
-  // ===============================================
-  // API: fromMap (Lesen <- camelCase ODER snake_case)
-  // ===============================================
-  static Product fromMap(Map<String, dynamic> row) {
+  factory Product.fromMap(Map<String, dynamic> data) {
     return Product(
-      id: (_pick(row, 'id', 'id'))?.toString() ?? '',
-      name: (_pick(row, 'name', 'name'))?.toString() ?? '',
-      price: _toDouble(_pick(row, 'price', 'price')),
-
-      // Apps Script macht aus "sizevalue" -> "sizevalue" (bleibt gleich),
-      // aber wir lassen trotzdem camel/snake Pattern drin
-      sizeValue: _toDouble(_pick(row, 'sizevalue', 'sizevalue')),
-      sizeUnit: (_pick(row, 'sizeunit', 'sizeunit'))?.toString() ?? '',
-
-      image: (_pick(row, 'image', 'image'))?.toString() ?? '',
-      thumb: (_pick(row, 'thumb', 'thumb') ?? row['thrumb'])?.toString() ?? '',
-      description: (_pick(row, 'description', 'description'))?.toString() ?? '',
-      category: (_pick(row, 'category', 'category'))?.toString() ?? '',
-
-      // ✅ HIER war dein Bug: Script liefert productActive, du hast product_active gelesen
-      productActive: _toBool(_pick(row, 'productActive', 'product_active')),
-
-      hasOffer: _toBool(_pick(row, 'hasOffer', 'has_offer')),
-      offerType: (_pick(row, 'offerType', 'offer_type'))?.toString() ?? '',
-      percent: _toDouble(_pick(row, 'percent', 'percent')),
-      bundleQty: _toInt(_pick(row, 'bundleQty', 'bundle_qty')),
-      bundlePrice: _toDouble(_pick(row, 'bundlePrice', 'bundle_price')),
-      offerStartDate: _normalizeDate(_pick(row, 'offerStartDate', 'offer_start_date')),
-      offerEndDate: _normalizeDate(_pick(row, 'offerEndDate', 'offer_end_date')),
-
-
-
-      // ✅ Tippfehler im Sheet + mögliches camelCase aus Script
-      offerActive: _toBool(row['offerActive'] ?? row['offerAktive'] ?? row['offer_aktive']),
-
+      id: (data['id'] ?? '').toString(),
+      name: (data['name'] ?? '').toString(),
+      price: _toDouble(data['price']),
+      sizeValue: _toDouble(data['size_value'] ?? data['sizevalue']),
+      sizeUnit: (data['size_unit'] ?? data['sizeunit'] ?? '').toString(),
+      image: (data['image'] ?? '').toString(),
+      thumb: (data['thumb'] ?? data['thrumb'] ?? '').toString(),
+      description: (data['description'] ?? '').toString(),
+      category: (data['category'] ?? '').toString(),
+      productActive: _toBool(data['product_active'] ?? data['productActive']),
+      hasOffer: _toBool(data['has_offer'] ?? data['hasOffer']),
+      offerType: (data['offer_type'] ?? data['offerType'] ?? '').toString(),
+      percent: _toDouble(data['percent']),
+      bundleQty: _toInt(data['bundle_qty'] ?? data['bundleQty']),
+      bundlePrice: _toDouble(data['bundle_price'] ?? data['bundlePrice']),
+      bulkQty: _toInt(data['bulk_qty'] ?? data['bulkQty']),
+      bulkPrice: _toDouble(data['bulk_price'] ?? data['bulkPrice']),
+      offerStartDate: _normalizeDate(data['offer_start_date'] ?? data['offerStartDate']),
+      offerEndDate: _normalizeDate(data['offer_end_date'] ?? data['offerEndDate']),
+      offerActive: _toBool(data['offer_active'] ?? data['offerActive'] ?? data['offer_aktive']),
     );
   }
 
-  // ===============================================
-  // Debug
-  // ===============================================
   @override
   String toString() {
-    return 'Product(id: $id, name: $name, price: $price, category: $category, '
-        'productActive: $productActive, hasOffer: $hasOffer, offerType: $offerType, offerActive: $offerActive)';
+    return 'Product(id: $id, name: $name, price: $price, category: $category, active: $productActive)';
   }
 
-  // ===============================================
-  // copyWith
-  // ===============================================
   Product copyWith({
     String? id,
     String? name,
@@ -221,6 +160,8 @@ class Product {
     double? percent,
     int? bundleQty,
     double? bundlePrice,
+    int? bulkQty,
+    double? bulkPrice,
     String? offerStartDate,
     String? offerEndDate,
     bool? offerActive,
@@ -241,6 +182,8 @@ class Product {
       percent: percent ?? this.percent,
       bundleQty: bundleQty ?? this.bundleQty,
       bundlePrice: bundlePrice ?? this.bundlePrice,
+      bulkQty: bulkQty ?? this.bulkQty,
+      bulkPrice: bulkPrice ?? this.bulkPrice,
       offerStartDate: offerStartDate ?? this.offerStartDate,
       offerEndDate: offerEndDate ?? this.offerEndDate,
       offerActive: offerActive ?? this.offerActive,

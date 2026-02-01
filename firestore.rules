@@ -1,0 +1,210 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Firestore Security Rules - Store Controller
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// ARCHITEKTUR:
+// ├── stores_public/{storeId}              → Öffentliche Shop-Daten + access Mirror
+// │   └── products/{productId}             → Produkte (öffentlich lesbar)
+// ├── stores_private/{storeId}             → Sensible System-/User-Daten (NIE öffentlich)
+// ├── slugs/{slug}                         → Slug-Lookup (öffentlich lesbar)
+// ├── pricing/{configId}                   → Preiskonfiguration (öffentlich lesbar)
+// └── activation_requests/{requestId}      → Aktivierungsanfragen (nur authentifiziert)
+//
+// SICHERHEITSPRINZIPIEN:
+// - stores_public: Lesbar wenn access.status != 'suspended' UND access.stage <= 2
+// - stores_private: NIEMALS öffentlich lesbar, nur Owner/Admin/Cloud Functions
+// - Access-Felder werden von Cloud Functions von private -> public gespiegelt
+// - Keine get() auf stores_private für public reads nötig
+// ═══════════════════════════════════════════════════════════════════════════════
+
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // HELPER FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    function isMasterAdmin() {
+      return request.auth != null && request.auth.uid == "pE5MueFNS6W0paPIj313geBCXVq2";
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isStoreOwner(storeId) {
+      return isAuthenticated() && request.auth.uid == storeId;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STORES_PUBLIC - Öffentliche Shop-Daten
+    // ═══════════════════════════════════════════════════════════════════════════
+    //
+    // Access-Felder (gespiegelt von stores_private):
+    //   - access.status: 'trial' | 'active' | 'expired' | 'suspended'
+    //   - access.stage: 0 | 1 | 2 | 3
+    //   - access.daysRemaining: number
+    //   - access.trial_start_at: string (ISO)
+    //   - access.trial_end_at: string (ISO)
+    //
+    // KEINE sensiblen Daten: owner_email, auth_provider, plan, credentials
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /stores_public/{storeId} {
+      // PUBLIC READ: Nur wenn nicht suspended UND stage <= 2
+      // Kein get() auf stores_private nötig - access liegt in stores_public
+      allow read: if isMasterAdmin()
+        || (
+          // Kein access-Objekt = erlaubt (neuer Store, noch nicht gespiegelt)
+          (resource.data.access == null)
+          ||
+          // access vorhanden: Prüfe Bedingungen
+          (
+            resource.data.access.status != 'suspended'
+            && (resource.data.access.stage == null || resource.data.access.stage <= 2)
+          )
+        );
+
+      // WRITE: Nur Owner oder Admin (Cloud Functions nutzen Admin SDK)
+      allow create, update, delete: if isStoreOwner(storeId) || isMasterAdmin();
+
+      // Produkte
+      match /products/{productId} {
+        // Gleiche Logik: Lesen nur wenn Store sichtbar
+        allow read: if isMasterAdmin()
+          || (
+            !exists(/databases/$(database)/documents/stores_public/$(storeId))
+            ||
+            (
+              get(/databases/$(database)/documents/stores_public/$(storeId)).data.access == null
+            )
+            ||
+            (
+              get(/databases/$(database)/documents/stores_public/$(storeId)).data.access.status != 'suspended'
+              && (
+                get(/databases/$(database)/documents/stores_public/$(storeId)).data.access.stage == null
+                || get(/databases/$(database)/documents/stores_public/$(storeId)).data.access.stage <= 2
+              )
+            )
+          );
+
+        allow create, update, delete: if isStoreOwner(storeId) || isMasterAdmin();
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STORES_PRIVATE - Sensible Daten (NIE öffentlich)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /stores_private/{storeId} {
+      // LESEN: Nur Owner oder Admin
+      allow read: if isStoreOwner(storeId) || isMasterAdmin();
+
+      // ERSTELLEN: Owner beim Registrieren
+      allow create: if isStoreOwner(storeId) || isMasterAdmin();
+
+      // UPDATEN: Admin frei, Owner nur bestimmte Felder
+      allow update: if isMasterAdmin()
+        || (isStoreOwner(storeId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['address_country', 'store_slug', 'store_name']));
+
+      // LÖSCHEN: Nur Admin
+      allow delete: if isMasterAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DEFAULT SAMPLE STORE (ADMIN MANAGED)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /_defaults/sample_store/products/{productId} {
+      allow read, write: if isMasterAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PROCESSED PAYMENTS (ADMIN READ ONLY)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /processed_payments/{doc} {
+      allow read: if isMasterAdmin();
+      allow write: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SLUGS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /slugs/{slug} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isMasterAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // APP USAGE STATS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /app_usage_stats/{uid} {
+      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null
+        && request.auth.token.email in [
+          "nsem338@gmail.com",
+          "kadour.abdull@gmail.com",
+          "aminamuhammed655@gmail.com"
+        ];
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SYSTEM CONFIG (FX-Rates, Regions, etc.)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /system/{docId} {
+      // Authentifizierte User können lesen (FX-Rates, Regions)
+      allow read: if isAuthenticated();
+      // Nur Admin kann schreiben (Cloud Functions nutzen Admin SDK)
+      allow write: if isMasterAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRICING & PLANS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /pricing/{configId} {
+      allow read: if true;
+      allow write: if isMasterAdmin();
+    }
+
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isMasterAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ACTIVATION REQUESTS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /activation_requests/{requestId} {
+      allow read: if (isAuthenticated() && resource.data.store_id == request.auth.uid) || isMasterAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isMasterAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // APP REVIEWS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /app_reviews/{reviewId} {
+      allow read: if isMasterAdmin();
+      allow create: if isAuthenticated() && request.resource.data.store_id == request.auth.uid;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CATCH-ALL (DENY)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

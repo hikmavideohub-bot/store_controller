@@ -1,7 +1,7 @@
 // lib/animations/premium_animations.dart
-import 'dart:math'; // ✅ Math-Funktionen importieren
+import 'dart:math';
 import 'package:flutter/material.dart';
-import '../theme.dart';
+// import '../theme.dart'; // Nicht mehr nötig
 
 class PremiumAnimations {
   // ==============================
@@ -13,38 +13,48 @@ class PremiumAnimations {
     double borderRadius = 16,
     bool isDark = true,
   }) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.surface2 : Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(borderRadius),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: ShaderMask(
-          shaderCallback: (bounds) {
-            return LinearGradient(
-              colors: [
-                Colors.transparent,
-                AppTheme.gold.withValues(alpha: 0.1),
-                AppTheme.gold.withValues(alpha: 0.2),
-                AppTheme.gold.withValues(alpha: 0.1),
-                Colors.transparent,
-              ],
-              stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-              begin: const Alignment(-1.0, 0.0),
-              end: const Alignment(1.0, 0.0),
-              tileMode: TileMode.clamp,
-            ).createShader(bounds);
-          },
-          blendMode: BlendMode.srcATop,
-          child: Container(
-            color: isDark ? AppTheme.surface : Colors.white,
+    // Wir nutzen Builder, um auf das Theme zuzugreifen
+    return Builder(builder: (context) {
+      final colors = Theme.of(context).colorScheme;
+      // Schimmer-Farbe: Primärfarbe (Teal) oder Tertiary (Gold)
+      final shimmerColor = colors.primary;
+      final baseColor = isDark
+          ? colors.surfaceContainerHighest // Dunkles Grau im Dark Mode
+          : Colors.grey.shade200;
+
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: baseColor,
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: ShaderMask(
+            shaderCallback: (bounds) {
+              return LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  shimmerColor.withValues(alpha: 0.1),
+                  shimmerColor.withValues(alpha: 0.2),
+                  shimmerColor.withValues(alpha: 0.1),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                begin: const Alignment(-1.0, 0.0),
+                end: const Alignment(1.0, 0.0),
+                tileMode: TileMode.clamp,
+              ).createShader(bounds);
+            },
+            blendMode: BlendMode.srcATop,
+            child: Container(
+              color: colors.surface,
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   // ==============================
@@ -101,7 +111,7 @@ class PremiumAnimations {
   }
 
   // ==============================
-  // FADE IN ANIMATION (MIT DELAY)
+  // FADE IN ANIMATION
   // ==============================
   static Widget fadeIn({
     required Widget child,
@@ -135,9 +145,8 @@ class PremiumAnimations {
     );
   }
 
-
   // ==============================
-  // GOLD GLOW ANIMATION (KORRIGIERT)
+  // GOLD GLOW ANIMATION
   // ==============================
   static Widget goldGlow({
     required Widget child,
@@ -146,30 +155,35 @@ class PremiumAnimations {
   }) {
     if (!animate) return child;
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 2000),
-      curve: Curves.easeInOut,
-      builder: (context, value, child) {
-        final double glowValue = (value * 2 * pi); // ✅ pi von dart:math
-        final double glow = (sin(glowValue) + 1) / 2 * intensity; // ✅ sin von dart:math
+    return Builder(builder: (context) {
+      // Tertiary ist unser neues Gold
+      final glowColor = Theme.of(context).colorScheme.tertiary;
 
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.gold.withValues(alpha: glow),
-                blurRadius: 20,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: child,
-        );
-      },
-      child: child,
-    );
+      return TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 2000),
+        curve: Curves.easeInOut,
+        builder: (context, value, child) {
+          final double glowValue = (value * 2 * pi);
+          final double glow = (sin(glowValue) + 1) / 2 * intensity;
+
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: glowColor.withValues(alpha: glow),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: child,
+          );
+        },
+        child: child,
+      );
+    });
   }
 
   // ==============================
@@ -201,21 +215,26 @@ class PremiumAnimations {
   // ==============================
   static Widget rotatingLoading({
     double size = 24,
-    Color color = AppTheme.gold,
+    Color? color,
     double strokeWidth = 2.5,
   }) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CircularProgressIndicator(
-        strokeWidth: strokeWidth,
-        valueColor: AlwaysStoppedAnimation<Color>(color),
-      ),
-    );
+    return Builder(builder: (context) {
+      // Default: Primary (Teal) statt Gold
+      final c = color ?? Theme.of(context).colorScheme.primary;
+
+      return SizedBox(
+        width: size,
+        height: size,
+        child: CircularProgressIndicator(
+          strokeWidth: strokeWidth,
+          valueColor: AlwaysStoppedAnimation<Color>(c),
+        ),
+      );
+    });
   }
 
   // ==============================
-  // BOUNCE ANIMATION (KORRIGIERT)
+  // BOUNCE ANIMATION
   // ==============================
   static Widget bounce({
     required Widget child,
@@ -229,7 +248,7 @@ class PremiumAnimations {
       duration: const Duration(milliseconds: 800),
       curve: Curves.elasticOut,
       builder: (context, value, child) {
-        final double bounce = sin(value * 2 * pi) * intensity; // ✅ sin von dart:math
+        final double bounce = sin(value * 2 * pi) * intensity;
 
         return Transform.translate(
           offset: Offset(0, -bounce * 20),
@@ -260,45 +279,50 @@ class PremiumAnimations {
   }
 
   // ==============================
-  // PULSE ANIMATION (für wichtige Elemente)
+  // PULSE ANIMATION
   // ==============================
   static Widget pulse({
     required Widget child,
     bool active = true,
-    Color pulseColor = AppTheme.gold,
+    Color? pulseColor,
     double maxScale = 1.05,
   }) {
     if (!active) return child;
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 1.0, end: maxScale),
-      duration: const Duration(milliseconds: 1500),
-      curve: Curves.easeInOut,
-      builder: (context, scale, child) {
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.3, end: 0.0),
-          duration: const Duration(milliseconds: 1500),
-          builder: (context, opacity, child) {
-            return Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: pulseColor.withValues(alpha: opacity),
+    return Builder(builder: (context) {
+      // Default: Primary (Teal)
+      final c = pulseColor ?? Theme.of(context).colorScheme.primary;
+
+      return TweenAnimationBuilder<double>(
+        tween: Tween(begin: 1.0, end: maxScale),
+        duration: const Duration(milliseconds: 1500),
+        curve: Curves.easeInOut,
+        builder: (context, scale, child) {
+          return TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.3, end: 0.0),
+            duration: const Duration(milliseconds: 1500),
+            builder: (context, opacity, child) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: c.withValues(alpha: opacity),
+                    ),
+                    width: 100 * scale,
+                    height: 100 * scale,
                   ),
-                  width: 100 * scale,
-                  height: 100 * scale,
-                ),
-                child!,
-              ],
-            );
-          },
-          child: child,
-        );
-      },
-      child: child,
-    );
+                  child!,
+                ],
+              );
+            },
+            child: child,
+          );
+        },
+        child: child,
+      );
+    });
   }
 
   // ==============================
@@ -307,33 +331,38 @@ class PremiumAnimations {
   static Widget ripple({
     required Widget child,
     required VoidCallback onTap,
-    Color rippleColor = AppTheme.gold,
+    Color? rippleColor,
     double rippleRadius = 20,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          child,
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: const Duration(milliseconds: 500),
-            builder: (context, value, child) {
-              return Container(
-                width: rippleRadius * value * 2,
-                height: rippleRadius * value * 2,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: rippleColor.withValues(alpha: 1 - value),
-                ),
-              );
-            },
-            child: null,
-          ),
-        ],
-      ),
-    );
+    return Builder(builder: (context) {
+      // Default: Primary (Teal)
+      final c = rippleColor ?? Theme.of(context).colorScheme.primary;
+
+      return GestureDetector(
+        onTap: onTap,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            child,
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 500),
+              builder: (context, value, child) {
+                return Container(
+                  width: rippleRadius * value * 2,
+                  height: rippleRadius * value * 2,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: c.withValues(alpha: 1 - value),
+                  ),
+                );
+              },
+              child: null,
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   // ==============================

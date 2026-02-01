@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme.dart';
-import 'package:go_router/go_router.dart';
+import 'package:store_controller/l10n/generated/app_localizations.dart';
 
 /// Premium Animation Utilities
 class PremiumAnimations {
@@ -30,39 +29,43 @@ class PremiumAnimations {
   }
 
   /// Shimmer loading effect
+  /// Nutzt standardmäßig die 'tertiary' Farbe (Gold) des Themes
   static Widget shimmerLoading({
     required Widget child,
     bool isLoading = false,
-    Color shimmerColor = AppTheme.gold,
+    Color? shimmerColor,
   }) {
-    return Stack(
-      children: [
-        child,
-        if (isLoading)
-          Positioned.fill(
-            child: ShaderMask(
-              shaderCallback: (bounds) {
-                return LinearGradient(
-                  colors: [
-                    Colors.transparent,
-                    shimmerColor.withAlpha(40),
-                    shimmerColor.withAlpha(80),
-                    shimmerColor.withAlpha(40),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ).createShader(bounds);
-              },
-              blendMode: BlendMode.srcATop,
-              child: Container(
-                color: Colors.transparent,
+    return Builder(builder: (context) {
+      final color = shimmerColor ?? Theme.of(context).colorScheme.tertiary;
+      return Stack(
+        children: [
+          child,
+          if (isLoading)
+            Positioned.fill(
+              child: ShaderMask(
+                shaderCallback: (bounds) {
+                  return LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      color.withValues(alpha: 0.15),
+                      color.withValues(alpha: 0.3),
+                      color.withValues(alpha: 0.15),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ).createShader(bounds);
+                },
+                blendMode: BlendMode.srcATop,
+                child: Container(
+                  color: Colors.transparent,
+                ),
               ),
             ),
-          ),
-      ],
-    );
+        ],
+      );
+    });
   }
 
   /// Pulse animation for important elements
@@ -103,30 +106,33 @@ class PremiumAnimations {
     required Widget child,
     bool active = true,
   }) {
-    return Stack(
-      children: [
-        child,
-        if (active)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      AppTheme.gold.withAlpha(20),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+    return Builder(builder: (context) {
+      final gold = Theme.of(context).colorScheme.tertiary;
+      return Stack(
+        children: [
+          child,
+          if (active)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        gold.withValues(alpha: 0.08),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
-    );
+        ],
+      );
+    });
   }
 
   /// Elegant scale animation for buttons
@@ -239,7 +245,10 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final colors = theme.colorScheme;
+    final s = AppLocalizations.of(context)!;
+    // Wir nutzen tertiary für "Premium/Gold" Elemente
+    final premiumColor = colors.tertiary;
 
     return AppBar(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -250,14 +259,14 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
           ? _buildScaleOnTapIcon(
         onTap: () => Navigator.of(context).pop(),
         icon: const Icon(Icons.arrow_back_rounded),
-        color: theme.colorScheme.onSurface,
+        color: colors.onSurface,
       )
           : widget.onMenuPressed != null
           ? _buildScaleOnTapIcon(
         onTap: widget.onMenuPressed!,
         icon: const Icon(Icons.menu_rounded),
-        color: theme.colorScheme.onSurface,
-        tooltip: 'القائمة',
+        color: colors.onSurface,
+        tooltip: s.menuTooltip,
       )
           : null,
       title: FadeTransition(
@@ -272,50 +281,12 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w900,
-              color: theme.colorScheme.onSurface,
+              color: colors.onSurface,
             ),
           ),
         ),
       ),
-      actions: [
-        AnimatedBuilder(
-          animation: _titleAnimation,
-          builder: (context, child) {
-            return Transform.translate(
-              offset: Offset(25, 30 * (1 - _titleAnimation.value)),
-              child: Opacity(
-                opacity: _titleAnimation.value,
-                child: child,
-              ),
-            );
-          },
-          child: Row(
-            children: [
-              PremiumAnimations.pulse(
-                active: true,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(999),
-                    onTap: () => context.push('/settings'),
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      width: 34,
-                      height: 34,
-                      child: Image.asset(
-                        'assets/icon/setting_icon.png',
-                        fit: BoxFit.cover,
-                        color: isDark ? null : Colors.black.withAlpha(200),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-            ],
-          ),
-        ),
-      ],
+      actions: widget.actions ?? [],
       bottom: widget.hasSearch
           ? PreferredSize(
         preferredSize: const Size.fromHeight(50),
@@ -328,28 +299,29 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isDark ? AppTheme.surface2 : Colors.white,
+                      // Nutzt Input-Fill-Color oder Surface
+                      color: theme.inputDecorationTheme.fillColor ?? colors.surface,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.outline, width: 1),
+                      border: Border.all(color: colors.outline.withValues(alpha: 0.3), width: 1),
                     ),
                     child: TextField(
                       controller: widget.searchController,
                       onChanged: widget.onSearchChanged,
                       style: TextStyle(
-                        color: theme.colorScheme.onSurface,
+                        color: colors.onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                       decoration: InputDecoration(
                         hintStyle: TextStyle(
-                          color: theme.colorScheme.onSurface.withAlpha(100),
+                          color: theme.hintColor,
                           fontWeight: FontWeight.w500,
                         ),
-                        prefixIcon: Icon(Icons.search_rounded, color: AppTheme.gold),
+                        prefixIcon: Icon(Icons.search_rounded, color: premiumColor),
                         suffixIcon: widget.searchController?.text.isNotEmpty == true
                             ? _buildScaleOnTapIcon(
                           onTap: widget.onSearchCleared ?? () {},
                           icon: const Icon(Icons.clear_rounded, size: 18),
-                          color: AppTheme.muted,
+                          color: theme.hintColor,
                         )
                             : null,
                         filled: false,
@@ -367,12 +339,12 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
                   _buildScaleOnTapIcon(
                     onTap: widget.onFiltersPressed!,
                     icon: const Icon(Icons.tune_rounded),
-                    color: AppTheme.gold,
-                    tooltip: 'فلتر',
+                    color: premiumColor,
+                    tooltip: s.filterTooltip,
                     containerDecoration: BoxDecoration(
-                      color: isDark ? AppTheme.surface2 : Colors.white,
+                      color: theme.inputDecorationTheme.fillColor ?? colors.surface,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.outline, width: 1),
+                      border: Border.all(color: colors.outline.withValues(alpha: 0.3), width: 1),
                     ),
                   ),
                 ],
@@ -456,6 +428,10 @@ class _AnimatedStatCardState extends State<AnimatedStatCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    // Default Gold (Tertiary) falls keine Farbe übergeben wurde
+    final iconColor = widget.iconColor ?? colors.tertiary;
 
     return PremiumAnimations.fadeInStaggered(
       index: widget.index,
@@ -476,15 +452,15 @@ class _AnimatedStatCardState extends State<AnimatedStatCard> {
               1.0,
             ),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppTheme.gold.withAlpha(_isHovered ? 50 : 30),
+                color: iconColor.withValues(alpha: _isHovered ? 0.5 : 0.1),
                 width: _isHovered ? 1.5 : 1.0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withAlpha(_isHovered ? 20 : 10),
+                  color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.04),
                   blurRadius: _isHovered ? 12 : 8,
                   offset: Offset(0, _isHovered ? 4 : 3),
                 ),
@@ -497,14 +473,13 @@ class _AnimatedStatCardState extends State<AnimatedStatCard> {
                   duration: const Duration(milliseconds: 300),
                   padding: EdgeInsets.all(_isHovered ? 8 : 6),
                   decoration: BoxDecoration(
-                    color: (widget.iconColor ?? AppTheme.gold)
-                        .withAlpha(_isHovered ? 40 : 25),
+                    color: iconColor.withValues(alpha: _isHovered ? 0.15 : 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     widget.icon,
                     size: _isHovered ? 18 : 16,
-                    color: widget.iconColor ?? AppTheme.gold,
+                    color: iconColor,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -513,6 +488,7 @@ class _AnimatedStatCardState extends State<AnimatedStatCard> {
                   style: TextStyle(
                     fontSize: _isHovered ? 20 : 18,
                     fontWeight: FontWeight.w900,
+                    color: colors.onSurface,
                   ),
                   child: Text(widget.value),
                 ),
@@ -524,7 +500,7 @@ class _AnimatedStatCardState extends State<AnimatedStatCard> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11,
-                    color: theme.colorScheme.onSurface.withAlpha(150),
+                    color: theme.hintColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -534,7 +510,7 @@ class _AnimatedStatCardState extends State<AnimatedStatCard> {
                     widget.subValue!,
                     style: TextStyle(
                       fontSize: 9,
-                      color: AppTheme.gold.withAlpha(180),
+                      color: colors.tertiary, // Subvalues oft in Gold/Akzent
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -576,6 +552,8 @@ class _AnimatedQuickActionButtonState extends State<AnimatedQuickActionButton> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final activeColor = widget.color ?? colors.tertiary;
 
     return PremiumAnimations.fadeInStaggered(
       index: widget.index,
@@ -596,15 +574,15 @@ class _AnimatedQuickActionButtonState extends State<AnimatedQuickActionButton> {
               1.0,
             ),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppTheme.gold.withAlpha(_isHovered ? 50 : 30),
+                color: activeColor.withValues(alpha: _isHovered ? 0.5 : 0.1),
                 width: _isHovered ? 1.5 : 1.0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withAlpha(_isHovered ? 15 : 10),
+                  color: Colors.black.withValues(alpha: _isHovered ? 0.06 : 0.03),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -616,13 +594,12 @@ class _AnimatedQuickActionButtonState extends State<AnimatedQuickActionButton> {
                   duration: const Duration(milliseconds: 300),
                   padding: EdgeInsets.all(_isHovered ? 10 : 8),
                   decoration: BoxDecoration(
-                    color: (widget.color ?? AppTheme.gold)
-                        .withAlpha(_isHovered ? 40 : 25),
+                    color: activeColor.withValues(alpha: _isHovered ? 0.15 : 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     widget.icon,
-                    color: widget.color ?? AppTheme.gold,
+                    color: activeColor,
                     size: 18,
                   ),
                 ),
@@ -630,9 +607,10 @@ class _AnimatedQuickActionButtonState extends State<AnimatedQuickActionButton> {
                 Expanded(
                   child: Text(
                     widget.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
+                      color: colors.onSurface,
                     ),
                   ),
                 ),
@@ -642,7 +620,7 @@ class _AnimatedQuickActionButtonState extends State<AnimatedQuickActionButton> {
                   child: Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 14,
-                    color: theme.colorScheme.onSurface.withAlpha(100),
+                    color: theme.hintColor,
                   ),
                 ),
               ],
@@ -664,50 +642,34 @@ class PremiumLoadingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+    final premiumColor = colorScheme.tertiary; // Gold
+    final s = AppLocalizations.of(context)!;
 
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          PremiumAnimations.pulse(
-            active: true,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => Navigator.of(context).pushNamed('/settings'),
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppTheme.gold, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.gold.withAlpha(80),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Image.asset(
-                    'assets/icon/setting_icon.png',
-                    fit: BoxFit.cover,
-                    color: isDark ? null : Colors.black.withAlpha(200),
-                  ),
-                ),
-              ),
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: premiumColor.withValues(alpha: 0.1),
+              border: Border.all(color: premiumColor.withValues(alpha: 0.3), width: 2),
+            ),
+            child: Icon(
+              Icons.storefront_rounded,
+              color: premiumColor,
+              size: 32,
             ),
           ),
           const SizedBox(height: 24),
           PremiumAnimations.shimmerLoading(
             isLoading: true,
             child: Text(
-              message ?? 'جاري التحميل...',
+              message ?? s.loadingMessage,
               style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.primary,
+                color: colorScheme.primary, // Text nutzt Primary (Teal)
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -719,9 +681,9 @@ class PremiumLoadingScreen extends StatelessWidget {
               width: 60,
               height: 60,
               child: CircularProgressIndicator(
-                color: colorScheme.primary,
+                color: colorScheme.primary, // Spinner nutzt Primary
                 strokeWidth: 3,
-                backgroundColor: colorScheme.primary.withAlpha(25),
+                backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
               ),
             ),
           ),

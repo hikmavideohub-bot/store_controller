@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
@@ -69,9 +70,25 @@ class StoreConfigService {
     return storeNotifier.value;
   }
 
+  /// Rekursiv alle Firestore-Timestamps in JSON-kompatible Strings umwandeln
+  static dynamic _sanitize(dynamic value) {
+    if (value is Timestamp) {
+      return value.toDate().toIso8601String();
+    }
+    if (value is Map) {
+      return Map<String, dynamic>.fromEntries(
+        value.entries.map((e) => MapEntry(e.key.toString(), _sanitize(e.value))),
+      );
+    }
+    if (value is List) {
+      return value.map(_sanitize).toList();
+    }
+    return value;
+  }
+
   /// ✅ Cache schreiben (memory + disk) + reactive update
   static Future<void> set(Map<String, dynamic> s) async {
-    final copy = Map<String, dynamic>.from(s);
+    final copy = _sanitize(s) as Map<String, dynamic>;
     _setStore(copy);
 
     final sp = await SharedPreferences.getInstance();

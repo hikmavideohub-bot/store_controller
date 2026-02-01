@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../services/api_service.dart';
-import '../services/store_config_service.dart';
-import '../widgets/premium_app_bar.dart';
-import '../theme.dart';
+import '../services/fx_rate_service.dart';
+import '../services/regions_service.dart';
+import '../models/subscription_plan.dart';
+import '../repositories/pricing_repository.dart' as repo;
+import '../screens/payment_screen_global.dart';
+import '../screens/payment_screen_syria.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PaymentScreen extends StatefulWidget {
-  final String plan;
+  final String? initialPlanId;
   final String returnUrl;
+  final bool paymentSuccess;
 
   const PaymentScreen({
     super.key,
-    required this.plan,
+    this.initialPlanId,
     required this.returnUrl,
+    this.paymentSuccess = false,
   });
 
   @override
@@ -21,134 +29,181 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  bool _loading = false;
-  String? _paymentUrl;
-  String? _error;
-
-  // Währungs- und Angebots-Konfiguration (nur hier ändern)
-  static const String _currency = 'يورو'; // Euro auf Arabisch
-  static const String _currencyCode = 'EUR'; // Für API/Backend
-  static const double _yearlyPrice = 15.00; // Startangebot: 15€ jährlich
-  static const String _yearlyPriceFormatted = '15.00'; // Formatierte Version
-
-  // Pläne mit Preisen und Features - NUR JÄHRLICH
-  static final Map<String, Map<String, dynamic>> _plans = {
-    'premium_yearly': {
-      'name': 'بريميوم سنوي',
-      'price': _yearlyPriceFormatted,
-      'currency': _currency,
-      'period': 'سنة',
-      'features': [
-        'منتجات غير محدودة',
-        'فئات متعددة',
-        'استخدام كامل بدون قيود',
-        'تحديثات مستمرة',
-        'أولوية في الدعم الفني',
-      ],
-
-      'highlight': false,
-    },
-  };
+  late Future<Map<String, dynamic>> _dataFuture;
 
   @override
   void initState() {
     super.initState();
-    _loadPaymentInfo();
+    if (widget.paymentSuccess) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showSuccessDialog();
+      });
+    }
+    _dataFuture = _fetchData();
   }
 
-  Future<void> _loadPaymentInfo() async {
-    final storeId = ApiService.storeId;
-    if (storeId == null || storeId.isEmpty) {
-      setState(() => _error = 'لم يتم العثور على معرف المتجر');
-      return;
-    }
+  Future<Map<String, dynamic>> _fetchData() async {
+    final pricingRepo = repo.PricingRepository();
+    final uid = FirebaseAuth.instance.currentUser?.uid;
 
-    setState(() => _loading = true);
+    if (uid == null) throw Exception("User not logged in");
 
+    // 1. Config und Pläne laden (wie bisher)
+    final subscriptionConfig = await pricingRepo.fetchSubscriptionConfig();
+    final allPlans = subscriptionConfig.plans;
+    final allowedPlans = allPlans.toList();
+    allowedPlans.sort((a, b) => a.billingCycle.compareTo(b.billingCycle));
+
+    // 2. Region ermitteln (Neue Logik: SY hat Priorität!)
+    // Wenn IRGENDWO SY steht (API ODER manuell), dann SY zeigen
+    debugPrint("--- DEBUG START: Region Check (Frontend) ---");
+    String region = 'GLOBAL';
+    String? apiCountry;
+    String? manualCountry;
+
+    // SCHRITT A: API-Land aus stores_public lesen
     try {
-      // Hier würdest du normalerweise die Payment-URL von deinem Backend holen
-      // Fürs Beispiel erstellen wir eine Dummy-URL
+      final publicDoc = await FirebaseFirestore.instance
+          .collection('stores_public')
+          .doc(uid)
+          .get();
 
-      // Simulieren einer API-Anfrage
-      await Future.delayed(const Duration(milliseconds: 800));
-
-      // Beispiel-URL (in der Realität von deinem Payment-Provider)
-      final baseUrl = 'https://your-payment-provider.com/pay';
-      final params = {
-        'store_id': storeId,
-        'plan': widget.plan,
-        'amount': _yearlyPriceFormatted,
-        'currency': _currencyCode,
-        'return_url': 'https://your-app.com/payment-success',
-        'cancel_url': 'https://your-app.com/payment-cancel',
-      };
-
-      final uri = Uri.parse(baseUrl).replace(queryParameters: params);
-      setState(() {
-        _paymentUrl = uri.toString();
-        _loading = false;
-      });
-
+      if (publicDoc.exists && publicDoc.data() != null) {
+        final rawData = publicDoc.data()!;
+        final data = _sanitizeData(rawData);
+        apiCountry = data['api_address_country']?.toString().trim().toUpperCase();
+        debugPrint("DEBUG: stores_public 'api_address_country': $apiCountry");
+      }
     } catch (e) {
-      setState(() {
-        _error = 'حدث خطأ أثناء تحضير عملية الدفع';
-        _loading = false;
-      });
+      debugPrint("DEBUG: Fehler beim Lesen von stores_public: $e");
     }
-  }
 
-  Future<void> _openPayment() async {
-    if (_paymentUrl == null) return;
-
-    final uri = Uri.parse(_paymentUrl!);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      // Optional: Nach Zahlung zurückkehren und Status prüfen
-      await _checkPaymentStatus();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تعذر فتح صفحة الدفع'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+    // SCHRITT B: Manuelle Adresse aus stores_private lesen
+    try {
+      var storeConfig = await ApiService.fetchStoreConfig();
+      manualCountry = storeConfig?['address_country']?.toString().trim().toUpperCase();
+      debugPrint("DEBUG: stores_private 'address_country': $manualCountry");
+    } catch (e) {
+      debugPrint("DEBUG: Fehler beim Lesen von stores_private: $e");
     }
-  }
 
-  Future<void> _checkPaymentStatus() async {
-    // Hier könntest du den Payment-Status vom Backend prüfen
-    // Beispiel: Polling oder Webhook-Response
+    // SCHRITT C: SY-Priorität prüfen
+    // Wenn EINES von beiden SY ist, dann SY verwenden
+    if (apiCountry == 'SY' || manualCountry == 'SY') {
+      region = 'SY';
+      debugPrint("DEBUG: SY erkannt (API: $apiCountry, Manual: $manualCountry) → SY");
+    } else if (apiCountry != null && apiCountry.isNotEmpty && apiCountry != 'GLOBAL') {
+      // Sonst: API-Land hat Priorität (wenn nicht GLOBAL)
+      region = apiCountry;
+      debugPrint("DEBUG: Region aus API übernommen: $region");
+    } else if (manualCountry != null && manualCountry.isNotEmpty && manualCountry != 'GLOBAL') {
+      // Dann: Manuelles Land
+      region = manualCountry;
+      debugPrint("DEBUG: Region aus manueller Eingabe übernommen: $region");
+    }
+
+    // SCHRITT D: Cloud Function Fallback (nur wenn noch GLOBAL)
+    if (region == 'GLOBAL') {
+      debugPrint("DEBUG: Region noch unklar. Starte Cloud Function...");
+      try {
+        final result = await FirebaseFunctions.instanceFor(region: 'europe-west3')
+            .httpsCallable('resolveUserRegion')
+            .call();
+
+        debugPrint("DEBUG: Cloud Function Result: ${result.data}");
+        if (result.data['country'] != null) {
+          region = result.data['country'].toString().trim().toUpperCase();
+        }
+      } catch (e) {
+        debugPrint("DEBUG: Cloud Function fehlgeschlagen: $e");
+        region = 'GLOBAL';
+      }
+    }
+
+    debugPrint("DEBUG: FINALER WERT für Weiche: '$region'");
+    debugPrint("--- DEBUG END ---");
+
+    // SCHRITT E: FX-Rate laden (nur für Nicht-Syrien)
+    double fxRate = 1.0;
+    String userCurrencyCode = 'eur';
+    String userCurrencySymbol = '€';
+    bool fxIsFallback = false;
+
+    if (region != 'SY') {
+      // Währung aus /system/regions ermitteln
+      try {
+        final countryConfig = await RegionsService().getCountryConfig(region);
+        userCurrencyCode = countryConfig.currencyCode;
+        userCurrencySymbol = countryConfig.currencySymbol;
+      } catch (e) {
+        debugPrint("DEBUG: RegionsService Fehler: $e → EUR Fallback");
+      }
+
+      // FX-Rate aus /system/fx_rates holen
+      if (userCurrencyCode != 'eur') {
+        try {
+          final fxResult = await FxRateService().getFxRate(userCurrencyCode);
+          fxRate = fxResult.fxRate;
+          fxIsFallback = fxResult.isFallback;
+
+          // Wenn Fallback → Währung auf EUR setzen
+          if (fxIsFallback) {
+            userCurrencyCode = 'eur';
+            userCurrencySymbol = '€';
+            fxRate = 1.0;
+          }
+
+          debugPrint("DEBUG: FX-Rate für $userCurrencyCode: $fxRate (fallback: $fxIsFallback)");
+        } catch (e) {
+          debugPrint("DEBUG: FX-Rate Fehler: $e → EUR Fallback");
+          userCurrencyCode = 'eur';
+          userCurrencySymbol = '€';
+          fxRate = 1.0;
+          fxIsFallback = true;
+        }
+      }
+    }
+
+    return {
+      'plans': allowedPlans,
+      'region': region,
+      'syriaContactPhone': subscriptionConfig.syriaContactPhone,
+      'userCurrencyCode': userCurrencyCode,
+      'userCurrencySymbol': userCurrencySymbol,
+      'fxRate': fxRate,
+      'fxIsFallback': fxIsFallback,
+    };
   }
 
   void _showSuccessDialog() {
+    final colors = Theme.of(context).colorScheme;
+    final s = AppLocalizations.of(context)!;
+
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        icon: const Icon(Icons.check_circle, size: 60, color: Colors.green),
-        title: const Text('تم الدفع بنجاح! 🎉'),
-        content: const Text(
-          'تم تفعيل اشتراكك بنجاح.\n'
-              'يمكنك الآن الاستمتاع بجميع مميزات البريميوم لمدة سنة كاملة.',
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: colors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Column(
+          children: [
+            Icon(Icons.stars_rounded, color: colors.tertiary, size: 80),
+            const SizedBox(height: 16),
+            Text(s.activationSuccessTitle,
+                style: TextStyle(fontWeight: FontWeight.bold, color: colors.onSurface),
+                textAlign: TextAlign.center
+            ),
+          ],
+        ),
+        content: Text(
+          s.activationSuccessMsg,
           textAlign: TextAlign.center,
+          style: TextStyle(color: colors.onSurface),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('حسناً'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFD700),
-              foregroundColor: Colors.black,
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-              context.go(widget.returnUrl);
-            },
-            child: const Text('الذهاب للمتجر'),
+            onPressed: () => context.go('/home'),
+            child: Text(s.startNowButton, style: TextStyle(color: colors.primary)),
           ),
         ],
       ),
@@ -157,292 +212,92 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final currentPlan = _plans['premium_yearly']!;
+    final colors = Theme.of(context).colorScheme;
+    final s = AppLocalizations.of(context)!;
 
-    return Scaffold(
-      appBar: PremiumAnimatedAppBar(
-        title: 'تفعيل المتجر لمدة سنة',
-        showBackButton: true,
-        showSettings: false,
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFFD700)))
-          : ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          // Header Card mit besonderem Angebot
-          _buildSpecialOfferCard(isDark),
-          const SizedBox(height: 24),
+    if (widget.paymentSuccess) {
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator(color: colors.primary)),
+      );
+    }
 
-          // Current Plan
-          _buildPlanCard(currentPlan, isDark, true),
-          const SizedBox(height: 32),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _dataFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Center(child: CircularProgressIndicator(color: colors.primary)),
+          );
+        }
 
-          // Payment Button
-          if (_paymentUrl != null)
-            _buildPaymentButton(currentPlan),
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Scaffold(
+            body: Center(child: Text('${s.loadingErrorPrefix}${snapshot.error}')),
+          );
+        }
 
-          if (_error != null)
-            _buildErrorCard(),
+        final List<SubscriptionPlan> plans = snapshot.data!['plans'];
+        final String region = snapshot.data!['region'];
 
-          const SizedBox(height: 20),
+        // -----------------------------------------------------------
+        // Basis-Plan identifizieren (premium_monthly - einzige Quelle für regions!)
+        // -----------------------------------------------------------
+        final SubscriptionPlan basePlan = plans.firstWhere(
+              (p) => p.id == 'premium_monthly',
+          orElse: () => plans.firstWhere(
+                (p) => p.billingCycle == 1,
+            orElse: () => plans.first,
+          ),
+        );
 
-          // Features List
-          _buildFeaturesList(currentPlan['features'] as List<String>),
+        // -----------------------------------------------------------
+        // Region-Key normalisieren (SY → syria, sonst → global)
+        // -----------------------------------------------------------
+        final String regionKey = region == 'SY' ? 'syria' : 'global';
 
-          const SizedBox(height: 40),
-        ],
-      ),
+        // -----------------------------------------------------------
+        // Weiche: Syria vs Global (basierend auf regionKey)
+        // -----------------------------------------------------------
+        if (regionKey == 'syria') {
+          return PaymentScreenSyria(
+            availablePlans: plans,
+            basePlan: basePlan,
+          );
+        } else {
+          // -----------------------------------------------------------
+          // FX-Daten aus _fetchData (bereits mit Fallback-Logik)
+          // -----------------------------------------------------------
+          final String userCurrencyCode = snapshot.data!['userCurrencyCode'] ?? 'eur';
+          final String userCurrencySymbol = snapshot.data!['userCurrencySymbol'] ?? '€';
+          final double fxRate = (snapshot.data!['fxRate'] as num?)?.toDouble() ?? 1.0;
+
+          return PaymentScreenGlobal(
+            availablePlans: plans,
+            basePlan: basePlan,
+            userCurrencyCode: userCurrencyCode,
+            userCurrencySymbol: userCurrencySymbol,
+            fxRate: fxRate,
+          );
+        }
+      },
     );
   }
-
-  Widget _buildSpecialOfferCard(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFFFFD700).withValues(alpha:0.2),
-              const Color(0xFF00C853).withValues(alpha:0.1),
-            ]),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha:0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF00C853),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'سعر الإطلاق',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'اشتراك سنوي بسعر مبدائي مميز!',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textDirection: TextDirection.rtl,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'استمتع بجميع الميزات المتقدمة لمدة سنة كاملة بسعر رمزي. '
-                'دفعة واحدة سنوية ,والتجديد اختياري.',
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.6,
-              color: isDark ? Colors.grey[300] : Colors.grey[700],
-            ),
-            textDirection: TextDirection.rtl,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlanCard(Map<String, dynamic> plan, bool isDark, bool isCurrent, {VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isCurrent
-              ? const Color(0xFFFFD700).withValues(alpha:0.1)
-              : isDark ? Colors.grey[900] : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFFFFD700),
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha:isDark ? 0.2 : 0.05),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFD700),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'الخطة الوحيدة',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-                Text(
-                  plan['name'] as String,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFFFD700),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  plan['price'] as String,
-                  style: const TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  plan['currency'] as String,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '/${plan['period']}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'ينتهي بعد سنة – تجديد اختياري',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.green,
-                fontWeight: FontWeight.w500,
-              ),
-              textDirection: TextDirection.rtl,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentButton(Map<String, dynamic> plan) {
-    return SizedBox(
-      width: double.infinity,
-      height: 60,
-      child: ElevatedButton.icon(
-        onPressed: _openPayment,
-        icon: const Icon(Icons.payment_rounded),
-        label: Text(
-          ' فعل متجرك - دفع ${plan['price']} ${plan['currency']}',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF00C853),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 0,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha:0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withValues(alpha:0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _error!,
-              style: const TextStyle(color: Colors.red),
-              textDirection: TextDirection.rtl,
-            ),
-          ),
-          TextButton(
-            onPressed: _loadPaymentInfo,
-            child: const Text('إعادة المحاولة'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturesList(List<String> features) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'المميزات المتضمنة في الاشتراك السنوي:',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-          textDirection: TextDirection.rtl,
-        ),
-        const SizedBox(height: 12),
-        ...features.map((feature) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.green, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  feature,
-                  style: const TextStyle(fontSize: 14, height: 1.5),
-                  textDirection: TextDirection.rtl,
-                ),
-              ),
-            ],
-          ),
-        )),
-      ],
-    );
+  /// Wandelt Firestore Timestamps in Strings um, damit jsonEncode nicht abstürzt
+  Map<String, dynamic> _sanitizeData(Map<String, dynamic> data) {
+    return data.map((key, value) {
+      if (value is Timestamp) {
+        // Timestamp zu ISO-8601 String konvertieren
+        return MapEntry(key, value.toDate().toIso8601String());
+      }
+      if (value is Map<String, dynamic>) {
+        // Rekursiv für verschachtelte Maps
+        return MapEntry(key, _sanitizeData(value));
+      }
+      if (value is List) {
+        // Listen prüfen (optional, falls Listen Maps enthalten)
+        return MapEntry(key, value);
+      }
+      return MapEntry(key, value);
+    });
   }
 }
