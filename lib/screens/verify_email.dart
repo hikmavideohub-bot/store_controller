@@ -8,11 +8,7 @@ class EmailVerifyScreen extends StatefulWidget {
   final String storeId;
   final String? username;
 
-  const EmailVerifyScreen({
-    super.key,
-    required this.storeId,
-    this.username,
-  });
+  const EmailVerifyScreen({super.key, required this.storeId, this.username});
 
   @override
   State<EmailVerifyScreen> createState() => _EmailVerifyScreenState();
@@ -93,7 +89,9 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
       _startCountdown();
     } catch (e) {
       // ApiService Error Mapping kann hier erhalten bleiben oder durch generische Nachricht ersetzt werden
-      _toast(s.verificationLinkSendFail(ApiService.mapFirebaseErrorToArabic(e)));
+      _toast(
+        s.verificationLinkSendFail(ApiService.mapFirebaseErrorToArabic(e)),
+      );
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -117,7 +115,9 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg, textAlign: TextAlign.center),
-        backgroundColor: Theme.of(context).colorScheme.primary, // Teal statt Gold
+        backgroundColor: Theme.of(
+          context,
+        ).colorScheme.primary, // Teal statt Gold
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -134,7 +134,10 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final s = AppLocalizations.of(context)!;
-    final email = widget.username ?? ApiService.currentUserEmail ?? s.defaultEmailPlaceholder;
+    final email =
+        widget.username ??
+        ApiService.currentUserEmail ??
+        s.defaultEmailPlaceholder;
 
     return Scaffold(
       appBar: AppBar(
@@ -146,7 +149,7 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
             icon: const Icon(Icons.logout_rounded),
             onPressed: _logout,
             tooltip: s.logoutTooltip,
-          )
+          ),
         ],
       ),
       body: SafeArea(
@@ -187,10 +190,7 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
               // Subtitle
               Text(
                 s.sentLinkTo,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: theme.hintColor,
-                ),
+                style: TextStyle(fontSize: 16, color: theme.hintColor),
                 textAlign: TextAlign.center,
               ),
 
@@ -198,12 +198,17 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
 
               // Email
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   // Nutzt Surface Container für besseren Kontrast in beiden Modes
                   color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: colors.outline.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Text(
                   email,
@@ -220,10 +225,7 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
               // Instructions
               Text(
                 s.verifyEmailInstructions,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: theme.hintColor,
-                ),
+                style: TextStyle(fontSize: 14, color: theme.hintColor),
                 textAlign: TextAlign.center,
               ),
 
@@ -244,13 +246,13 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
                   ),
                   icon: _checking
                       ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: colors.onPrimary,
-                    ),
-                  )
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colors.onPrimary,
+                          ),
+                        )
                       : const Icon(Icons.refresh_rounded),
                   label: Text(
                     _checking ? s.checkingStatus : s.checkNowButton,
@@ -266,13 +268,17 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
 
               // Resend Button
               TextButton(
-                onPressed: (_resendCountdown > 0 || _checking) ? null : _resendVerification,
+                onPressed: (_resendCountdown > 0 || _checking)
+                    ? null
+                    : _resendVerification,
                 child: Text(
                   _resendCountdown > 0
                       ? s.resendCountdown(_resendCountdown)
                       : s.resendButton,
                   style: TextStyle(
-                    color: _resendCountdown > 0 ? theme.disabledColor : colors.primary,
+                    color: _resendCountdown > 0
+                        ? theme.disabledColor
+                        : colors.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -284,11 +290,11 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.05), // Info bleibt blau, aber dezent
+                  color: Colors.blue.withValues(
+                    alpha: 0.05,
+                  ), // Info bleibt blau, aber dezent
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.blue.withValues(alpha: 0.2),
-                  ),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   children: [
@@ -301,10 +307,7 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
                     Expanded(
                       child: Text(
                         s.spamFolderHint,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: theme.hintColor,
-                        ),
+                        style: TextStyle(fontSize: 13, color: theme.hintColor),
                       ),
                     ),
                   ],

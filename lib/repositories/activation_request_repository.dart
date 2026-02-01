@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 /// Model für eine Aktivierungsanfrage (Daten-Container)
 class ActivationRequest {
@@ -33,7 +34,7 @@ class ActivationRequest {
   // Wandelt Objekt in Map für Firestore um
   Map<String, dynamic> toMap() {
     return {
-      'store_id': storeId,     // WICHTIG: In Firestore heißt das Feld 'store_id'
+      'store_id': storeId, // WICHTIG: In Firestore heißt das Feld 'store_id'
       'store_name': storeName,
       'user_id': userId,
       'plan_id': planId,
@@ -88,14 +89,17 @@ class ActivationRequestRepository {
     try {
       final snapshot = await _firestore
           .collection('activation_requests')
-          .where('store_id', isEqualTo: storeId) // WICHTIG: store_id muss matchen mit toMap
+          .where(
+            'store_id',
+            isEqualTo: storeId,
+          ) // WICHTIG: store_id muss matchen mit toMap
           .where('status', isEqualTo: 'pending')
           .limit(1)
           .get();
 
       return snapshot.docs.isNotEmpty;
     } catch (e) {
-      print('Fehler beim Prüfen auf offene Anfragen: $e');
+      debugPrint('Fehler beim Prüfen auf offene Anfragen: $e');
       return false;
     }
   }

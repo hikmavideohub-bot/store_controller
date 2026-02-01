@@ -58,7 +58,10 @@ class PaywallMessage {
 }
 
 /// بناء الرسالة باستخدام BuildContext لجلب النصوص المترجمة
-PaywallMessage? buildPaywallMessage(BuildContext context, {bool forFab = false}) {
+PaywallMessage? buildPaywallMessage(
+  BuildContext context, {
+  bool forFab = false,
+}) {
   if (!AccessManager.isLoaded) return null;
 
   final l10n = AppLocalizations.of(context)!;
@@ -191,10 +194,10 @@ Future<void> showFabPaywallDialog(BuildContext context) async {
   if (!context.mounted) return;
 
   if (result == true && isPayment) {
-    context.push('/payment', extra: {
-      'plan': 'premium_monthly',
-      'returnUrl': '/home',
-    });
+    context.push(
+      '/payment',
+      extra: {'plan': 'premium_monthly', 'returnUrl': '/home'},
+    );
   }
 }
 
@@ -219,17 +222,18 @@ Widget _buildFeaturesList(BuildContext context) {
         ),
       ),
       const SizedBox(height: 10),
-      ...items.map((e) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          textDirection: TextDirection.rtl,
-          children: [
-            Icon(e.$1, size: 18),
-            const SizedBox(width: 10),
-            Expanded(child: Text(e.$2, textAlign: TextAlign.right)),
-          ],
+      ...items.map(
+        (e) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Icon(e.$1, size: 18),
+              const SizedBox(width: 10),
+              Expanded(child: Text(e.$2, textAlign: TextAlign.right)),
+            ],
+          ),
         ),
-      ),
       ),
     ],
   );
@@ -250,14 +254,22 @@ Future<void> showTrialWelcomePopup(BuildContext context) async {
       textDirection: TextDirection.rtl,
       child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        icon: const Icon(Icons.celebration_rounded, size: 44, color: Color(0xFFFFD700)),
+        icon: const Icon(
+          Icons.celebration_rounded,
+          size: 44,
+          color: Color(0xFFFFD700),
+        ),
         title: Text(l10n.trial_popup_title, textAlign: TextAlign.right),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(l10n.trial_popup_body, textAlign: TextAlign.right),
             const SizedBox(height: 12),
-            Text('🎁 $hint', textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              '🎁 $hint',
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         actions: [

@@ -107,7 +107,8 @@ class AddProductViewModel extends BaseViewModel {
 
   /// Prüft ob User Produkte hinzufügen/bearbeiten darf
   bool get canAddProduct =>
-      AccessManager.isLoaded && (AccessManager.isActive || AccessManager.isTrial);
+      AccessManager.isLoaded &&
+      (AccessManager.isActive || AccessManager.isTrial);
 
   String get effectiveProductId {
     final existing = productToEdit?.id.trim() ?? '';
@@ -264,7 +265,10 @@ class AddProductViewModel extends BaseViewModel {
       _offerStartDate = _parseDateSafe(p.offerStartDate, DateTime.now());
     }
     if (p.offerEndDate.isNotEmpty) {
-      _offerEndDate = _parseDateSafe(p.offerEndDate, DateTime.now().add(const Duration(days: 5)));
+      _offerEndDate = _parseDateSafe(
+        p.offerEndDate,
+        DateTime.now().add(const Duration(days: 5)),
+      );
     }
 
     if (p.category.isNotEmpty) {
@@ -331,7 +335,10 @@ class AddProductViewModel extends BaseViewModel {
   // BILD-UPLOAD
   // ===========================================
 
-  Future<ImageUploadResult> pickAndUploadImage(ImageSource source, AppLocalizations s) async {
+  Future<ImageUploadResult> pickAndUploadImage(
+    ImageSource source,
+    AppLocalizations s,
+  ) async {
     final picker = ImagePicker();
 
     final XFile? file = await picker.pickImage(
@@ -345,10 +352,7 @@ class AddProductViewModel extends BaseViewModel {
 
     final storeId = await StorePrefs.getStoreId();
     if (storeId == null || storeId.trim().isEmpty) {
-      return ImageUploadResult(
-        success: false,
-        error: s.uploadStoreIdMissing,
-      );
+      return ImageUploadResult(success: false, error: s.uploadStoreIdMissing);
     }
 
     final productId = effectiveProductId;
@@ -364,7 +368,9 @@ class AddProductViewModel extends BaseViewModel {
 
     try {
       // Bucket mit Resize-Extension verwenden
-      final storage = FirebaseStorage.instanceFor(bucket: 'gs://aldeebtech-1ec64.firebasestorage.app');
+      final storage = FirebaseStorage.instanceFor(
+        bucket: 'gs://aldeebtech-1ec64.firebasestorage.app',
+      );
 
       final baseRef = storage.ref('stores/$storeId/products/$productId');
       final imageRef = baseRef.child('image.jpg');
@@ -450,9 +456,9 @@ class AddProductViewModel extends BaseViewModel {
 
   /// Wartet bis die Resize-Extension die Datei erstellt hat
   Future<bool> _waitForResizedFile(
-      Reference ref, {
-        int maxAttempts = 15,
-      }) async {
+    Reference ref, {
+    int maxAttempts = 15,
+  }) async {
     var delayMs = 500;
     for (var i = 0; i < maxAttempts; i++) {
       try {
@@ -473,7 +479,10 @@ class AddProductViewModel extends BaseViewModel {
         u.contains('.firebasestorage.app');
   }
 
-  Future<void> _deleteOldImageIfFirebase(String oldUrl, {String? newUrl}) async {
+  Future<void> _deleteOldImageIfFirebase(
+    String oldUrl, {
+    String? newUrl,
+  }) async {
     final old = oldUrl.trim();
     if (old.isEmpty) return;
     if (!_isFirebaseStorageUrl(old)) return;
@@ -483,7 +492,8 @@ class AddProductViewModel extends BaseViewModel {
       try {
         final oldRef = FirebaseStorage.instance.refFromURL(old);
         final newRef = FirebaseStorage.instance.refFromURL(next);
-        if (oldRef.bucket == newRef.bucket && oldRef.fullPath == newRef.fullPath) {
+        if (oldRef.bucket == newRef.bucket &&
+            oldRef.fullPath == newRef.fullPath) {
           return;
         }
       } catch (_) {}
@@ -498,7 +508,9 @@ class AddProductViewModel extends BaseViewModel {
     required String storeId,
     required String productId,
   }) async {
-    final storage = FirebaseStorage.instanceFor(bucket: 'gs://aldeebtech-1ec64.firebasestorage.app');
+    final storage = FirebaseStorage.instanceFor(
+      bucket: 'gs://aldeebtech-1ec64.firebasestorage.app',
+    );
 
     final base = storage.ref('stores/$storeId/products/$productId');
     final legacy = storage.ref('stores/$storeId/products/$productId.jpg');
@@ -531,17 +543,27 @@ class AddProductViewModel extends BaseViewModel {
 
     // Validierung
     if (_name.trim().isEmpty) {
-      return ProductSaveResult(success: false, error: s.validationEnterStoreName); // Reuse from settings or create generic
+      return ProductSaveResult(
+        success: false,
+        error: s.validationEnterStoreName,
+      ); // Reuse from settings or create generic
     }
     if (_price <= 0) {
-      return ProductSaveResult(success: false, error: s.validationEnterPriceValid);
+      return ProductSaveResult(
+        success: false,
+        error: s.validationEnterPriceValid,
+      );
     }
     if (_category.trim().isEmpty) {
-      return ProductSaveResult(success: false, error: s.validationSelectCategory);
+      return ProductSaveResult(
+        success: false,
+        error: s.validationSelectCategory,
+      );
     }
 
     // Product Limit Check (Only for new products)
-    if (!isEditing && ApiService.productsNotifier.value.length >= AppConfig.maxFreeProducts) {
+    if (!isEditing &&
+        ApiService.productsNotifier.value.length >= AppConfig.maxFreeProducts) {
       return ProductSaveResult(success: false, error: s.productLimitReached);
     }
 
@@ -642,7 +664,10 @@ class AddProductViewModel extends BaseViewModel {
       final parts = s.split('-');
       if (parts.length == 3) {
         return DateTime(
-            int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
+        );
       }
       return fallback;
     } catch (_) {

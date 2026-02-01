@@ -27,13 +27,14 @@ class AppDrawer extends StatelessWidget {
 
   static String _storeName(AppLocalizations s) {
     final store = StoreConfigService.store;
-    final name = (store?['store_name'] ??
-        store?['storeName'] ??
-        store?['name'] ??
-        store?['store'] ??
-        '')
-        .toString()
-        .trim();
+    final name =
+        (store?['store_name'] ??
+                store?['storeName'] ??
+                store?['name'] ??
+                store?['store'] ??
+                '')
+            .toString()
+            .trim();
 
     if (name.isNotEmpty) return name;
     return s.drawerStoreFallback;
@@ -53,8 +54,10 @@ class AppDrawer extends StatelessWidget {
 
   static String _encodeQueryParameters(Map<String, String> params) {
     return params.entries
-        .map((MapEntry<String, String> e) =>
-    '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+        .map(
+          (MapEntry<String, String> e) =>
+              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
+        )
         .join('&');
   }
 
@@ -73,8 +76,10 @@ class AppDrawer extends StatelessWidget {
     );
 
     try {
-      if (!await launchUrl(emailLaunchUri,
-          mode: LaunchMode.externalApplication)) {
+      if (!await launchUrl(
+        emailLaunchUri,
+        mode: LaunchMode.externalApplication,
+      )) {
         throw 'Could not launch email app';
       }
     } catch (e) {
@@ -107,16 +112,20 @@ class AppDrawer extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.support_agent_rounded,
-                  color: colors.onPrimaryContainer, size: 28),
+              Icon(
+                Icons.support_agent_rounded,
+                color: colors.onPrimaryContainer,
+                size: 28,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   s.supportCenterTitle,
                   style: TextStyle(
-                      color: colors.onPrimaryContainer,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18),
+                    color: colors.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
               ),
             ],
@@ -130,20 +139,23 @@ class AppDrawer extends StatelessWidget {
             Text(
               s.supportCenterMsg,
               style: TextStyle(
-                  fontSize: 14, height: 1.5, color: colors.onSurfaceVariant),
+                fontSize: 14,
+                height: 1.5,
+                color: colors.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 24),
             Text(
               s.contactEmailLabel,
               style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: colors.primary),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: colors.primary,
+              ),
             ),
             const SizedBox(height: 8),
             Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: colors.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(16),
@@ -154,21 +166,28 @@ class AppDrawer extends StatelessWidget {
                     child: Text(
                       'contact.aldeebtech@gmail.com',
                       style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: colors.onSurfaceVariant),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: colors.onSurfaceVariant,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.copy_rounded,
-                        size: 20, color: colors.primary),
+                    icon: Icon(
+                      Icons.copy_rounded,
+                      size: 20,
+                      color: colors.primary,
+                    ),
                     onPressed: () {
-                      Clipboard.setData(const ClipboardData(
-                          text: 'contact.aldeebtech@gmail.com'));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(s.emailCopiedMsg)),
+                      Clipboard.setData(
+                        const ClipboardData(
+                          text: 'contact.aldeebtech@gmail.com',
+                        ),
                       );
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(s.emailCopiedMsg)));
                     },
                   ),
                 ],
@@ -176,22 +195,28 @@ class AppDrawer extends StatelessWidget {
             ),
           ],
         ),
-        actionsPadding:
-        const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        actionsPadding: const EdgeInsets.symmetric(
+          horizontal: 24,
+          vertical: 16,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(s.closeButton,
-                style: TextStyle(
-                    color: colors.onSurfaceVariant,
-                    fontWeight: FontWeight.bold)),
+            child: Text(
+              s.closeButton,
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           FilledButton.icon(
             icon: const Icon(Icons.send_rounded, size: 18),
             label: Text(s.sendNowButton),
             style: FilledButton.styleFrom(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () {
               Navigator.pop(ctx);
@@ -248,7 +273,10 @@ class AppDrawer extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Divider(
-                      height: 1, thickness: 1, color: colors.outlineVariant),
+                    height: 1,
+                    thickness: 1,
+                    color: colors.outlineVariant,
+                  ),
                 ),
 
                 // Theme Mode Selector
@@ -258,8 +286,10 @@ class AppDrawer extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: ListTile(
-                    contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     leading: Icon(
                       Icons.dark_mode_outlined,
                       color: colors.onSurfaceVariant,
@@ -282,12 +312,15 @@ class AppDrawer extends StatelessWidget {
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<AppThemeMode>(
                           value: MyApp.themeOf(context) ?? AppThemeMode.system,
-                          icon: Icon(Icons.arrow_drop_down,
-                              color: colors.onSurfaceVariant),
+                          icon: Icon(
+                            Icons.arrow_drop_down,
+                            color: colors.onSurfaceVariant,
+                          ),
                           style: TextStyle(
-                              color: colors.onSurface,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600),
+                            color: colors.onSurface,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                           dropdownColor: colors.surfaceContainer,
                           onChanged: (mode) {
                             if (mode != null) MyApp.setThemeOf(context, mode);
@@ -315,7 +348,10 @@ class AppDrawer extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Divider(
-                      height: 1, thickness: 1, color: colors.outlineVariant),
+                    height: 1,
+                    thickness: 1,
+                    color: colors.outlineVariant,
+                  ),
                 ),
 
                 _drawerItem(
@@ -327,7 +363,6 @@ class AppDrawer extends StatelessWidget {
                     showSupportDialog(context);
                   },
                 ),
-
 
                 _drawerItem(
                   context: context,
@@ -381,15 +416,20 @@ class AppDrawer extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
             child: FilledButton.tonalIcon(
               icon: Icon(Icons.logout_rounded, size: 18, color: colors.error),
-              label: Text(s.logoutButton,
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700, color: colors.error)),
+              label: Text(
+                s.logoutButton,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: colors.error,
+                ),
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: colors.errorContainer.withValues(alpha: 0.5),
                 foregroundColor: colors.onErrorContainer,
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               onPressed: () async => _logoutDefault(context),
             ),
@@ -414,10 +454,11 @@ class AppDrawer extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 20,
-            bottom: 24,
-            left: 20,
-            right: 20),
+          top: MediaQuery.of(context).padding.top + 20,
+          bottom: 24,
+          left: 20,
+          right: 20,
+        ),
         decoration: BoxDecoration(
           color: colors.primary,
           borderRadius: const BorderRadius.only(
@@ -428,7 +469,7 @@ class AppDrawer extends StatelessWidget {
               color: colors.shadow.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
-            )
+            ),
           ],
         ),
         child: Stack(
@@ -533,54 +574,65 @@ class AppDrawer extends StatelessWidget {
     final s = AppLocalizations.of(context)!;
 
     if (!AccessManager.isLoaded) {
-      return _badgeContainer(context, s.loadingStatus,
-          colors.surface.withValues(alpha: 0.2), colors.onPrimary);
+      return _badgeContainer(
+        context,
+        s.loadingStatus,
+        colors.surface.withValues(alpha: 0.2),
+        colors.onPrimary,
+      );
     }
 
     switch (AccessManager.status) {
       case 'active':
         return GestureDetector(
-            onTap: () {
-              Navigator.pop(context);
-              context.push('/subscription');
-            },
-            child: _badgeContainer(
-              context,
-              s.premiumStatus,
-              colors.tertiaryContainer,
-              colors.onTertiaryContainer,
-            ));
+          onTap: () {
+            Navigator.pop(context);
+            context.push('/subscription');
+          },
+          child: _badgeContainer(
+            context,
+            s.premiumStatus,
+            colors.tertiaryContainer,
+            colors.onTertiaryContainer,
+          ),
+        );
       case 'trial':
         return GestureDetector(
-            onTap: () {
-              Navigator.pop(context);
-              context.push('/subscription');
-            },
-            child: _badgeContainer(
-              context,
-              AccessManager.daysRemaining != null
-                  ? s.trialStatusDays(AccessManager.daysRemaining!)
-                  : s.trialStatus,
-              colors.secondaryContainer,
-              colors.onSecondaryContainer,
-            ));
+          onTap: () {
+            Navigator.pop(context);
+            context.push('/subscription');
+          },
+          child: _badgeContainer(
+            context,
+            AccessManager.daysRemaining != null
+                ? s.trialStatusDays(AccessManager.daysRemaining!)
+                : s.trialStatus,
+            colors.secondaryContainer,
+            colors.onSecondaryContainer,
+          ),
+        );
       default:
         return GestureDetector(
-            onTap: () {
-              Navigator.pop(context);
-              context.push('/subscription');
-            },
-            child: _badgeContainer(
-              context,
-              s.expiredStatus,
-              colors.errorContainer,
-              colors.onErrorContainer,
-            ));
+          onTap: () {
+            Navigator.pop(context);
+            context.push('/subscription');
+          },
+          child: _badgeContainer(
+            context,
+            s.expiredStatus,
+            colors.errorContainer,
+            colors.onErrorContainer,
+          ),
+        );
     }
   }
 
   Widget _badgeContainer(
-      BuildContext context, String text, Color bg, Color fg) {
+    BuildContext context,
+    String text,
+    Color bg,
+    Color fg,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
@@ -606,8 +658,10 @@ class AppDrawer extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         Navigator.pop(context);
-        context.push('/payment',
-            extra: {'plan': 'premium_monthly', 'returnUrl': currentRoute});
+        context.push(
+          '/payment',
+          extra: {'plan': 'premium_monthly', 'returnUrl': currentRoute},
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -624,9 +678,10 @@ class AppDrawer extends StatelessWidget {
               child: Text(
                 s.upgradeBannerText,
                 style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: colors.onTertiaryContainer),
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: colors.onTertiaryContainer,
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -696,17 +751,11 @@ class AppDrawer extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: ClipOval(
-                child: Image.asset(
-                  'assets/icon/wolf.png',
-                  fit: BoxFit.cover,
-                ),
+                child: Image.asset('assets/icon/wolf.png', fit: BoxFit.cover),
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Aldeeb',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            const Text('Aldeeb', style: TextStyle(fontWeight: FontWeight.bold)),
             Text(
               VersionService.version,
               style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -714,10 +763,7 @@ class AppDrawer extends StatelessWidget {
           ],
         ),
         // Der Beschreibungstext
-        content: Text(
-          s.aboutAppDesc,
-          textAlign: TextAlign.center,
-        ),
+        content: Text(s.aboutAppDesc, textAlign: TextAlign.center),
         actions: [
           TextButton(
             onPressed: () {
@@ -753,7 +799,9 @@ class AppDrawer extends StatelessWidget {
         content: Text(s.advancedStatsMsg),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: Text(s.okButton))
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(s.okButton),
+          ),
         ],
       ),
     );
@@ -773,16 +821,20 @@ class AppDrawer extends StatelessWidget {
         builder: (context, setState) => AlertDialog(
           scrollable: true,
           backgroundColor: colors.surface,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          title: Text(s.rateAppTitle,
-              style: const TextStyle(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          title: Text(
+            s.rateAppTitle,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                  s.rateAppMsg,
-                  style: TextStyle(color: colors.onSurfaceVariant)),
+                s.rateAppMsg,
+                style: TextStyle(color: colors.onSurfaceVariant),
+              ),
               const SizedBox(height: 20),
               FittedBox(
                 child: Row(
@@ -811,7 +863,8 @@ class AppDrawer extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: s.rateAppHint,
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     filled: true,
                     fillColor: colors.surfaceContainerHighest,
                   ),
@@ -822,9 +875,10 @@ class AppDrawer extends StatelessWidget {
                 Text(
                   s.rateAppGooglePlayMsg,
                   style: TextStyle(
-                      fontSize: 13,
-                      color: colors.primary,
-                      fontWeight: FontWeight.bold),
+                    fontSize: 13,
+                    color: colors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -832,44 +886,52 @@ class AppDrawer extends StatelessWidget {
           ),
           actions: [
             TextButton(
-                onPressed: () async {
-                  await RatingPromptService.markAsDone();
-                  Navigator.pop(ctx);
-                },
-                child: Text(s.laterButton)),
+              onPressed: () async {
+                final navigator = Navigator.of(ctx);
+                await RatingPromptService.markAsDone();
+                navigator.pop();
+              },
+              child: Text(s.laterButton),
+            ),
             FilledButton(
               style: FilledButton.styleFrom(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: selectedStars == 0
                   ? null
                   : () async {
-                final stars = selectedStars;
-                final comment = commentCtrl.text;
-                // Capture messenger BEFORE closing dialog to avoid deactivated widget error
-                final messenger = ScaffoldMessenger.of(context);
-                Navigator.pop(ctx);
+                      final stars = selectedStars;
+                      final comment = commentCtrl.text;
+                      // Capture messenger and message BEFORE closing dialog to avoid deactivated widget error
+                      final messenger = ScaffoldMessenger.of(context);
+                      final thanksMsg = s.ratingThanksMsg;
+                      Navigator.pop(ctx);
 
-                await RatingPromptService.markAsDone();
+                      await RatingPromptService.markAsDone();
 
-                await ApiService.submitAppReview(
-                    stars: stars, comment: comment);
+                      await ApiService.submitAppReview(
+                        stars: stars,
+                        comment: comment,
+                      );
 
-                if (stars >= 4) {
-                  final url = Uri.parse(
-                      'https://play.google.com/store/apps/details?id=com.aldeebtech.storecontroller');
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url,
-                        mode: LaunchMode.externalApplication);
-                  }
-                } else {
-                  messenger.showSnackBar(
-                    SnackBar(
-                        content: Text(s.ratingThanksMsg)),
-                  );
-                }
-              },
+                      if (stars >= 4) {
+                        final url = Uri.parse(
+                          'https://play.google.com/store/apps/details?id=com.aldeebtech.storecontroller',
+                        );
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(
+                            url,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      } else {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text(thanksMsg)),
+                        );
+                      }
+                    },
               child: Text(s.sendButton),
             ),
           ],
@@ -889,11 +951,13 @@ class AppDrawer extends StatelessWidget {
         content: Text(s.logoutConfirmMsg),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(s.cancelButton)),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.cancelButton),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(s.logoutButton)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.logoutButton),
+          ),
         ],
       ),
     );

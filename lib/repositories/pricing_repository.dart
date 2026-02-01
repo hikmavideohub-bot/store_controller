@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:store_controller/models/subscription_plan.dart';
 
 /// Repository zum Laden der Pläne aus Firestore
@@ -15,14 +16,12 @@ class PricingRepository {
   /// Struktur: { syria_contact_phone, plans: { plan_id: { ... } } }
   Future<SubscriptionConfig> fetchSubscriptionConfig() async {
     try {
-      final configDoc = await _db
-          .doc('pricing/subscription_config')
-          .get();
+      final configDoc = await _db.doc('pricing/subscription_config').get();
 
       final data = configDoc.data() ?? {};
       return SubscriptionConfig.fromMap(data);
     } catch (e) {
-      print('Fehler beim Laden der Subscription-Config: $e');
+      debugPrint('Fehler beim Laden der Subscription-Config: $e');
       rethrow;
     }
   }

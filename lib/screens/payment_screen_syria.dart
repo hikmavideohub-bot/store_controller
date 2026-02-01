@@ -14,7 +14,8 @@ import '../widgets/app_drawer.dart';
 
 class PaymentScreenSyria extends StatefulWidget {
   final List<SubscriptionPlan> availablePlans;
-  final SubscriptionPlan basePlan; // NEU: Referenz zum Monats-Plan für Fallbacks
+  final SubscriptionPlan
+  basePlan; // NEU: Referenz zum Monats-Plan für Fallbacks
 
   const PaymentScreenSyria({
     super.key,
@@ -35,11 +36,6 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
     return syriaData.accountDetails ?? '';
   }
 
-  /// Dynamische QR-URL aus Firestore
-  String? get _qrImageUrl {
-    final syriaData = widget.basePlan.getPriceForRegion('syria');
-    return syriaData.qrImageUrl;
-  }
   final _formKey = GlobalKey<FormState>();
   final _transferAccountNameController = TextEditingController();
 
@@ -54,7 +50,9 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
   // Hilfsmethode: Filtern wir den Monatsplan (basePlan) aus der Anzeige heraus,
   // behalten ihn aber in widget.basePlan für die Mathe-Logik.
   List<SubscriptionPlan> get _visiblePlans {
-    return widget.availablePlans.where((p) => p.id != widget.basePlan.id).toList();
+    return widget.availablePlans
+        .where((p) => p.id != widget.basePlan.id)
+        .toList();
   }
 
   @override
@@ -66,16 +64,16 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
 
     if (plansDisplay.isNotEmpty) {
       _selectedPlan = plansDisplay.firstWhere(
-            (p) {
+        (p) {
           // Calculator nutzen um 'Best Value' zu finden
           final pricing = PricingCalculator.calculateSyria(
-              plan: p,
-              basePlan: widget.basePlan,
+            plan: p,
+            basePlan: widget.basePlan,
           );
           return pricing.isBestValue;
         },
         orElse: () => plansDisplay.firstWhere(
-              (p) => p.id.contains('yearly'),
+          (p) => p.id.contains('yearly'),
           orElse: () => plansDisplay.first,
         ),
       );
@@ -110,19 +108,19 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
     if (_selectedPlan == null) {
       final syriaData = widget.basePlan.getPriceForRegion('syria');
       return PricingResult(
-          monthlyPrice: 0,
-          totalPrice: 0,
-          billingCycle: 1,
-          currencySymbol: syriaData.currency,
-          currencyCode: syriaData.currencyCode ?? 'syp',
-          hasOffer: false,
-          isBestValue: false
+        monthlyPrice: 0,
+        totalPrice: 0,
+        billingCycle: 1,
+        currencySymbol: syriaData.currency,
+        currencyCode: syriaData.currencyCode ?? 'syp',
+        hasOffer: false,
+        isBestValue: false,
       );
     }
 
     return PricingCalculator.calculateSyria(
-        plan: _selectedPlan!,
-        basePlan: widget.basePlan,
+      plan: _selectedPlan!,
+      basePlan: widget.basePlan,
     );
   }
 
@@ -158,11 +156,19 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          icon: Icon(Icons.check_circle_outline_rounded,
-              color: Theme.of(context).colorScheme.primary, size: 64),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          icon: Icon(
+            Icons.check_circle_outline_rounded,
+            color: Theme.of(context).colorScheme.primary,
+            size: 64,
+          ),
           title: Text(s.activationRequestSentTitle),
-          content: Text(s.activationRequestSentMsg, textAlign: TextAlign.center),
+          content: Text(
+            s.activationRequestSentMsg,
+            textAlign: TextAlign.center,
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -178,8 +184,9 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(s.activationRequestError),
-            backgroundColor: Theme.of(context).colorScheme.error),
+          content: Text(s.activationRequestError),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -192,12 +199,19 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
     final s = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: PremiumAnimatedAppBar(title: s.paymentAndActivationTitle, showBackButton: true),
+      appBar: PremiumAnimatedAppBar(
+        title: s.paymentAndActivationTitle,
+        showBackButton: true,
+      ),
       body: _buildBody(context, s, colors),
     );
   }
 
-  Widget _buildBody(BuildContext context, AppLocalizations s, ColorScheme colors) {
+  Widget _buildBody(
+    BuildContext context,
+    AppLocalizations s,
+    ColorScheme colors,
+  ) {
     if (_isLoadingCheck) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -209,12 +223,19 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.hourglass_top_rounded, size: 80, color: colors.primary),
+              Icon(
+                Icons.hourglass_top_rounded,
+                size: 80,
+                color: colors.primary,
+              ),
               const SizedBox(height: 24),
               Text(
                 "Anfrage in Bearbeitung", // Fallback String
                 style: TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold, color: colors.onSurface),
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: colors.onSurface,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
@@ -269,23 +290,28 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
           ),
           const SizedBox(height: 24),
 
-          Text(s.step1ChoosePlan,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            s.step1ChoosePlan,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
           const SizedBox(height: 12),
 
           // HIER: Nur die sichtbaren Pläne rendern (kein Monthly)
           ...plansToDisplay.map((plan) => _buildPlanCard(plan, context, s)),
 
-
           const SizedBox(height: 24),
-          Text(s.step2PaymentDetails,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            s.step2PaymentDetails,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
           const SizedBox(height: 12),
           _buildPaymentDetailsCard(context, s),
 
           const SizedBox(height: 24),
-          Text(s.step3TransferInfo,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            s.step3TransferInfo,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
           const SizedBox(height: 12),
           _buildTransferAccountNameField(context, s),
 
@@ -294,24 +320,33 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
             width: double.infinity,
             height: 56,
             child: ElevatedButton.icon(
-              onPressed: _isSubmitting ? null : () => _submitActivationRequest(s),
+              onPressed: _isSubmitting
+                  ? null
+                  : () => _submitActivationRequest(s),
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.primary,
                 foregroundColor: colors.onPrimary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 elevation: 2,
               ),
               icon: _isSubmitting
                   ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(colors.onPrimary)))
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(colors.onPrimary),
+                      ),
+                    )
                   : const Icon(Icons.verified_user_rounded),
               label: Text(
                 _isSubmitting ? s.submittingRequest : s.confirmPaymentButton,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -319,14 +354,23 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
           Center(
             child: Column(
               children: [
-                Text(s.paymentSupportTitle,
-                    style: TextStyle(color: colors.outline, fontSize: 12)),
+                Text(
+                  s.paymentSupportTitle,
+                  style: TextStyle(color: colors.outline, fontSize: 12),
+                ),
                 TextButton.icon(
                   onPressed: () => AppDrawer.showSupportDialog(context),
-                  icon: Icon(Icons.email_outlined, size: 16, color: colors.primary),
+                  icon: Icon(
+                    Icons.email_outlined,
+                    size: 16,
+                    color: colors.primary,
+                  ),
                   label: Text(
                     s.paymentSupportAction,
-                    style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -338,7 +382,11 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
     );
   }
 
-  Widget _buildPlanCard(SubscriptionPlan plan, BuildContext context, AppLocalizations s) {
+  Widget _buildPlanCard(
+    SubscriptionPlan plan,
+    BuildContext context,
+    AppLocalizations s,
+  ) {
     final colors = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
 
@@ -348,8 +396,8 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
 
     // Verwende Calculator für Syrien
     final calc = PricingCalculator.calculateSyria(
-        plan: plan,
-        basePlan: widget.basePlan,
+      plan: plan,
+      basePlan: widget.basePlan,
     );
 
     final activeColor = colors.tertiary;
@@ -383,7 +431,10 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
                 top: 0,
                 right: 16,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: bestValueColor,
                     borderRadius: const BorderRadius.only(
@@ -407,7 +458,9 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
               child: Row(
                 children: [
                   Icon(
-                    isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
                     color: isSelected
                         ? activeColor
                         : colors.onSurface.withValues(alpha: 0.5),
@@ -417,9 +470,13 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(plan.title,
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          plan.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           calc.billingCycle == 1
@@ -433,8 +490,10 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
                         if (calc.hasOffer && calc.discountPercent != null) ...[
                           const SizedBox(height: 6),
                           Container(
-                            padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.green.shade100,
                               borderRadius: BorderRadius.circular(4),
@@ -479,7 +538,9 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
                           fontSize: 22, // 👈 größer = Fokus
                           fontWeight: FontWeight.w900,
                           color: isSelected
-                              ? (calc.hasOffer ? Colors.green.shade700 : activeColor)
+                              ? (calc.hasOffer
+                                    ? Colors.green.shade700
+                                    : activeColor)
                               : theme.hintColor,
                         ),
                       ),
@@ -501,7 +562,6 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
     );
   }
 
-
   Widget _buildQrCodeImage(AppLocalizations s) {
     // WICHTIG: Hier kommt der Fallback zum Tragen!
     // Wenn 'yearly' keinen QR hat, liefert 'calc.qrImageUrl'
@@ -519,20 +579,22 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
       clipBehavior: Clip.antiAlias,
       child: qrUrl != null && qrUrl.isNotEmpty
           ? Image.network(
-        qrUrl,
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-              child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                      : null,
-                  strokeWidth: 2));
-        },
-        errorBuilder: (context, error, stackTrace) => _buildQrFallback(s),
-      )
+              qrUrl,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                        : null,
+                    strokeWidth: 2,
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) => _buildQrFallback(s),
+            )
           : _buildQrFallback(s),
     );
   }
@@ -544,9 +606,11 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
         children: [
           Icon(Icons.qr_code_2, size: 80, color: Colors.grey.shade400),
           const SizedBox(height: 8),
-          Text(s.qrCodePlaceholder,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 10),
-              textAlign: TextAlign.center),
+          Text(
+            s.qrCodePlaceholder,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 10),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -565,9 +629,10 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
         border: Border.all(color: colors.outline.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 15,
-              offset: const Offset(0, 5))
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
         ],
       ),
       child: Column(
@@ -588,7 +653,12 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
                 const SizedBox(width: 8),
                 Text(
                   s.pricingTotal(
-                      PricingCalculator.formatPriceForCurrency(calc.totalPrice, calc.currencyCode, calc.currencySymbol)),
+                    PricingCalculator.formatPriceForCurrency(
+                      calc.totalPrice,
+                      calc.currencyCode,
+                      calc.currencySymbol,
+                    ),
+                  ),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -603,16 +673,21 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
           Divider(color: colors.outline.withValues(alpha: 0.2)),
           const SizedBox(height: 16),
 
-          Text(s.accountNumberLabel,
-              style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12)),
+          Text(
+            s.accountNumberLabel,
+            style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+          ),
           const SizedBox(height: 8),
           InkWell(
             onTap: () {
               Clipboard.setData(ClipboardData(text: _paymentId));
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
                   content: Text(s.copyIdSuccess),
                   backgroundColor: colors.primary,
-                  duration: const Duration(seconds: 1)));
+                  duration: const Duration(seconds: 1),
+                ),
+              );
             },
             borderRadius: BorderRadius.circular(12),
             child: Container(
@@ -620,7 +695,9 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
               decoration: BoxDecoration(
                 color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
+                border: Border.all(
+                  color: colors.outline.withValues(alpha: 0.1),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -629,11 +706,14 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
-                      child: Text(_paymentId,
-                          style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1)),
+                      child: Text(
+                        _paymentId,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -643,14 +723,19 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
             ),
           ),
           const SizedBox(height: 12),
-          Text(s.paymentMethodElectronic,
-              style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12)),
+          Text(
+            s.paymentMethodElectronic,
+            style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTransferAccountNameField(BuildContext context, AppLocalizations s) {
+  Widget _buildTransferAccountNameField(
+    BuildContext context,
+    AppLocalizations s,
+  ) {
     final colors = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -664,11 +749,19 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
         children: [
           Row(
             children: [
-              Icon(Icons.person_outline_rounded, color: colors.primary, size: 20),
+              Icon(
+                Icons.person_outline_rounded,
+                color: colors.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
-              Text(s.transferAccountNameLabel,
-                  style:
-                  TextStyle(fontWeight: FontWeight.w600, color: colors.onSurface)),
+              Text(
+                s.transferAccountNameLabel,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: colors.onSurface,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -680,13 +773,17 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
               filled: true,
               fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.3),
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
               focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: colors.primary, width: 1.5)),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: colors.primary, width: 1.5),
+              ),
             ),
-            validator: (value) =>
-            (value == null || value.trim().isEmpty) ? s.transferAccountNameRequired : null,
+            validator: (value) => (value == null || value.trim().isEmpty)
+                ? s.transferAccountNameRequired
+                : null,
           ),
         ],
       ),

@@ -8,7 +8,7 @@ class AppPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      top: false,   // AppBar bleibt oben normal
+      top: false, // AppBar bleibt oben normal
       bottom: true, // ✅ unten immer Platz
       child: child,
     );

@@ -34,13 +34,9 @@ class ApiResult<T> {
   final String? error;
   final String? details;
 
-  const ApiResult.ok(this.data)
-      : ok = true,
-        error = null,
-        details = null;
+  const ApiResult.ok(this.data) : ok = true, error = null, details = null;
 
-  const ApiResult.fail(this.error, {this.details, this.data})
-      : ok = false;
+  const ApiResult.fail(this.error, {this.details, this.data}) : ok = false;
 }
 
 /// Speichert temporäre Google-Credential-Daten für deferred Sign-In
@@ -93,8 +89,10 @@ class ApiService {
 
   /// Gespeicherte Google-Credential für deferred Sign-In (Login → Register Flow)
   static PendingGoogleCredential? _pendingGoogleCredential;
-  static PendingGoogleCredential? get pendingGoogleCredential => _pendingGoogleCredential;
-  static bool get hasPendingGoogleCredential => _pendingGoogleCredential != null;
+  static PendingGoogleCredential? get pendingGoogleCredential =>
+      _pendingGoogleCredential;
+  static bool get hasPendingGoogleCredential =>
+      _pendingGoogleCredential != null;
 
   /// Flag ob der aktuelle Firebase User neu ist (für Cleanup bei Fehler)
   static bool _isCurrentUserNew = false;
@@ -112,19 +110,31 @@ class ApiService {
       return s != null ? f(s) : fallback;
     }
 
-    if (msg.contains('permission-denied') || msg.contains('insufficient permissions')) {
-      return loc((l) => l.errorPermissionDenied, 'ليس لديك صلاحية الوصول، يرجى التأكد من تسجيل الحساب أولاً');
+    if (msg.contains('permission-denied') ||
+        msg.contains('insufficient permissions')) {
+      return loc(
+        (l) => l.errorPermissionDenied,
+        'ليس لديك صلاحية الوصول، يرجى التأكد من تسجيل الحساب أولاً',
+      );
     }
     if (msg.contains('email-already-in-use')) {
       return loc((l) => l.errorEmailInUse, 'البريد الإلكتروني مستخدم بالفعل');
     }
     if (msg.contains('invalid-email')) {
-      return loc((l) => l.errorInvalidEmail, 'صيغة البريد الإلكتروني غير صحيحة');
+      return loc(
+        (l) => l.errorInvalidEmail,
+        'صيغة البريد الإلكتروني غير صحيحة',
+      );
     }
     if (msg.contains('weak-password')) {
-      return loc((l) => l.errorWeakPassword, 'كلمة المرور ضعيفة. استخدم 6 أحرف على الأقل');
+      return loc(
+        (l) => l.errorWeakPassword,
+        'كلمة المرور ضعيفة. استخدم 6 أحرف على الأقل',
+      );
     }
-    if (msg.contains('user-not-found') || msg.contains('wrong-password') || msg.contains('invalid-credential')) {
+    if (msg.contains('user-not-found') ||
+        msg.contains('wrong-password') ||
+        msg.contains('invalid-credential')) {
       return loc((l) => l.errorUserNotFound, 'بيانات الدخول غير صحيحة');
     }
     if (msg.contains('network')) {
@@ -176,8 +186,9 @@ class ApiService {
   static Future<bool> confirmEmailVerificationSecure() async {
     if (_storeId == null) return false;
     try {
-      final callable = FirebaseFunctions.instanceFor(region: 'europe-west3')
-          .httpsCallable('confirmEmailVerification');
+      final callable = FirebaseFunctions.instanceFor(
+        region: 'europe-west3',
+      ).httpsCallable('confirmEmailVerification');
       final result = await callable.call();
       return result.data['success'] == true;
     } catch (e) {
@@ -190,8 +201,9 @@ class ApiService {
   static Future<bool> requestAccountDeletion() async {
     if (_storeId == null) return false;
     try {
-      final callable = FirebaseFunctions.instanceFor(region: 'europe-west3')
-          .httpsCallable('requestAccountDeletion');
+      final callable = FirebaseFunctions.instanceFor(
+        region: 'europe-west3',
+      ).httpsCallable('requestAccountDeletion');
       final result = await callable.call();
       if (result.data['success'] == true) {
         hasStore = false;
@@ -243,10 +255,12 @@ class ApiService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   static String? _storeName;
-  static String? get storeName => (_storeName ?? '').trim().isEmpty ? null : _storeName;
+  static String? get storeName =>
+      (_storeName ?? '').trim().isEmpty ? null : _storeName;
 
   /// ValueNotifier für Store-Name - ermöglicht sofortige UI-Updates
-  static final ValueNotifier<String?> storeNameNotifier = ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> storeNameNotifier =
+      ValueNotifier<String?>(null);
 
   /// Setzt den Store-Namen und benachrichtigt Listener
   static void _setStoreName(String? name) {
@@ -265,7 +279,9 @@ class ApiService {
   static List<Product>? _cachedProducts;
   static List<Product>? get cachedProducts => _cachedProducts;
 
-  static final ValueNotifier<List<Product>> productsNotifier = ValueNotifier([]);
+  static final ValueNotifier<List<Product>> productsNotifier = ValueNotifier(
+    [],
+  );
 
   static void _updateProductsNotifier(List<Product> products) {
     _cachedProducts = products;
@@ -297,13 +313,12 @@ class ApiService {
   static Future<void> checkAndSetUserRegion({String? selectedCountry}) async {
     try {
       final storeData = await fetchStoreConfig();
-      final storeCountry = selectedCountry ?? storeData?['address_country'] ?? '';
+      final storeCountry =
+          selectedCountry ?? storeData?['address_country'] ?? '';
 
       await FirebaseFunctions.instanceFor(region: 'europe-west3')
           .httpsCallable('resolveUserRegion')
-          .call({
-        'selectedCountry': storeCountry,
-      });
+          .call({'selectedCountry': storeCountry});
 
       await fetchStoreConfig();
     } catch (e) {
@@ -332,7 +347,10 @@ class ApiService {
   // EMAIL/PASSWORD LOGIN
   // ═══════════════════════════════════════════════════════════════════════════
 
-  static Future<Map<String, String>?> login(String email, String password) async {
+  static Future<Map<String, String>?> login(
+    String email,
+    String password,
+  ) async {
     try {
       final cred = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
@@ -352,12 +370,17 @@ class ApiService {
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
 
-  static Future<ApiResult<Map<String, dynamic>>> getGoogleCredentialOnly([AppLocalizations? s]) async {
+  static Future<ApiResult<Map<String, dynamic>>> getGoogleCredentialOnly([
+    AppLocalizations? s,
+  ]) async {
     debugPrint('🔵 Google: Getting credential only');
     try {
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        return const ApiResult.fail('cancelled', details: 'User cancelled sign-in');
+        return const ApiResult.fail(
+          'cancelled',
+          details: 'User cancelled sign-in',
+        );
       }
 
       final googleAuth = await googleUser.authentication;
@@ -379,12 +402,17 @@ class ApiService {
         'photoUrl': googleUser.photoUrl,
       });
     } catch (e) {
-      return ApiResult.fail('google_failed', details: mapFirebaseErrorToArabic(e, s));
+      return ApiResult.fail(
+        'google_failed',
+        details: mapFirebaseErrorToArabic(e, s),
+      );
     }
   }
 
   /// SCHRITT 2: Sign-In mit gespeicherter Credential UND Store-Check
-  static Future<ApiResult<Map<String, dynamic>>> signInWithGoogle([AppLocalizations? s]) async {
+  static Future<ApiResult<Map<String, dynamic>>> signInWithGoogle([
+    AppLocalizations? s,
+  ]) async {
     _isProcessingAuth = true;
     bumpAuthTick();
     try {
@@ -396,7 +424,9 @@ class ApiService {
       }
 
       final pending = _pendingGoogleCredential!;
-      final userCredential = await _auth.signInWithCredential(pending.credential);
+      final userCredential = await _auth.signInWithCredential(
+        pending.credential,
+      );
       final uid = userCredential.user!.uid;
       final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
       _isCurrentUserNew = isNewUser;
@@ -406,7 +436,9 @@ class ApiService {
       if (!storeExists) {
         hasStore = false;
 
-        final errorMsg = s?.errorNoStoreFound ?? 'عذراً، لا يوجد حساب مرتبط بهذا البريد الإلكتروني.';
+        final errorMsg =
+            s?.errorNoStoreFound ??
+            'عذراً، لا يوجد حساب مرتبط بهذا البريد الإلكتروني.';
 
         return ApiResult.fail(
           'no_store',
@@ -431,12 +463,11 @@ class ApiService {
         hasStore = false;
         await clearAuth();
 
-        final errorMsg = s?.errorAccountExpired ?? 'انتهت مهلة تفعيل الحساب. يرجى التسجيل من جديد.';
+        final errorMsg =
+            s?.errorAccountExpired ??
+            'انتهت مهلة تفعيل الحساب. يرجى التسجيل من جديد.';
 
-        return ApiResult.fail(
-          'expired',
-          details: errorMsg,
-        );
+        return ApiResult.fail('expired', details: errorMsg);
       }
 
       return ApiResult.ok({
@@ -449,7 +480,10 @@ class ApiService {
     } catch (e) {
       _pendingGoogleCredential = null;
       await clearAuth();
-      return ApiResult.fail('google_failed', details: mapFirebaseErrorToArabic(e, s));
+      return ApiResult.fail(
+        'google_failed',
+        details: mapFirebaseErrorToArabic(e, s),
+      );
     } finally {
       _isProcessingAuth = false;
       bumpAuthTick();
@@ -575,7 +609,8 @@ class ApiService {
         storeName: storeName,
       );
 
-      final loginEmail = _pendingGoogleCredential?.email ?? _auth.currentUser?.email ?? '';
+      final loginEmail =
+          _pendingGoogleCredential?.email ?? _auth.currentUser?.email ?? '';
 
       // ═══════════════════════════════════════════════════════════════════════
       // DUAL COLLECTION WRITE
@@ -607,7 +642,10 @@ class ApiService {
         await batch.commit();
       } catch (e) {
         await _handleRegistrationFailure(isNewUser: isNewUser);
-        return ApiResult.fail('store_creation_failed', details: mapFirebaseErrorToArabic(e, s));
+        return ApiResult.fail(
+          'store_creation_failed',
+          details: mapFirebaseErrorToArabic(e, s),
+        );
       }
 
       try {
@@ -625,7 +663,10 @@ class ApiService {
           await batch.commit();
         } catch (_) {}
         await _handleRegistrationFailure(isNewUser: isNewUser);
-        return ApiResult.fail('slug_creation_failed', details: mapFirebaseErrorToArabic(e, s));
+        return ApiResult.fail(
+          'slug_creation_failed',
+          details: mapFirebaseErrorToArabic(e, s),
+        );
       }
 
       hasStore = true;
@@ -634,18 +675,22 @@ class ApiService {
       await StorePrefs.setStoreId(uid);
       await fetchStoreConfig();
 
-
       return ApiResult.ok({'storeId': uid});
     } catch (e) {
       await _handleRegistrationFailure(isNewUser: _isCurrentUserNew);
-      return ApiResult.fail('registration_failed', details: mapFirebaseErrorToArabic(e, s));
+      return ApiResult.fail(
+        'registration_failed',
+        details: mapFirebaseErrorToArabic(e, s),
+      );
     } finally {
       _isProcessingAuth = false;
       bumpAuthTick();
     }
   }
 
-  static Future<void> _handleRegistrationFailure({required bool isNewUser}) async {
+  static Future<void> _handleRegistrationFailure({
+    required bool isNewUser,
+  }) async {
     if (isNewUser && _auth.currentUser != null) {
       try {
         await _auth.currentUser!.delete();
@@ -674,7 +719,9 @@ class ApiService {
     } catch (_) {}
   }
 
-  static Future<void> cleanupFailedGoogleSignIn({bool deleteUser = false}) async {
+  static Future<void> cleanupFailedGoogleSignIn({
+    bool deleteUser = false,
+  }) async {
     await _handleRegistrationFailure(isNewUser: deleteUser);
   }
 
@@ -714,9 +761,18 @@ class ApiService {
 
       // Überschreibe mit benutzerdefinierten Werten aus store Map
       final allowedPublicFields = {
-        'currency', 'page_description', 'phone', 'whatsapp', 'address',
-        'shipping', 'shipping_price', 'has_logo', 'working_hours',
-        'tiktok', 'instagram', 'facebook',
+        'currency',
+        'page_description',
+        'phone',
+        'whatsapp',
+        'address',
+        'shipping',
+        'shipping_price',
+        'has_logo',
+        'working_hours',
+        'tiktok',
+        'instagram',
+        'facebook',
       };
       for (final key in allowedPublicFields) {
         if (store.containsKey(key)) {
@@ -754,7 +810,10 @@ class ApiService {
       return ApiResult.ok({'storeId': uid});
     } catch (e) {
       await _auth.signOut();
-      return ApiResult.fail('registration_failed', details: mapFirebaseErrorToArabic(e, s));
+      return ApiResult.fail(
+        'registration_failed',
+        details: mapFirebaseErrorToArabic(e, s),
+      );
     } finally {
       _isProcessingAuth = false;
       bumpAuthTick();
@@ -800,10 +859,16 @@ class ApiService {
   // PRODUCTS - unter stores_public/{storeId}/products
   // ═══════════════════════════════════════════════════════════════════════════
 
-  static Future<List<Product>> fetchProducts({bool forceRefresh = false, String? v}) async {
+  static Future<List<Product>> fetchProducts({
+    bool forceRefresh = false,
+    String? v,
+  }) async {
     if (_storeId == null) return [];
     try {
-      final snapshot = await _storesPublic.doc(_storeId).collection('products').get();
+      final snapshot = await _storesPublic
+          .doc(_storeId)
+          .collection('products')
+          .get();
       final products = snapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
@@ -835,9 +900,15 @@ class ApiService {
   static Future<bool> updateProduct(Product product) async {
     if (_storeId == null) return false;
     try {
-      await _storesPublic.doc(_storeId).collection('products').doc(product.id).update(product.toJson());
+      await _storesPublic
+          .doc(_storeId)
+          .collection('products')
+          .doc(product.id)
+          .update(product.toJson());
       if (_cachedProducts != null) {
-        final updated = _cachedProducts!.map((p) => p.id == product.id ? product : p).toList();
+        final updated = _cachedProducts!
+            .map((p) => p.id == product.id ? product : p)
+            .toList();
         _updateProductsNotifier(updated);
       }
       return true;
@@ -846,11 +917,17 @@ class ApiService {
     }
   }
 
-  static Future<bool> updateCategoryOffers(String category, Map<String, dynamic> offerData) async {
+  static Future<bool> updateCategoryOffers(
+    String category,
+    Map<String, dynamic> offerData,
+  ) async {
     if (_storeId == null) return false;
     try {
-      final snapshot = await _storesPublic.doc(_storeId).collection('products')
-          .where('category', isEqualTo: category).get();
+      final snapshot = await _storesPublic
+          .doc(_storeId)
+          .collection('products')
+          .where('category', isEqualTo: category)
+          .get();
       final batch = _db.batch();
       for (var doc in snapshot.docs) {
         batch.update(doc.reference, offerData);
@@ -869,7 +946,9 @@ class ApiService {
       await _deleteProductImages(_storeId!, id);
       await _storesPublic.doc(_storeId).collection('products').doc(id).delete();
       if (_cachedProducts != null) {
-        _updateProductsNotifier(_cachedProducts!.where((p) => p.id != id).toList());
+        _updateProductsNotifier(
+          _cachedProducts!.where((p) => p.id != id).toList(),
+        );
       }
       return true;
     } catch (e) {
@@ -877,14 +956,19 @@ class ApiService {
     }
   }
 
-  static Future<void> _deleteProductImages(String storeId, String productId) async {
-    final storage = FirebaseStorage.instanceFor(bucket: 'gs://aldeebtech-1ec64.firebasestorage.app');
+  static Future<void> _deleteProductImages(
+    String storeId,
+    String productId,
+  ) async {
+    final storage = FirebaseStorage.instanceFor(
+      bucket: 'gs://aldeebtech-1ec64.firebasestorage.app',
+    );
     final basePath = 'stores/$storeId/products/$productId';
     final files = [
       '$basePath/image.jpg',
       '$basePath/image.jpeg',
       '$basePath/image_360x360.jpeg',
-      '$basePath/image_1600x1600.jpeg'
+      '$basePath/image_1600x1600.jpeg',
     ];
     for (final path in files) {
       try {
@@ -897,9 +981,17 @@ class ApiService {
   // CATEGORIES
   // ═══════════════════════════════════════════════════════════════════════════
 
-  static Future<List<String>> fetchCategories({bool forceRefresh = false}) async {
+  static Future<List<String>> fetchCategories({
+    bool forceRefresh = false,
+  }) async {
     final products = await fetchProducts(forceRefresh: forceRefresh);
-    final list = products.map((p) => p.category.trim()).where((c) => c.isNotEmpty).toSet().toList()..sort();
+    final list =
+        products
+            .map((p) => p.category.trim())
+            .where((c) => c.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     _cachedCategories = list;
     return list;
   }
@@ -907,8 +999,11 @@ class ApiService {
   static Future<bool> renameCategory(String oldName, String newName) async {
     if (_storeId == null) return false;
     try {
-      final snapshot = await _storesPublic.doc(_storeId).collection('products')
-          .where('category', isEqualTo: oldName).get();
+      final snapshot = await _storesPublic
+          .doc(_storeId)
+          .collection('products')
+          .where('category', isEqualTo: oldName)
+          .get();
       final batch = _db.batch();
       for (var doc in snapshot.docs) {
         batch.update(doc.reference, {'category': newName});
@@ -921,11 +1016,17 @@ class ApiService {
     }
   }
 
-  static Future<bool> deleteCategory(String name, {String moveToCategory = 'اخرى'}) async {
+  static Future<bool> deleteCategory(
+    String name, {
+    String moveToCategory = 'اخرى',
+  }) async {
     if (_storeId == null) return false;
     try {
-      final snapshot = await _storesPublic.doc(_storeId).collection('products')
-          .where('category', isEqualTo: name).get();
+      final snapshot = await _storesPublic
+          .doc(_storeId)
+          .collection('products')
+          .where('category', isEqualTo: name)
+          .get();
       final batch = _db.batch();
       for (var doc in snapshot.docs) {
         batch.update(doc.reference, {'category': moveToCategory});
@@ -984,14 +1085,14 @@ class ApiService {
       await StoreConfigService.set(dataForCache);
 
       return data;
-
     } catch (e) {
       debugPrint('fetchStoreConfig Error: $e');
       return null;
     }
   }
 
-  static Future<Map<String, dynamic>?> fetchWebsiteStatus() async => await fetchStoreConfig();
+  static Future<Map<String, dynamic>?> fetchWebsiteStatus() async =>
+      await fetchStoreConfig();
 
   // ═══════════════════════════════════════════════════════════════════════════
   // STORE UPDATE - SPLIT WRITES
@@ -999,16 +1100,39 @@ class ApiService {
 
   /// Öffentliche Felder die in stores_public geschrieben werden
   static const Set<String> _publicFields = {
-    'store_name', 'store_slug', 'store_id', 'currency', 'page_description',
-    'phone', 'whatsapp', 'email_support', 'address', 'shipping', 'shipping_price',
-    'has_logo', 'working_hours', 'tiktok', 'instagram', 'facebook',
-    'public_store_url', 'customer_message', 'customer_message_expiry',
+    'store_name',
+    'store_slug',
+    'store_id',
+    'currency',
+    'page_description',
+    'phone',
+    'whatsapp',
+    'email_support',
+    'address',
+    'shipping',
+    'shipping_price',
+    'has_logo',
+    'working_hours',
+    'tiktok',
+    'instagram',
+    'facebook',
+    'public_store_url',
+    'customer_message',
+    'customer_message_expiry',
   };
 
   /// Private Felder die in stores_private geschrieben werden
   static const Set<String> _privateFields = {
-    'email_login', 'owner_email', 'auth_provider', 'is_verified', 'verified_at',
-    'created_at', 'require_email_verify', 'address_country', 'region', 'access',
+    'email_login',
+    'owner_email',
+    'auth_provider',
+    'is_verified',
+    'verified_at',
+    'created_at',
+    'require_email_verify',
+    'address_country',
+    'region',
+    'access',
   };
 
   /// Aktualisiert Store-Daten in den richtigen Collections
@@ -1062,7 +1186,9 @@ class ApiService {
     }
     if (value is Map) {
       return Map<String, dynamic>.fromEntries(
-        value.entries.map((e) => MapEntry(e.key.toString(), _sanitizeForJson(e.value))),
+        value.entries.map(
+          (e) => MapEntry(e.key.toString(), _sanitizeForJson(e.value)),
+        ),
       );
     }
     if (value is List) {
@@ -1077,7 +1203,8 @@ class ApiService {
     final items = _cachedProducts ?? [];
     final snippets = <String>[];
     for (final p in items) {
-      final parts = p.description.trim()
+      final parts = p.description
+          .trim()
           .split(RegExp(r'[\n•]+'))
           .map((s) => s.trim())
           .where((s) => s.length >= 8 && s.length <= 90)
@@ -1122,12 +1249,17 @@ class ApiService {
     }
   }
 
-  static Future<bool> setCustomerMessage(String message, {DateTime? expiryDate}) async {
+  static Future<bool> setCustomerMessage(
+    String message, {
+    DateTime? expiryDate,
+  }) async {
     if (_storeId == null) return false;
     try {
       await _storesPublic.doc(_storeId).update({
         'customer_message': message,
-        'customer_message_expiry': expiryDate != null ? Timestamp.fromDate(expiryDate) : null,
+        'customer_message_expiry': expiryDate != null
+            ? Timestamp.fromDate(expiryDate)
+            : null,
       });
       return true;
     } catch (e) {
@@ -1200,7 +1332,10 @@ class ApiService {
     }
   }
 
-  static Future<Product?> getPublicProductBySlug(String slug, String productId) async {
+  static Future<Product?> getPublicProductBySlug(
+    String slug,
+    String productId,
+  ) async {
     try {
       final slugDoc = await _slugs.doc(slug).get();
       if (!slugDoc.exists) return null;

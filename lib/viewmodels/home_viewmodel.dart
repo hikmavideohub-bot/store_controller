@@ -39,7 +39,8 @@ class HomeViewModel extends BaseViewModel {
   String get customerMessage => _customerMessage; // Getter für UI
 
   /// Store-Name wird jetzt über ValueNotifier verwaltet für sofortige Updates
-  String? get storeName => ApiService.storeNameNotifier.value ?? ApiService.storeName;
+  String? get storeName =>
+      ApiService.storeNameNotifier.value ?? ApiService.storeName;
   String? get publicStoreUrl {
     final s = StoreConfigService.store;
     final url = (s?['public_store_url'] ?? '').toString().trim();
@@ -54,12 +55,13 @@ class HomeViewModel extends BaseViewModel {
     return s.inviteText(name, url);
   }
 
-  List<String> get categories => _products
-      .map((p) => p.category.trim())
-      .where((c) => c.isNotEmpty)
-      .toSet()
-      .toList()
-    ..sort();
+  List<String> get categories =>
+      _products
+          .map((p) => p.category.trim())
+          .where((c) => c.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
 
   // ===========================================
   // STATISTIKEN
@@ -68,8 +70,10 @@ class HomeViewModel extends BaseViewModel {
   int get totalProducts => _products.length;
   int get activeProducts => _products.where((p) => p.productActive).length;
   int get inactiveProducts => totalProducts - activeProducts;
-  int get productsWithOffer => _products.where((p) => p.hasOffer && p.offerActive).length;
-  int get productsWithoutImage => _products.where((p) => p.image.trim().isEmpty).length;
+  int get productsWithOffer =>
+      _products.where((p) => p.hasOffer && p.offerActive).length;
+  int get productsWithoutImage =>
+      _products.where((p) => p.image.trim().isEmpty).length;
 
   /// Anzahl der Kategorien wo ALLE Produkte ein aktives Angebot haben
   int get categoriesWithFullOffers {
@@ -85,7 +89,8 @@ class HomeViewModel extends BaseViewModel {
 
     // Prüfe ob ALLE Produkte einer Kategorie im Angebot sind
     catProducts.forEach((cat, products) {
-      if (products.isNotEmpty && products.every((p) => p.hasOffer && p.offerActive)) {
+      if (products.isNotEmpty &&
+          products.every((p) => p.hasOffer && p.offerActive)) {
         result.add(cat);
       }
     });
@@ -107,7 +112,8 @@ class HomeViewModel extends BaseViewModel {
 
     // Prüfe ob ALLE Produkte einer Kategorie im Angebot sind
     catProducts.forEach((cat, products) {
-      if (products.isNotEmpty && products.every((p) => p.hasOffer && p.offerActive)) {
+      if (products.isNotEmpty &&
+          products.every((p) => p.hasOffer && p.offerActive)) {
         result.add(cat);
       }
     });
@@ -135,11 +141,16 @@ class HomeViewModel extends BaseViewModel {
     return MapEntry(topCat, topCatN);
   }
 
-  List<Product> getActiveProducts() => _products.where((p) => p.productActive).toList();
-  List<Product> getInactiveProducts() => _products.where((p) => !p.productActive).toList();
-  List<Product> getProductsWithOffer() => _products.where((p) => p.hasOffer && p.offerActive).toList();
-  List<Product> getProductsWithoutImage() => _products.where((p) => p.image.trim().isEmpty).toList();
-  List<Product> getProductsByCategory(String category) => _products.where((p) => p.category.trim() == category).toList();
+  List<Product> getActiveProducts() =>
+      _products.where((p) => p.productActive).toList();
+  List<Product> getInactiveProducts() =>
+      _products.where((p) => !p.productActive).toList();
+  List<Product> getProductsWithOffer() =>
+      _products.where((p) => p.hasOffer && p.offerActive).toList();
+  List<Product> getProductsWithoutImage() =>
+      _products.where((p) => p.image.trim().isEmpty).toList();
+  List<Product> getProductsByCategory(String category) =>
+      _products.where((p) => p.category.trim() == category).toList();
 
   // ===========================================
   // INITIALIZATION
@@ -240,9 +251,11 @@ class HomeViewModel extends BaseViewModel {
     }
   }
 
-  Future<void> syncAllData(AppLocalizations? s) async => await loadProducts(s, silent: false);
+  Future<void> syncAllData(AppLocalizations? s) async =>
+      await loadProducts(s, silent: false);
 
-  Future<bool> applyOfferToCategory(AppLocalizations s, {
+  Future<bool> applyOfferToCategory(
+    AppLocalizations s, {
     required String category,
     required String offerType,
     required double value, // percent or bundlePrice
@@ -258,8 +271,10 @@ class HomeViewModel extends BaseViewModel {
       'percent': offerType == 'percent' ? value : 0,
       'bundle_price': offerType == 'bundle' ? value : 0,
       'bundle_qty': offerType == 'bundle' ? (bundleQty ?? 0) : 0,
-      'offer_start_date': "${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}",
-      'offer_end_date': "${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}",
+      'offer_start_date':
+          "${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}",
+      'offer_end_date':
+          "${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}",
     };
 
     try {
@@ -275,11 +290,12 @@ class HomeViewModel extends BaseViewModel {
   }
 
   /// Deaktiviert alle Angebote für eine Kategorie
-  Future<bool> disableOffersForCategory(AppLocalizations s, String category) async {
+  Future<bool> disableOffersForCategory(
+    AppLocalizations s,
+    String category,
+  ) async {
     setBusy(true);
-    final data = {
-      'offer_active': false,
-    };
+    final data = {'offer_active': false};
 
     try {
       final ok = await ApiService.updateCategoryOffers(category, data);
@@ -308,6 +324,8 @@ class HomeViewModel extends BaseViewModel {
   Future<bool> openExternalUrl(String url) async {
     final uri = Uri.tryParse(url.trim());
     if (uri == null) return false;
-    return await canLaunchUrl(uri) ? await launchUrl(uri, mode: LaunchMode.externalApplication) : false;
+    return await canLaunchUrl(uri)
+        ? await launchUrl(uri, mode: LaunchMode.externalApplication)
+        : false;
   }
 }

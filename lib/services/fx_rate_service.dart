@@ -84,8 +84,9 @@ class FxRateService {
       _cacheTimestamp = DateTime.now();
       _cacheSource = data['source']?.toString() ?? 'fixer';
 
-      debugPrint('[FxRateService] Loaded ${_ratesCache!.length} rates from $_cacheSource');
-
+      debugPrint(
+        '[FxRateService] Loaded ${_ratesCache!.length} rates from $_cacheSource',
+      );
     } catch (e) {
       debugPrint('[FxRateService] Error loading rates: $e');
       _ratesCache ??= {};
@@ -129,7 +130,9 @@ class FxRateService {
       fxRate: rate,
       baseCurrency: 'eur',
       targetCurrency: normalized,
-      timestamp: _cacheTimestamp?.toIso8601String() ?? DateTime.now().toIso8601String(),
+      timestamp:
+          _cacheTimestamp?.toIso8601String() ??
+          DateTime.now().toIso8601String(),
       source: _cacheSource ?? 'fixer',
       isFallback: false,
     );

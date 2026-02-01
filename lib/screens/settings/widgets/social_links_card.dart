@@ -22,7 +22,10 @@ class SocialLinksCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(s.socialLinksTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              s.socialLinksTitle,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const SizedBox(height: 16),
 
             // 1. HIER IST JETZT DIE E-MAIL (Zuerst)
@@ -38,15 +41,28 @@ class SocialLinksCard extends StatelessWidget {
             const Divider(height: 24),
 
             // 3. SOCIAL MEDIA (Danach)
-            _SocialField(controller: vm.tiktokCtrl, label: s.socialTiktok, icon: Icons.music_note),
+            _SocialField(
+              controller: vm.tiktokCtrl,
+              label: s.socialTiktok,
+              icon: Icons.music_note,
+            ),
             const SizedBox(height: 12),
-            _SocialField(controller: vm.instagramCtrl, label: s.socialInstagram, icon: Icons.camera_alt),
+            _SocialField(
+              controller: vm.instagramCtrl,
+              label: s.socialInstagram,
+              icon: Icons.camera_alt,
+            ),
             const SizedBox(height: 12),
-            _SocialField(controller: vm.facebookCtrl, label: s.socialFacebook, icon: Icons.facebook),
+            _SocialField(
+              controller: vm.facebookCtrl,
+              label: s.socialFacebook,
+              icon: Icons.facebook,
+            ),
           ],
         ),
       ),
-    );  }
+    );
+  }
 }
 
 class _SocialField extends StatelessWidget {
@@ -55,7 +71,12 @@ class _SocialField extends StatelessWidget {
   final IconData icon;
   final String? hint;
 
-  const _SocialField({required this.controller, required this.label, required this.icon, this.hint});
+  const _SocialField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.hint,
+  });
 
   @override
   Widget build(BuildContext context) {

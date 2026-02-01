@@ -114,7 +114,11 @@ class CategoriesViewModel extends BaseViewModel {
   // ===========================================
 
   /// Benennt eine Kategorie um
-  Future<bool> renameCategory(AppLocalizations s, String oldName, String newName) async {
+  Future<bool> renameCategory(
+    AppLocalizations s,
+    String oldName,
+    String newName,
+  ) async {
     if (!canWrite) return false;
     if (oldName == newName) return false;
 
@@ -137,7 +141,11 @@ class CategoriesViewModel extends BaseViewModel {
   }
 
   /// Löscht eine Kategorie und verschiebt Produkte
-  Future<bool> deleteCategory(AppLocalizations s, String name, {String? moveToCategory}) async {
+  Future<bool> deleteCategory(
+    AppLocalizations s,
+    String name, {
+    String? moveToCategory,
+  }) async {
     if (!canWrite) return false;
 
     // Wenn kein Ziel angegeben ist, nutzen wir den lokalisierten "Others" String
@@ -146,7 +154,10 @@ class CategoriesViewModel extends BaseViewModel {
     setBusy(true);
 
     try {
-      final success = await ApiService.deleteCategory(name, moveToCategory: targetCat);
+      final success = await ApiService.deleteCategory(
+        name,
+        moveToCategory: targetCat,
+      );
 
       if (success) {
         await reload(s, silent: true);

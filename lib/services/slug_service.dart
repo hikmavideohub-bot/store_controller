@@ -61,7 +61,9 @@ class SlugService {
 
         if (success) {
           if (kDebugMode) {
-            debugPrint('SlugService: Reserved slug "$candidateSlug" for store $storeId');
+            debugPrint(
+              'SlugService: Reserved slug "$candidateSlug" for store $storeId',
+            );
           }
           return candidateSlug;
         }
@@ -79,7 +81,8 @@ class SlugService {
     }
 
     // Fallback: use timestamp-based slug if all attempts fail
-    final fallbackSlug = '${baseSlug.substring(0, baseSlug.length.clamp(0, 20))}-${DateTime.now().millisecondsSinceEpoch}';
+    final fallbackSlug =
+        '${baseSlug.substring(0, baseSlug.length.clamp(0, 20))}-${DateTime.now().millisecondsSinceEpoch}';
 
     final success = await _tryReserveSlug(
       slug: fallbackSlug,
@@ -91,7 +94,9 @@ class SlugService {
       return fallbackSlug;
     }
 
-    throw Exception('Failed to reserve slug after $_maxSuffixAttempts attempts');
+    throw Exception(
+      'Failed to reserve slug after $_maxSuffixAttempts attempts',
+    );
   }
 
   /// Atomic slug reservation using Firestore transaction.
@@ -176,7 +181,8 @@ class SlugService {
     }
 
     // Fallback with timestamp
-    final fallbackSlug = '${baseSlug.substring(0, baseSlug.length.clamp(0, 20))}-${DateTime.now().millisecondsSinceEpoch}';
+    final fallbackSlug =
+        '${baseSlug.substring(0, baseSlug.length.clamp(0, 20))}-${DateTime.now().millisecondsSinceEpoch}';
     return (fallbackSlug, '$baseUrl$fallbackSlug');
   }
 

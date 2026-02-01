@@ -47,20 +47,24 @@ class LocalePrefs {
     if (code == null) return const Locale('ar'); // Standard: Arabisch
     return Locale(code);
   }
+
   static Future<void> save(Locale locale) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_k, locale.languageCode);
   }
 }
 
-
 class ThemePrefs {
   static const _k = 'theme_mode';
   static Future<AppThemeMode> load() async {
     final sp = await SharedPreferences.getInstance();
     final v = sp.getString(_k) ?? 'system';
-    return AppThemeMode.values.firstWhere((e) => e.name == v, orElse: () => AppThemeMode.system);
+    return AppThemeMode.values.firstWhere(
+      (e) => e.name == v,
+      orElse: () => AppThemeMode.system,
+    );
   }
+
   static Future<void> save(AppThemeMode mode) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_k, mode.name);
@@ -108,11 +112,13 @@ currency conversion in subscription pricing.''',
 
   if (!hasPrivacyConsent) {
     // Zeige Consent-Dialog ohne Firebase
-    runApp(PrivacyConsentApp(
-      initialLocale: savedLocale,
-      initialTheme: savedTheme,
-      onAccepted: _initializeApp,
-    ));
+    runApp(
+      PrivacyConsentApp(
+        initialLocale: savedLocale,
+        initialTheme: savedTheme,
+        onAccepted: _initializeApp,
+      ),
+    );
     return;
   }
 
@@ -137,11 +143,13 @@ Future<void> _initializeApp(Locale savedLocale, AppThemeMode savedTheme) async {
 
   await StoreConfigService.load();
 
-  runApp(MyApp(
+  runApp(
+    MyApp(
       initialTheme: savedTheme,
       initialLocale: savedLocale,
-      sessionResult: _sessionValidationResult
-  ));
+      sessionResult: _sessionValidationResult,
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -153,7 +161,7 @@ class MyApp extends StatefulWidget {
     super.key,
     required this.initialTheme,
     required this.initialLocale, // NEU
-    this.sessionResult
+    this.sessionResult,
   });
 
   // Router bleibt unverändert...
@@ -179,7 +187,14 @@ class MyApp extends StatefulWidget {
       final loc = state.matchedLocation;
 
       if (!loggedIn) {
-        if (['/login', '/register', '/forgot-password', '/reset-password'].contains(loc)) return null;
+        if ([
+          '/login',
+          '/register',
+          '/forgot-password',
+          '/reset-password',
+        ].contains(loc)) {
+          return null;
+        }
         return '/login';
       }
       if (!hasStore) {
@@ -190,11 +205,16 @@ class MyApp extends StatefulWidget {
         }
         return '/login';
       }
-      if (!emailVerified && loc != '/verify-email' && loc != '/payment' && loc != '/setup') {
+      if (!emailVerified &&
+          loc != '/verify-email' &&
+          loc != '/payment' &&
+          loc != '/setup') {
         return '/verify-email';
       }
-      final storeName = StoreConfigService.store?['store_name']?.toString().trim() ?? '';
-      final setupCompleteFlag = StoreConfigService.store?['setup_complete'] == true;
+      final storeName =
+          StoreConfigService.store?['store_name']?.toString().trim() ?? '';
+      final setupCompleteFlag =
+          StoreConfigService.store?['setup_complete'] == true;
       final bool setupComplete = storeName.isNotEmpty && setupCompleteFlag;
 
       if (!setupComplete) {
@@ -209,35 +229,77 @@ class MyApp extends StatefulWidget {
     routes: [
       GoRoute(
         path: '/',
-        redirect: (_, __) => '/home', // Leitet automatisch weiter
+        redirect: (_, _) => '/home', // Leitet automatisch weiter
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeShell()),
-      GoRoute(path: '/setup', builder: (context, state) => const SettingsScreen(firstSetup: true)),
-      GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen(firstSetup: false)),
-      GoRoute(path: '/products', builder: (context, state) => const ProductsScreen()),
-      GoRoute(path: '/add', builder: (context, state) => const AddProductScreen()),
-      GoRoute(path: '/edit/:id', builder: (context, state) => AddProductScreen(productToEdit: state.extra as Product?)),
-      GoRoute(path: '/categories', builder: (context, state) => const CategoriesScreen()),
-      GoRoute(path: '/customer-message', builder: (context, state) => const CustomerMessageScreen()),
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-      GoRoute(path: '/forgot-password', builder: (context, state) => const ForgotPasswordScreen()),
-      GoRoute(path: '/reset-password', builder: (context, state) => ResetPasswordScreen(username: (state.extra as Map?)?['username'] ?? '')),
-      GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
-      GoRoute(path: '/verify-email', builder: (context, state) => EmailVerifyScreen(
-        storeId: ApiService.storeId ?? '',
-        username: ApiService.currentUserEmail,
-      )),
-      GoRoute(path: '/subscription', builder: (context, state) => const SubscriptionInfoScreen()),
       GoRoute(
-          path: '/payment',
-          builder: (context, state) {
-            final extras = state.extra as Map?;
-            return PaymentScreen(
-              initialPlanId: extras?['plan']?.toString() ?? state.uri.queryParameters['plan'],
-              returnUrl: extras?['returnUrl']?.toString() ?? '/home',
-              paymentSuccess: state.uri.queryParameters['success'] == 'true',
-            );
-          }),
+        path: '/setup',
+        builder: (context, state) => const SettingsScreen(firstSetup: true),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(firstSetup: false),
+      ),
+      GoRoute(
+        path: '/products',
+        builder: (context, state) => const ProductsScreen(),
+      ),
+      GoRoute(
+        path: '/add',
+        builder: (context, state) => const AddProductScreen(),
+      ),
+      GoRoute(
+        path: '/edit/:id',
+        builder: (context, state) =>
+            AddProductScreen(productToEdit: state.extra as Product?),
+      ),
+      GoRoute(
+        path: '/categories',
+        builder: (context, state) => const CategoriesScreen(),
+      ),
+      GoRoute(
+        path: '/customer-message',
+        builder: (context, state) => const CustomerMessageScreen(),
+      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (context, state) => ResetPasswordScreen(
+          username: (state.extra as Map?)?['username'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        builder: (context, state) => EmailVerifyScreen(
+          storeId: ApiService.storeId ?? '',
+          username: ApiService.currentUserEmail,
+        ),
+      ),
+      GoRoute(
+        path: '/subscription',
+        builder: (context, state) => const SubscriptionInfoScreen(),
+      ),
+      GoRoute(
+        path: '/payment',
+        builder: (context, state) {
+          final extras = state.extra as Map?;
+          return PaymentScreen(
+            initialPlanId:
+                extras?['plan']?.toString() ??
+                state.uri.queryParameters['plan'],
+            returnUrl: extras?['returnUrl']?.toString() ?? '/home',
+            paymentSuccess: state.uri.queryParameters['success'] == 'true',
+          );
+        },
+      ),
     ],
   );
 
@@ -245,11 +307,20 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 
   // Statische Accessors für Child-Widgets
-  static AppThemeMode? themeOf(BuildContext context) => context.findAncestorStateOfType<_MyAppState>()?.mode;
-  static Locale? localeOf(BuildContext context) => context.findAncestorStateOfType<_MyAppState>()?._locale; // NEU
+  static AppThemeMode? themeOf(BuildContext context) =>
+      context.findAncestorStateOfType<_MyAppState>()?.mode;
+  static Locale? localeOf(BuildContext context) =>
+      context.findAncestorStateOfType<_MyAppState>()?._locale; // NEU
 
-  static Future<void> setThemeOf(BuildContext context, AppThemeMode mode) async => await context.findAncestorStateOfType<_MyAppState>()?.setTheme(mode);
-  static Future<void> setLocaleOf(BuildContext context, Locale locale) async => await context.findAncestorStateOfType<_MyAppState>()?.setLocale(locale); // NEU
+  static Future<void> setThemeOf(
+    BuildContext context,
+    AppThemeMode mode,
+  ) async =>
+      await context.findAncestorStateOfType<_MyAppState>()?.setTheme(mode);
+  static Future<void> setLocaleOf(BuildContext context, Locale locale) async =>
+      await context.findAncestorStateOfType<_MyAppState>()?.setLocale(
+        locale,
+      ); // NEU
 }
 
 class _MyAppState extends State<MyApp> {
@@ -267,8 +338,16 @@ class _MyAppState extends State<MyApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final res = widget.sessionResult;
       // Hier nutzen wir noch statische Texte für Systemfehler, das ist okay
-      if (res == 'expired') SessionMessageHelper.setMessage('انتهت مهلة تفعيل الحساب. يرجى التسجيل من جديد.');
-      if (res == 'no_store') SessionMessageHelper.setMessage('الحساب غير مسجل. يرجى إنشاء متجر جديد.');
+      if (res == 'expired') {
+        SessionMessageHelper.setMessage(
+          'انتهت مهلة تفعيل الحساب. يرجى التسجيل من جديد.',
+        );
+      }
+      if (res == 'no_store') {
+        SessionMessageHelper.setMessage(
+          'الحساب غير مسجل. يرجى إنشاء متجر جديد.',
+        );
+      }
     });
   }
 
@@ -294,7 +373,9 @@ class _MyAppState extends State<MyApp> {
 
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: _mode == AppThemeMode.system ? ThemeMode.system : (_mode == AppThemeMode.dark ? ThemeMode.dark : ThemeMode.light),
+      themeMode: _mode == AppThemeMode.system
+          ? ThemeMode.system
+          : (_mode == AppThemeMode.dark ? ThemeMode.dark : ThemeMode.light),
 
       locale: _locale, // HIER WIRD DIE SPRACHE GESETZT
 

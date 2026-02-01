@@ -5,7 +5,10 @@ class CacheStore {
   static Box get _box => Hive.box('cache');
 
   // ---------- JSON List (List<Map<String,dynamic>>) ----------
-  static Future<void> saveJsonList(String key, List<Map<String, dynamic>> items) async {
+  static Future<void> saveJsonList(
+    String key,
+    List<Map<String, dynamic>> items,
+  ) async {
     await _box.put(key, jsonEncode(items));
   }
 

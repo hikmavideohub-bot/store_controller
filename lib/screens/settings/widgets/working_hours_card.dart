@@ -9,7 +9,15 @@ class WorkingHoursCard extends StatelessWidget {
   const WorkingHoursCard({super.key, required this.vm});
 
   // Die Reihenfolge der Keys
-  static const List<String> _weekKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  static const List<String> _weekKeys = [
+    'mon',
+    'tue',
+    'wed',
+    'thu',
+    'fri',
+    'sat',
+    'sun',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -23,10 +31,15 @@ class WorkingHoursCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: ExpansionTile(
-        title: Text(s.workingHoursTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          s.workingHoursTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         leading: const Icon(Icons.access_time),
         childrenPadding: const EdgeInsets.all(16),
-        children: _weekKeys.map((dayKey) => _buildDayRow(context, dayKey)).toList(),
+        children: _weekKeys
+            .map((dayKey) => _buildDayRow(context, dayKey))
+            .toList(),
       ),
     );
   }
@@ -52,10 +65,15 @@ class WorkingHoursCard extends StatelessWidget {
             Switch(
               value: !isClosed,
               onChanged: (isOpen) {
-                final WorkingHours newHours = Map<String, List<Map<String, dynamic>>>.from(vm.workingHours);
+                final WorkingHours newHours =
+                    Map<String, List<Map<String, dynamic>>>.from(
+                      vm.workingHours,
+                    );
 
                 if (isOpen) {
-                  newHours[dayKey] = [{'start': '09:00', 'end': '18:00'}];
+                  newHours[dayKey] = [
+                    {'start': '09:00', 'end': '18:00'},
+                  ];
                 } else {
                   newHours[dayKey] = [];
                 }
@@ -67,8 +85,13 @@ class WorkingHoursCard extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.add_circle_outline),
                 onPressed: () {
-                  final newHours = Map<String, List<Map<String, dynamic>>>.from(vm.workingHours);
-                  newHours[dayKey] = [...periods, {'start': '09:00', 'end': '18:00'}];
+                  final newHours = Map<String, List<Map<String, dynamic>>>.from(
+                    vm.workingHours,
+                  );
+                  newHours[dayKey] = [
+                    ...periods,
+                    {'start': '09:00', 'end': '18:00'},
+                  ];
                   vm.updateWorkingHours(newHours);
                 },
               ),
@@ -88,27 +111,36 @@ class WorkingHoursCard extends StatelessWidget {
               child: Row(
                 children: [
                   _TimeButton(
-                      time: start,
-                      onTap: () async {
-                        final t = await _pickTime(context, start);
-                        if (t != null) _updateTime(dayKey, index, 'start', t);
-                      }
+                    time: start,
+                    onTap: () async {
+                      final t = await _pickTime(context, start);
+                      if (t != null) _updateTime(dayKey, index, 'start', t);
+                    },
                   ),
                   const Text(' - '),
                   _TimeButton(
-                      time: end,
-                      onTap: () async {
-                        final t = await _pickTime(context, end);
-                        if (t != null) _updateTime(dayKey, index, 'end', t);
-                      }
+                    time: end,
+                    onTap: () async {
+                      final t = await _pickTime(context, end);
+                      if (t != null) _updateTime(dayKey, index, 'end', t);
+                    },
                   ),
                   const Spacer(),
                   // Löschen Button für Periode
                   IconButton(
-                    icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
+                    icon: const Icon(
+                      Icons.remove_circle_outline,
+                      color: Colors.red,
+                      size: 20,
+                    ),
                     onPressed: () {
-                      final newHours = Map<String, List<Map<String, dynamic>>>.from(vm.workingHours);
-                      final currentList = List<Map<String, dynamic>>.from(newHours[dayKey]!);
+                      final newHours =
+                          Map<String, List<Map<String, dynamic>>>.from(
+                            vm.workingHours,
+                          );
+                      final currentList = List<Map<String, dynamic>>.from(
+                        newHours[dayKey]!,
+                      );
                       currentList.removeAt(index);
                       newHours[dayKey] = currentList;
                       vm.updateWorkingHours(newHours);
@@ -126,19 +158,29 @@ class WorkingHoursCard extends StatelessWidget {
   String _getLocalizedDayName(BuildContext context, String key) {
     final s = AppLocalizations.of(context)!;
     switch (key) {
-      case 'mon': return s.monday;
-      case 'tue': return s.tuesday;
-      case 'wed': return s.wednesday;
-      case 'thu': return s.thursday;
-      case 'fri': return s.friday;
-      case 'sat': return s.saturday;
-      case 'sun': return s.sunday;
-      default: return key;
+      case 'mon':
+        return s.monday;
+      case 'tue':
+        return s.tuesday;
+      case 'wed':
+        return s.wednesday;
+      case 'thu':
+        return s.thursday;
+      case 'fri':
+        return s.friday;
+      case 'sat':
+        return s.saturday;
+      case 'sun':
+        return s.sunday;
+      default:
+        return key;
     }
   }
 
   void _updateTime(String day, int index, String field, String value) {
-    final newHours = Map<String, List<Map<String, dynamic>>>.from(vm.workingHours);
+    final newHours = Map<String, List<Map<String, dynamic>>>.from(
+      vm.workingHours,
+    );
     final list = List<Map<String, dynamic>>.from(newHours[day]!);
     list[index] = Map.from(list[index])..[field] = value;
     newHours[day] = list;
@@ -147,7 +189,10 @@ class WorkingHoursCard extends StatelessWidget {
 
   Future<String?> _pickTime(BuildContext context, String current) async {
     final parts = current.split(':');
-    final initial = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+    final initial = TimeOfDay(
+      hour: int.parse(parts[0]),
+      minute: int.parse(parts[1]),
+    );
 
     final picked = await showTimePicker(
       context: context,
@@ -173,11 +218,13 @@ class _TimeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parts = time.split(':');
-    final tod = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
-    final formattedTime = MaterialLocalizations.of(context).formatTimeOfDay(
-      tod,
-      alwaysUse24HourFormat: false,
+    final tod = TimeOfDay(
+      hour: int.parse(parts[0]),
+      minute: int.parse(parts[1]),
     );
+    final formattedTime = MaterialLocalizations.of(
+      context,
+    ).formatTimeOfDay(tod, alwaysUse24HourFormat: false);
 
     return InkWell(
       onTap: onTap,
@@ -187,7 +234,10 @@ class _TimeButton extends StatelessWidget {
           border: Border.all(color: Colors.grey.shade400),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text(formattedTime, style: const TextStyle(fontWeight: FontWeight.bold)),
+        child: Text(
+          formattedTime,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }

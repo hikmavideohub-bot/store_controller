@@ -27,7 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (trimmed.isEmpty) return null; // Default verwenden
     final firstChar = trimmed.codeUnitAt(0);
     // Arabisch: U+0600–U+06FF, U+0750–U+077F, U+08A0–U+08FF
-    final isArabic = (firstChar >= 0x0600 && firstChar <= 0x06FF) ||
+    final isArabic =
+        (firstChar >= 0x0600 && firstChar <= 0x06FF) ||
         (firstChar >= 0x0750 && firstChar <= 0x077F) ||
         (firstChar >= 0x08A0 && firstChar <= 0x08FF);
     return isArabic ? TextDirection.rtl : TextDirection.ltr;
@@ -149,9 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(
-              s.noStoreMessage,
-            ),
+            Text(s.noStoreMessage),
             if (email != null) ...[
               const SizedBox(height: 12),
               Container(
@@ -190,7 +189,9 @@ class _LoginScreenState extends State<LoginScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              debugPrint('🟢 Login: User wants to register, going to /register');
+              debugPrint(
+                '🟢 Login: User wants to register, going to /register',
+              );
               if (mounted) context.go('/register');
             },
             style: ElevatedButton.styleFrom(
@@ -211,7 +212,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final result = await ApiService.signInWithGoogle();
-      debugPrint('🟢 Login: Got result - ok=${result.ok}, error=${result.error}');
+      debugPrint(
+        '🟢 Login: Got result - ok=${result.ok}, error=${result.error}',
+      );
 
       if (!mounted) return;
 
@@ -334,15 +337,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       icon: _googleBusy
                           ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : Image.asset(
-                        'assets/icon/google_logo.png',
-                        width: 20,
-                        height: 20,
-                      ),
+                              'assets/icon/google_logo.png',
+                              width: 20,
+                              height: 20,
+                            ),
 
                       label: Text(
                         _googleBusy ? s.googleSigningIn : s.googleSignIn,
@@ -360,7 +363,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
                             s.orSeparator,
-                            style: TextStyle(color: colors.onSurface.withValues(alpha: 0.5)),
+                            style: TextStyle(
+                              color: colors.onSurface.withValues(alpha: 0.5),
+                            ),
                           ),
                         ),
                         Expanded(child: Divider(color: theme.dividerColor)),
@@ -373,10 +378,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextFormField(
                       controller: _emailCtrl,
                       enabled: !isAnyBusy,
-                      textDirection: _getTextDirection(_emailCtrl.text) ?? TextDirection.ltr,
+                      textDirection:
+                          _getTextDirection(_emailCtrl.text) ??
+                          TextDirection.ltr,
                       keyboardType: TextInputType.emailAddress,
                       autocorrect: false,
-                      onChanged: (_) => setState(() {}), // Rebuild für Richtungswechsel
+                      onChanged: (_) =>
+                          setState(() {}), // Rebuild für Richtungswechsel
                       decoration: InputDecoration(
                         labelText: s.emailLabel,
                         hintText: s.emailHint,
@@ -400,7 +408,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       enabled: !isAnyBusy,
                       obscureText: _obscure,
                       textDirection: _getTextDirection(_passCtrl.text),
-                      onChanged: (_) => setState(() {}), // Rebuild für Richtungswechsel
+                      onChanged: (_) =>
+                          setState(() {}), // Rebuild für Richtungswechsel
                       decoration: InputDecoration(
                         labelText: s.passwordLabel,
                         prefixIcon: const Icon(Icons.lock_outlined),
@@ -408,8 +417,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         suffixIcon: IconButton(
-                          onPressed: isAnyBusy ? null : () => setState(() => _obscure = !_obscure),
-                          icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                          onPressed: isAnyBusy
+                              ? null
+                              : () => setState(() => _obscure = !_obscure),
+                          icon: Icon(
+                            _obscure ? Icons.visibility : Icons.visibility_off,
+                          ),
                         ),
                       ),
                       validator: (v) {
@@ -422,7 +435,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton(
-                        onPressed: isAnyBusy ? null : () => context.go('/forgot-password'),
+                        onPressed: isAnyBusy
+                            ? null
+                            : () => context.go('/forgot-password'),
                         child: Text(
                           s.forgotPassword,
                           style: TextStyle(color: colors.primary), // Teal
@@ -445,17 +460,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: _busy
                           ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
                           : Text(
-                        s.signInButton,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                      ),
+                              s.signInButton,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
                     ),
 
                     const SizedBox(height: 24),
@@ -466,13 +484,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Text(
                           s.noAccount,
-                          style: TextStyle(color: colors.onSurface.withValues(alpha: 0.7)),
+                          style: TextStyle(
+                            color: colors.onSurface.withValues(alpha: 0.7),
+                          ),
                         ),
                         TextButton(
-                          onPressed: isAnyBusy ? null : () => context.go('/register'),
+                          onPressed: isAnyBusy
+                              ? null
+                              : () => context.go('/register'),
                           child: Text(
                             s.createNewStore,
-                            style: TextStyle(fontWeight: FontWeight.w700, color: colors.primary),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: colors.primary,
+                            ),
                           ),
                         ),
                       ],
@@ -514,20 +539,23 @@ class _LanguagePickerButton extends StatelessWidget {
       offset: const Offset(0, 40),
       onSelected: (locale) => MyApp.setLocaleOf(context, locale),
       itemBuilder: (_) => _languages
-          .map((lang) => PopupMenuItem<Locale>(
-                value: lang.locale,
-                child: Row(
-                  children: [
-                    Text(lang.flag, style: const TextStyle(fontSize: 18)),
-                    const SizedBox(width: 12),
-                    Text(lang.name),
-                    if (lang.locale.languageCode == currentLocale.languageCode) ...[
-                      const Spacer(),
-                      Icon(Icons.check, size: 18, color: colors.primary),
-                    ],
+          .map(
+            (lang) => PopupMenuItem<Locale>(
+              value: lang.locale,
+              child: Row(
+                children: [
+                  Text(lang.flag, style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 12),
+                  Text(lang.name),
+                  if (lang.locale.languageCode ==
+                      currentLocale.languageCode) ...[
+                    const Spacer(),
+                    Icon(Icons.check, size: 18, color: colors.primary),
                   ],
-                ),
-              ))
+                ],
+              ),
+            ),
+          )
           .toList(),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

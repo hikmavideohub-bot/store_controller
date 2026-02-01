@@ -7,10 +7,7 @@ class SubscriptionConfig {
   final List<SubscriptionPlan> plans;
   final String? syriaContactPhone;
 
-  SubscriptionConfig({
-    required this.plans,
-    this.syriaContactPhone,
-  });
+  SubscriptionConfig({required this.plans, this.syriaContactPhone});
 
   factory SubscriptionConfig.fromMap(Map<String, dynamic> data) {
     final syriaContactPhone = data['syria_contact_phone']?.toString();
@@ -18,7 +15,10 @@ class SubscriptionConfig {
 
     final plans = plansMap.entries.map((entry) {
       // entry.key ist z.B. "premium_biannual"
-      return SubscriptionPlan.fromMap(entry.key, entry.value as Map<String, dynamic>);
+      return SubscriptionPlan.fromMap(
+        entry.key,
+        entry.value as Map<String, dynamic>,
+      );
     }).toList();
 
     // Sortiere nach billing_cycle (kürzeste zuerst)
@@ -62,8 +62,11 @@ class SubscriptionPlan {
       discountPercent: _toInt(data['discount_percent']) > 0
           ? _toInt(data['discount_percent'])
           : null,
-      regions: regionsMap.map((key, value) =>
-          MapEntry(key, PlanPricingDetail.fromMap(value as Map<String, dynamic>))
+      regions: regionsMap.map(
+        (key, value) => MapEntry(
+          key,
+          PlanPricingDetail.fromMap(value as Map<String, dynamic>),
+        ),
       ),
     );
   }
@@ -73,11 +76,8 @@ class SubscriptionPlan {
     if (regions.containsKey(regionCode)) {
       return regions[regionCode]!;
     }
-    return regions['global'] ?? PlanPricingDetail(
-      monthlyPrice: 0,
-      currency: 'USD',
-      provider: 'manual',
-    );
+    return regions['global'] ??
+        PlanPricingDetail(monthlyPrice: 0, currency: 'USD', provider: 'manual');
   }
 
   static int _toInt(dynamic v) {
@@ -188,7 +188,9 @@ class CalculatedPricing {
     int? discountPercent;
 
     // Berechne Ersparnis nur wenn Angebot aktiv und original_monthly_price vorhanden
-    if (pricing.offerActive && pricing.originalMonthlyPrice != null && pricing.originalMonthlyPrice! > 0) {
+    if (pricing.offerActive &&
+        pricing.originalMonthlyPrice != null &&
+        pricing.originalMonthlyPrice! > 0) {
       originalMonthlyPrice = pricing.originalMonthlyPrice;
       originalTotalPrice = originalMonthlyPrice! * billingCycle;
       monthlySavings = originalMonthlyPrice - monthlyPrice;
@@ -196,7 +198,8 @@ class CalculatedPricing {
 
       // Rabatt in % (gerundet)
       if (originalMonthlyPrice > 0) {
-        discountPercent = ((monthlySavings / originalMonthlyPrice) * 100).round();
+        discountPercent = ((monthlySavings / originalMonthlyPrice) * 100)
+            .round();
       }
     }
 
@@ -210,7 +213,8 @@ class CalculatedPricing {
       discountPercent: discountPercent,
       billingCycle: billingCycle,
       currency: pricing.currency,
-      hasOffer: pricing.offerActive && discountPercent != null && discountPercent > 0,
+      hasOffer:
+          pricing.offerActive && discountPercent != null && discountPercent > 0,
       isBestValue: pricing.isBestValue,
     );
   }
@@ -222,7 +226,11 @@ class CalculatedPricing {
 
 class PriceFormatter {
   /// Formatiert einen Preis mit Währungssymbol
-  static String formatPrice(double price, String currency, {String locale = 'de_DE'}) {
+  static String formatPrice(
+    double price,
+    String currency, {
+    String locale = 'de_DE',
+  }) {
     final formatter = NumberFormat.currency(
       locale: locale,
       symbol: _getCurrencySymbol(currency),

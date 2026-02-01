@@ -48,7 +48,6 @@ class SettingsViewModel extends BaseViewModel {
   final waCtrl = TextEditingController();
   String waCode = '+49';
   bool waLinkedToPhone = true;
-  bool _syncingWa = false;
   bool _phoneWaSyncLock = false;
 
   final tiktokCtrl = TextEditingController();
@@ -114,14 +113,18 @@ class SettingsViewModel extends BaseViewModel {
     createdAtRaw = (s['created_at'] ?? s['createdAt'] ?? '').toString();
     storeNameCtrl.text = (s['store_name'] ?? s['storeName'] ?? '').toString();
     currencyCtrl.text = (s['currency'] ?? '€').toString();
-    pageDescCtrl.text = (s['page_description'] ?? s['pageDescription'] ?? '').toString();
+    pageDescCtrl.text = (s['page_description'] ?? s['pageDescription'] ?? '')
+        .toString();
     addressCtrl.text = (s['address'] ?? '').toString();
     selectedCountry = s['address_country']?.toString();
     if (selectedCountry?.isEmpty ?? false) selectedCountry = null;
     storeWebsiteCtrl.text = (s['public_store_url'] ?? '').toString();
 
-    shippingEnabled = s['shipping'] == true || s['shipping']?.toString().toLowerCase() == 'true';
-    shippingPriceCtrl.text = (s['shipping_price'] ?? s['shippingPrice'] ?? '').toString();
+    shippingEnabled =
+        s['shipping'] == true ||
+        s['shipping']?.toString().toLowerCase() == 'true';
+    shippingPriceCtrl.text = (s['shipping_price'] ?? s['shippingPrice'] ?? '')
+        .toString();
 
     tiktokCtrl.text = (s['tiktok'] ?? '').toString();
     instagramCtrl.text = (s['instagram'] ?? '').toString();
@@ -150,14 +153,14 @@ class SettingsViewModel extends BaseViewModel {
       adminAppLang = rawAdminLang;
     }
 
-    _parsePhone((s['phone'] ?? '').toString(), (code, num) {
+    _parsePhone((s['phone'] ?? '').toString(), (code, number) {
       phoneCode = code;
-      phoneCtrl.text = num;
+      phoneCtrl.text = number;
     });
 
-    _parsePhone((s['whatsapp'] ?? '').toString(), (code, num) {
+    _parsePhone((s['whatsapp'] ?? '').toString(), (code, number) {
       waCode = code;
-      waCtrl.text = num;
+      waCtrl.text = number;
     });
 
     final fullPhone = '$phoneCode${phoneCtrl.text.trim()}';
@@ -176,9 +179,13 @@ class SettingsViewModel extends BaseViewModel {
     notifyListeners();
   }
 
-  void _parsePhone(String s, Function(String code, String number) onFound) {
+  void _parsePhone(String s, Function(String code, String phoneNumber) onFound) {
     if (s.isEmpty) return;
-    if (s.contains('Closure') || s.contains('Function') || s.contains('Instance of')) return;
+    if (s.contains('Closure') ||
+        s.contains('Function') ||
+        s.contains('Instance of')) {
+      return;
+    }
 
     // Bereinige den String von Leerzeichen und ungültigen Zeichen
     String clean = s.replaceAll(RegExp(r'[\s\-]'), '');
@@ -186,20 +193,20 @@ class SettingsViewModel extends BaseViewModel {
     // Regex, die versucht den Ländercode (+ gefolgt von 1-4 Ziffern) zu finden
     // und den Rest als Nummer zu behandeln.
     final m = RegExp(r'^(\+\d{1,4})(.*)$').firstMatch(clean);
-    
+
     if (m != null) {
       String code = m.group(1)!;
       String number = m.group(2)!;
-      
+
       // Falls die Nummer selbst noch mit + anfängt oder den Code wiederholt, rekursiv bereinigen
       if (number.startsWith('+') || number.contains('+')) {
         _parsePhone(number, onFound);
         return;
       }
-      
+
       onFound(code, number);
     } else {
-      // Fallback: Falls kein + vorhanden ist, nehmen wir +49 an, 
+      // Fallback: Falls kein + vorhanden ist, nehmen wir +49 an,
       // aber filtern alle nicht-Ziffern aus dem Rest.
       onFound('+49', clean.replaceAll(RegExp(r'\D'), ''));
     }
@@ -209,23 +216,62 @@ class SettingsViewModel extends BaseViewModel {
   // ACTIONS
   // ===========================================================================
 
-  void setLogo(String emoji) { logoEmoji = emoji; notifyListeners(); }
-  void setCountry(String? code) { selectedCountry = code; notifyListeners(); }
-  void setCurrency(String curr) { currencyCtrl.text = curr; notifyListeners(); }
-  void setStoreLang(String lang) { storeLang = lang; notifyListeners(); }
-  void setPhoneCode(String code) { phoneCode = code; _onPhoneChanged(); notifyListeners(); }
-  void setWaCode(String code) { waCode = code; notifyListeners(); }
-  
-  void setLatitude(double? lat) { latitude = lat; notifyListeners(); }
-  void setLongitude(double? lng) { longitude = lng; notifyListeners(); }
+  void setLogo(String emoji) {
+    logoEmoji = emoji;
+    notifyListeners();
+  }
 
-  void toggleShipping(bool v) { shippingEnabled = v; notifyListeners(); }
+  void setCountry(String? code) {
+    selectedCountry = code;
+    notifyListeners();
+  }
+
+  void setCurrency(String curr) {
+    currencyCtrl.text = curr;
+    notifyListeners();
+  }
+
+  void setStoreLang(String lang) {
+    storeLang = lang;
+    notifyListeners();
+  }
+
+  void setPhoneCode(String code) {
+    phoneCode = code;
+    _onPhoneChanged();
+    notifyListeners();
+  }
+
+  void setWaCode(String code) {
+    waCode = code;
+    notifyListeners();
+  }
+
+  void setLatitude(double? lat) {
+    latitude = lat;
+    notifyListeners();
+  }
+
+  void setLongitude(double? lng) {
+    longitude = lng;
+    notifyListeners();
+  }
+
+  void toggleShipping(bool v) {
+    shippingEnabled = v;
+    notifyListeners();
+  }
+
   void toggleWaSync(bool v) {
     waLinkedToPhone = v;
     if (v) _syncWa(force: true);
     notifyListeners();
   }
-  void updateWorkingHours(WorkingHours newWh) { workingHours = newWh; notifyListeners(); }
+
+  void updateWorkingHours(WorkingHours newWh) {
+    workingHours = newWh;
+    notifyListeners();
+  }
 
   void _onPhoneChanged() {
     if (_phoneWaSyncLock || !waLinkedToPhone) return;
@@ -233,14 +279,12 @@ class SettingsViewModel extends BaseViewModel {
   }
 
   void _syncWa({bool force = false}) {
-    _syncingWa = true;
     waCode = phoneCode;
     if (phoneCtrl.text.isEmpty && force) {
       waCtrl.clear();
     } else if (waCtrl.text != phoneCtrl.text) {
       waCtrl.text = phoneCtrl.text;
     }
-    _syncingWa = false;
   }
 
   // GPS Logik - Web-kompatibel
@@ -263,15 +307,21 @@ class SettingsViewModel extends BaseViewModel {
         }
       }
       if (permission == LocationPermission.deniedForever) {
-        throw GeocodingException('Standortberechtigung dauerhaft verweigert. Bitte in den Einstellungen aktivieren.');
+        throw GeocodingException(
+          'Standortberechtigung dauerhaft verweigert. Bitte in den Einstellungen aktivieren.',
+        );
       }
 
       // 2. GPS-Position holen
       GeocodingService.debugLog('📍 GPS-Position wird abgerufen...');
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
-      GeocodingService.debugLog('📍 Position: ${pos.latitude}, ${pos.longitude}');
+      GeocodingService.debugLog(
+        '📍 Position: ${pos.latitude}, ${pos.longitude}',
+      );
 
       // Koordinaten speichern
       latitude = pos.latitude;
@@ -292,7 +342,6 @@ class SettingsViewModel extends BaseViewModel {
 
       GeocodingService.debugLog('✅ Adresse gesetzt: ${result.address}');
       notifyListeners();
-
     } on GeocodingException catch (e) {
       GeocodingService.debugLog('❌ Geocoding-Fehler: $e');
       setError(s.locationFetchError(e.message));
@@ -311,22 +360,38 @@ class SettingsViewModel extends BaseViewModel {
     final n = newPasswordCtrl.text.trim();
     final conf = confirmPasswordCtrl.text.trim();
 
-    if (cur.isEmpty || n.isEmpty || conf.isEmpty) { setError(s.fillAllFieldsError); return false; }
-    if (n != conf) { setError(s.passwordsNotMatch); return false; }
-    if (n.length < 6) { setError(s.passwordTooShort); return false; }
+    if (cur.isEmpty || n.isEmpty || conf.isEmpty) {
+      setError(s.fillAllFieldsError);
+      return false;
+    }
+    if (n != conf) {
+      setError(s.passwordsNotMatch);
+      return false;
+    }
+    if (n.length < 6) {
+      setError(s.passwordTooShort);
+      return false;
+    }
 
     return await runBusyAction(() async {
-      try {
-        final user = FirebaseAuth.instance.currentUser!;
-        final cred = EmailAuthProvider.credential(email: user.email!, password: cur);
-        await user.reauthenticateWithCredential(cred);
-        await user.updatePassword(n);
-        currentPasswordCtrl.clear(); newPasswordCtrl.clear(); confirmPasswordCtrl.clear();
-        return true;
-      } catch (e) {
-        setError(s.generalError(e.toString())); return false;
-      }
-    }) ?? false;
+          try {
+            final user = FirebaseAuth.instance.currentUser!;
+            final cred = EmailAuthProvider.credential(
+              email: user.email!,
+              password: cur,
+            );
+            await user.reauthenticateWithCredential(cred);
+            await user.updatePassword(n);
+            currentPasswordCtrl.clear();
+            newPasswordCtrl.clear();
+            confirmPasswordCtrl.clear();
+            return true;
+          } catch (e) {
+            setError(s.generalError(e.toString()));
+            return false;
+          }
+        }) ??
+        false;
   }
 
   // GEÄNDERT: Nutzt nicht mehr runBusyAction, um UI-Reload zu vermeiden
@@ -375,53 +440,73 @@ class SettingsViewModel extends BaseViewModel {
     notifyListeners();
   }
 
-  Future<bool> save(AppLocalizations s, {bool checkPaywall = true, bool isFirstSetup = false, String? currentLocale}) async {
-    if (storeNameCtrl.text.trim().isEmpty) { setError(s.storeNameRequired); return false; }
-    if (checkPaywall && !AccessManager.canWriteAdmin) { setError(s.noEditPermission); return false; }
+  Future<bool> save(
+    AppLocalizations s, {
+    bool checkPaywall = true,
+    bool isFirstSetup = false,
+    String? currentLocale,
+  }) async {
+    if (storeNameCtrl.text.trim().isEmpty) {
+      setError(s.storeNameRequired);
+      return false;
+    }
+    if (checkPaywall && !AccessManager.canWriteAdmin) {
+      setError(s.noEditPermission);
+      return false;
+    }
 
     _saving = true;
     notifyListeners();
 
     // Aktualisiere die Admin-App-Sprache auf die aktuelle Locale
-    if (currentLocale != null && ['ar', 'en', 'de', 'tr'].contains(currentLocale)) {
+    if (currentLocale != null &&
+        ['ar', 'en', 'de', 'tr'].contains(currentLocale)) {
       adminAppLang = currentLocale;
     }
 
-    final result = await runBusyAction<bool>(() async {
-      final phoneFull = phoneCtrl.text.isNotEmpty ? '$phoneCode${phoneCtrl.text.trim()}' : '';
-      var waFull = waCtrl.text.isNotEmpty ? '$waCode${waCtrl.text.trim()}' : '';
-      if (waFull.isEmpty && phoneFull.isNotEmpty) waFull = phoneFull;
+    final result =
+        await runBusyAction<bool>(() async {
+          final phoneFull = phoneCtrl.text.isNotEmpty
+              ? '$phoneCode${phoneCtrl.text.trim()}'
+              : '';
+          var waFull = waCtrl.text.isNotEmpty
+              ? '$waCode${waCtrl.text.trim()}'
+              : '';
+          if (waFull.isEmpty && phoneFull.isNotEmpty) waFull = phoneFull;
 
-      final data = {
-        'store_name': storeNameCtrl.text.trim(),
-        'currency': currencyCtrl.text.trim(),
-        'page_description': pageDescCtrl.text.trim(),
-        'address': addressCtrl.text.trim(),
-        'address_country': selectedCountry,
-        'phone': phoneFull,
-        'whatsapp': waFull,
-        'email_support': emailSupportCtrl.text.trim(),
-        'shipping': shippingEnabled,
-        'shipping_price': double.tryParse(shippingPriceCtrl.text.trim()) ?? 0.0,
-        'has_logo': logoEmoji,
-        'tiktok': tiktokCtrl.text.trim(),
-        'instagram': instagramCtrl.text.trim(),
-        'facebook': facebookCtrl.text.trim(),
-        'working_hours': workingHoursToJson(workingHours),
-        'store_lang': storeLang,
-        'admin_app_lang': adminAppLang, // Sprache für E-Mail-Benachrichtigungen
-        'latitude': latitude,
-        'longitude': longitude,
-      };
+          final data = {
+            'store_name': storeNameCtrl.text.trim(),
+            'currency': currencyCtrl.text.trim(),
+            'page_description': pageDescCtrl.text.trim(),
+            'address': addressCtrl.text.trim(),
+            'address_country': selectedCountry,
+            'phone': phoneFull,
+            'whatsapp': waFull,
+            'email_support': emailSupportCtrl.text.trim(),
+            'shipping': shippingEnabled,
+            'shipping_price':
+                double.tryParse(shippingPriceCtrl.text.trim()) ?? 0.0,
+            'has_logo': logoEmoji,
+            'tiktok': tiktokCtrl.text.trim(),
+            'instagram': instagramCtrl.text.trim(),
+            'facebook': facebookCtrl.text.trim(),
+            'working_hours': workingHoursToJson(workingHours),
+            'store_lang': storeLang,
+            'admin_app_lang':
+                adminAppLang, // Sprache für E-Mail-Benachrichtigungen
+            'latitude': latitude,
+            'longitude': longitude,
+          };
 
-      if (isFirstSetup) {
-        data['setup_complete'] = true;
-      }
+          if (isFirstSetup) {
+            data['setup_complete'] = true;
+          }
 
-      final success = await ApiService.updateStore(data);
-      if (success) await StoreConfigService.refresh();
-      return success;
-    }) ?? false;
+          final success = await ApiService.updateStore(data);
+          if (success) await StoreConfigService.refresh();
+          return success;
+        }) ??
+        false;
 
     _saving = false;
     notifyListeners();
@@ -450,7 +535,6 @@ class SettingsViewModel extends BaseViewModel {
 
       GeocodingService.debugLog('✅ Karten-Adresse gesetzt: ${result.address}');
       notifyListeners();
-
     } on GeocodingException catch (e) {
       // Fehler loggen, aber Koordinaten behalten
       GeocodingService.debugLog('⚠️ Geocoding-Fehler (Karte): $e');
@@ -473,11 +557,21 @@ class SettingsViewModel extends BaseViewModel {
   @override
   void dispose() {
     phoneCtrl.removeListener(_onPhoneChanged);
-    storeNameCtrl.dispose(); currencyCtrl.dispose(); pageDescCtrl.dispose(); addressCtrl.dispose();
+    storeNameCtrl.dispose();
+    currencyCtrl.dispose();
+    pageDescCtrl.dispose();
+    addressCtrl.dispose();
     storeWebsiteCtrl.dispose();
-    phoneCtrl.dispose(); waCtrl.dispose(); tiktokCtrl.dispose(); instagramCtrl.dispose();
-    facebookCtrl.dispose(); emailSupportCtrl.dispose(); shippingPriceCtrl.dispose();
-    currentPasswordCtrl.dispose(); newPasswordCtrl.dispose(); confirmPasswordCtrl.dispose();
+    phoneCtrl.dispose();
+    waCtrl.dispose();
+    tiktokCtrl.dispose();
+    instagramCtrl.dispose();
+    facebookCtrl.dispose();
+    emailSupportCtrl.dispose();
+    shippingPriceCtrl.dispose();
+    currentPasswordCtrl.dispose();
+    newPasswordCtrl.dispose();
+    confirmPasswordCtrl.dispose();
     super.dispose();
   }
 }

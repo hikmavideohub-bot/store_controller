@@ -24,9 +24,9 @@ class CurrencyOption {
 class PaymentScreenGlobal extends StatefulWidget {
   final List<SubscriptionPlan> availablePlans;
   final SubscriptionPlan basePlan; // NEU: Referenz zum Monats-Plan
-  final String userCurrencyCode;   // z.B. "omr", "sar", "eur"
+  final String userCurrencyCode; // z.B. "omr", "sar", "eur"
   final String userCurrencySymbol; // z.B. "ر.ع", "€"
-  final double fxRate;             // EUR → userCurrency (1.0 für EUR)
+  final double fxRate; // EUR → userCurrency (1.0 für EUR)
 
   const PaymentScreenGlobal({
     super.key,
@@ -60,7 +60,9 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
   // Hilfsmethode: Filtern wir den Monatsplan (basePlan) aus der Anzeige heraus,
   // behalten ihn aber in widget.basePlan für die Mathe-Logik.
   List<SubscriptionPlan> get _visiblePlans {
-    return widget.availablePlans.where((p) => p.id != widget.basePlan.id).toList();
+    return widget.availablePlans
+        .where((p) => p.id != widget.basePlan.id)
+        .toList();
   }
 
   @override
@@ -84,12 +86,12 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
 
     if (plansDisplay.isNotEmpty) {
       _selectedPlan = plansDisplay.firstWhere(
-            (p) {
+        (p) {
           final pricing = _calculatePricingForPlan(p);
           return pricing.isBestValue;
         },
         orElse: () => plansDisplay.firstWhere(
-              (p) => p.id == 'premium_yearly',
+          (p) => p.id == 'premium_yearly',
           orElse: () => plansDisplay.first,
         ),
       );
@@ -106,28 +108,26 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
 
     // 1. Default Currency (wenn nicht EUR oder USD)
     if (defaultCode != 'eur' && defaultCode != 'usd') {
-      options.add(CurrencyOption(
-        code: defaultCode,
-        symbol: defaultSymbol,
-        label: '${defaultCode.toUpperCase()} ($defaultSymbol)',
-      ));
+      options.add(
+        CurrencyOption(
+          code: defaultCode,
+          symbol: defaultSymbol,
+          label: '${defaultCode.toUpperCase()} ($defaultSymbol)',
+        ),
+      );
     }
 
     // 2. USD (wenn nicht default)
     if (defaultCode != 'usd') {
-      options.add(const CurrencyOption(
-        code: 'usd',
-        symbol: '\$',
-        label: 'USD (\$)',
-      ));
+      options.add(
+        const CurrencyOption(code: 'usd', symbol: '\$', label: 'USD (\$)'),
+      );
     }
 
     // 3. EUR (immer verfügbar)
-    options.add(const CurrencyOption(
-      code: 'eur',
-      symbol: '€',
-      label: 'EUR (€)',
-    ));
+    options.add(
+      const CurrencyOption(code: 'eur', symbol: '€', label: 'EUR (€)'),
+    );
 
     _currencyOptions = options;
     _selectedCurrency = options.first; // Default auswählen
@@ -135,7 +135,8 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
 
   /// Validiert FX-Rate und setzt Fallback wenn nötig
   void _validateAndSetFxRate() {
-    final bool fxValid = _effectiveFxRate > 0 &&
+    final bool fxValid =
+        _effectiveFxRate > 0 &&
         !_effectiveFxRate.isNaN &&
         !_effectiveFxRate.isInfinite;
 
@@ -225,7 +226,9 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
     try {
       final platform = kIsWeb
           ? 'web'
-          : (defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios');
+          : (defaultTargetPlatform == TargetPlatform.android
+                ? 'android'
+                : 'ios');
 
       final calc = _currentPricing;
 
@@ -244,11 +247,11 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
       final result = await FirebaseFunctions.instanceFor(region: 'europe-west3')
           .httpsCallable('createStripeCheckoutSession')
           .call({
-        'planId': _selectedPlan!.id,
-        'amount': amountInSmallestUnit,
-        'currency': calc.currencyCode, // ISO Code aus Calculator
-        'platform': platform,
-      });
+            'planId': _selectedPlan!.id,
+            'amount': amountInSmallestUnit,
+            'currency': calc.currencyCode, // ISO Code aus Calculator
+            'platform': platform,
+          });
 
       if (result.data != null && result.data['url'] != null) {
         final uri = Uri.parse(result.data['url'].toString());
@@ -278,73 +281,93 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
     final plansToDisplay = _visiblePlans;
 
     return Scaffold(
-      appBar: PremiumAnimatedAppBar(title: s.choosePlanTitle, showBackButton: true),
+      appBar: PremiumAnimatedAppBar(
+        title: s.choosePlanTitle,
+        showBackButton: true,
+      ),
       body: plansToDisplay.isEmpty
           ? Center(child: Text(s.noPlansAvailable))
           : ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text(
-            s.choosePlanSubtitle,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
+              padding: const EdgeInsets.all(20),
+              children: [
+                Text(
+                  s.choosePlanSubtitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
 
-          // Currency Dropdown
-          if (_currencyOptions.length > 1) ...[
-            _buildCurrencyDropdown(colors, s),
-            const SizedBox(height: 16),
-          ],
+                // Currency Dropdown
+                if (_currencyOptions.length > 1) ...[
+                  _buildCurrencyDropdown(colors, s),
+                  const SizedBox(height: 16),
+                ],
 
-          // Info-Banner wenn Fallback auf EUR aktiv
-          if (_usingFallbackCurrency) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: colors.tertiaryContainer.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: colors.tertiary.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: colors.tertiary, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      s.pricingFallbackEurInfo, // "Zahlung in EUR (lokale Umrechnung nicht verfügbar)"
-                      style: TextStyle(fontSize: 12, color: colors.onSurface),
+                // Info-Banner wenn Fallback auf EUR aktiv
+                if (_usingFallbackCurrency) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.tertiaryContainer.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: colors.tertiary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: colors.tertiary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            s.pricingFallbackEurInfo, // "Zahlung in EUR (lokale Umrechnung nicht verfügbar)"
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colors.onSurface,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 16),
                 ],
-              ),
+
+                // PLAN AUSWAHL CARDS - Nur die gefilterte Liste anzeigen
+                ...plansToDisplay.map((plan) => _buildPlanCard(plan, s)),
+
+                const SizedBox(height: 24),
+
+                // Preis-Zusammenfassung
+                const SizedBox(height: 24),
+
+                if (_loading)
+                  Center(
+                    child: CircularProgressIndicator(color: colors.primary),
+                  )
+                else if (_error != null)
+                  Text(
+                    _error!,
+                    style: TextStyle(color: colors.error),
+                    textAlign: TextAlign.center,
+                  )
+                else
+                  _buildPayButton(s),
+
+                const SizedBox(height: 30),
+                _buildFeaturesList(context),
+              ],
             ),
-            const SizedBox(height: 16),
-          ],
-
-          // PLAN AUSWAHL CARDS - Nur die gefilterte Liste anzeigen
-          ...plansToDisplay.map((plan) => _buildPlanCard(plan, s)),
-
-          const SizedBox(height: 24),
-
-          // Preis-Zusammenfassung
-
-
-          const SizedBox(height: 24),
-
-          if (_loading)
-            Center(child: CircularProgressIndicator(color: colors.primary))
-          else if (_error != null)
-            Text(_error!,
-                style: TextStyle(color: colors.error),
-                textAlign: TextAlign.center)
-          else
-            _buildPayButton(s),
-
-          const SizedBox(height: 30),
-          _buildFeaturesList(context),
-        ],
-      ),
     );
   }
 
@@ -444,8 +467,10 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
                 top: 0,
                 right: 16,
                 child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: bestValueColor,
                     borderRadius: const BorderRadius.only(
@@ -494,8 +519,9 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
                         const SizedBox(height: 4),
                         Text(
                           calc.billingCycle == 6
-                              ? s.pricingBilledSixMonths // 🆕 ARB
-                              : s.pricingBilledYearly,   // 🆕 ARB
+                              ? s
+                                    .pricingBilledSixMonths // 🆕 ARB
+                              : s.pricingBilledYearly, // 🆕 ARB
                           style: TextStyle(
                             fontSize: 12,
                             color: colors.onSurface.withValues(alpha: 0.6),
@@ -507,7 +533,9 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: conversionGreen.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
@@ -540,8 +568,7 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
                           style: TextStyle(
                             fontSize: 13,
                             decoration: TextDecoration.lineThrough,
-                            color:
-                            colors.onSurface.withValues(alpha: 0.45),
+                            color: colors.onSurface.withValues(alpha: 0.45),
                           ),
                         ),
                       const SizedBox(height: 2),
@@ -565,8 +592,7 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
                         s.pricingPerMonth, // 🆕 ARB
                         style: TextStyle(
                           fontSize: 12,
-                          color:
-                          colors.onSurface.withValues(alpha: 0.6),
+                          color: colors.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -579,9 +605,6 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
       ),
     );
   }
-
-
-
 
   Widget _buildPayButton(AppLocalizations s) {
     final colors = Theme.of(context).colorScheme;
@@ -596,11 +619,17 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
         style: ElevatedButton.styleFrom(
           backgroundColor: colors.primary,
           foregroundColor: colors.onPrimary,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
         child: Text(
           s.payAndActivate(
-            PricingCalculator.formatPriceForCurrency(calc.totalPrice, calc.currencyCode, calc.currencySymbol),
+            PricingCalculator.formatPriceForCurrency(
+              calc.totalPrice,
+              calc.currencyCode,
+              calc.currencySymbol,
+            ),
           ),
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),

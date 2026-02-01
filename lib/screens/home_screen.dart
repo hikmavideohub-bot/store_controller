@@ -39,20 +39,36 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     if (vm.loading) {
       return Scaffold(
         key: _scaffoldKey,
-        appBar: PremiumAnimatedAppBar(title: s.homeTitle, onMenuPressed: () => _scaffoldKey.currentState?.openDrawer()),
+        appBar: PremiumAnimatedAppBar(
+          title: s.homeTitle,
+          onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
         body: Center(child: CircularProgressIndicator(color: colors.primary)),
       );
     }
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: AppDrawer(currentRoute: '/home', headerSubtitle: s.dashboardTitle, onSync: () => vm.syncAllData(s)),
-      appBar: PremiumAnimatedAppBar(title: s.dashboardTitle, showSettings: false, onMenuPressed: () => _scaffoldKey.currentState?.openDrawer()),
+      drawer: AppDrawer(
+        currentRoute: '/home',
+        headerSubtitle: s.dashboardTitle,
+        onSync: () => vm.syncAllData(s),
+      ),
+      appBar: PremiumAnimatedAppBar(
+        title: s.dashboardTitle,
+        showSettings: false,
+        onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
       body: RefreshIndicator(
         onRefresh: () => vm.syncAllData(s),
         color: colors.primary,
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 140 + MediaQuery.of(context).viewPadding.bottom),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            12,
+            16,
+            140 + MediaQuery.of(context).viewPadding.bottom,
+          ),
           children: [
             _buildHeader(context, s),
             const SizedBox(height: 24),
@@ -80,14 +96,36 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     final vm = context.watch<HomeViewModel>();
     final displayName = vm.storeName ?? s.defaultStoreName;
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(s.welcomeStoreName(displayName), style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface)),
-      const SizedBox(height: 4),
-      Text(s.dashboardSubtitle, style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-    ]);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          s.welcomeStoreName(displayName),
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          s.dashboardSubtitle,
+          style: TextStyle(
+            fontSize: 14,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      ],
+    );
   }
 
-  Widget _buildStoreLinkCard(BuildContext context, HomeViewModel vm, AppLocalizations s) {
+  Widget _buildStoreLinkCard(
+    BuildContext context,
+    HomeViewModel vm,
+    AppLocalizations s,
+  ) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final url = vm.publicStoreUrl ?? s.noLinkYet;
@@ -104,12 +142,19 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                   color: colors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.link_rounded, color: colors.primary, size: 20),
+                child: Icon(
+                  Icons.link_rounded,
+                  color: colors.primary,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Text(
                 s.publicStoreLink,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ],
           ),
@@ -127,7 +172,9 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                     url,
                     style: TextStyle(
                       fontSize: 13,
-                      color: vm.publicStoreUrl != null ? colors.primary : theme.hintColor,
+                      color: vm.publicStoreUrl != null
+                          ? colors.primary
+                          : theme.hintColor,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
@@ -168,14 +215,18 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: vm.publicStoreUrl != null ? () => vm.shareStore(s) : null,
+              onPressed: vm.publicStoreUrl != null
+                  ? () => vm.shareStore(s)
+                  : null,
               icon: const Icon(Icons.share_rounded, size: 18),
               label: Text(s.shareStoreInvite),
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.primary,
                 foregroundColor: colors.onPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 elevation: 0,
               ),
             ),
@@ -185,7 +236,11 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     );
   }
 
-  Widget _buildCustomerMessagePreview(BuildContext context, HomeViewModel vm, AppLocalizations s) {
+  Widget _buildCustomerMessagePreview(
+    BuildContext context,
+    HomeViewModel vm,
+    AppLocalizations s,
+  ) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
@@ -204,8 +259,8 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                  color: colors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12)
+                color: colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(Icons.campaign_rounded, color: colors.primary),
             ),
@@ -214,7 +269,13 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(s.customerMessageTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text(
+                    s.customerMessageTitle,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     hasMsg ? msg : s.customerMessagePlaceholder,
@@ -229,7 +290,11 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios_rounded, size: 14, color: theme.hintColor),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: theme.hintColor,
+            ),
           ],
         ),
       ),
@@ -239,29 +304,57 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   Widget _sectionHeader(BuildContext context, String title) {
     final colors = Theme.of(context).colorScheme;
     return Padding(
-        padding: const EdgeInsets.only(bottom: 16, right: 4),
-        child: Row(
-            children: [
-              Container(
-                  width: 4, height: 18,
-                  decoration: BoxDecoration(color: colors.primary, borderRadius: BorderRadius.circular(2))
-              ),
-              const SizedBox(width: 8),
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))
-            ]
-        )
+      padding: const EdgeInsets.only(bottom: 16, right: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 18,
+            decoration: BoxDecoration(
+              color: colors.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          ),
+        ],
+      ),
     );
   }
 
-  void _showProductsByFilter(BuildContext context, String title, List<Product> list, AppLocalizations s) {
+  void _showProductsByFilter(
+    BuildContext context,
+    String title,
+    List<Product> list,
+    AppLocalizations s,
+  ) {
     if (list.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.noProductsFoundTitle(title)), backgroundColor: Theme.of(context).colorScheme.primary, behavior: SnackBarBehavior.floating));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(s.noProductsFoundTitle(title)),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
-    Navigator.push(context, MaterialPageRoute(builder: (context) => _FilteredProductsScreen(title: title, products: list)));
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            _FilteredProductsScreen(title: title, products: list),
+      ),
+    );
   }
 
-  void _showCategoriesWithOffers(BuildContext context, HomeViewModel vm, AppLocalizations s) {
+  void _showCategoriesWithOffers(
+    BuildContext context,
+    HomeViewModel vm,
+    AppLocalizations s,
+  ) {
     final cats = vm.categoriesWithFullOffersList;
     if (cats.isEmpty) return;
 
@@ -273,106 +366,202 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
       context: context,
       backgroundColor: colors.surface,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) {
           final currentCats = vm.categoriesWithFullOffersList;
           return Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(ctx).viewPadding.bottom),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.deepOrange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.bolt_rounded, color: Colors.deepOrange)),
-                const SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(s.categoryOffersTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                  Text(s.categoryOffersSubtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                ])),
-              ]),
-              const SizedBox(height: 20),
-              if (currentCats.isEmpty)
-                Center(child: Padding(padding: const EdgeInsets.all(20), child: Text(s.noCategoryOffers, style: const TextStyle(color: Colors.grey))))
-              else
-                ...currentCats.map((cat) => Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: accent.withValues(alpha: 0.2)),
-                  ),
-                  child: InkWell(
-                    onTap: () {
-                      final products = vm.getProductsByCategory(cat);
-                      Navigator.pop(context);
-                      _showProductsByFilter(context, s.filterCategoryPrefix(cat), products, s);
-                    },
-                    borderRadius: BorderRadius.circular(16),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              20 + MediaQuery.of(ctx).viewPadding.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.deepOrange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.bolt_rounded,
+                        color: Colors.deepOrange,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.categoryOffersTitle,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          Text(
+                            s.categoryOffersSubtitle,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                if (currentCats.isEmpty)
+                  Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(children: [
-                        Icon(Icons.category_rounded, color: accent, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text(cat, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
-                        TextButton.icon(
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (dctx) => AlertDialog(
-                                title: Text(s.stopOfferAction),
-                                content: Text(s.stopCategoryOfferConfirm),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(dctx, false), child: Text(s.cancelButton)),
-                                  ElevatedButton(
-                                    onPressed: () => Navigator.pop(dctx, true),
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                                    child: Text(s.stopOfferAction),
-                                  ),
-                                ],
-                              ),
-                            );
-
-                            if (confirm != true) return;
-
-                            final success = await vm.disableOffersForCategory(s, cat);
-                            if (ctx.mounted) {
-                              if (success) {
-                                setSheetState(() {});
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(s.categoryOffersDisabledMsg(cat)),
-                                    backgroundColor: Colors.green,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(s.categoryOffersDisableFail),
-                                    backgroundColor: Colors.red,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                          icon: const Icon(Icons.power_settings_new_rounded, size: 18),
-                          label: Text(s.stopOfferAction),
-                          style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        s.noCategoryOffers,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  )
+                else
+                  ...currentCats.map(
+                    (cat) => Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: accent.withValues(alpha: 0.2),
                         ),
-                      ]),
+                      ),
+                      child: InkWell(
+                        onTap: () {
+                          final products = vm.getProductsByCategory(cat);
+                          Navigator.pop(context);
+                          _showProductsByFilter(
+                            context,
+                            s.filterCategoryPrefix(cat),
+                            products,
+                            s,
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.category_rounded,
+                                color: accent,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  cat,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (dctx) => AlertDialog(
+                                      title: Text(s.stopOfferAction),
+                                      content: Text(s.stopCategoryOfferConfirm),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(dctx, false),
+                                          child: Text(s.cancelButton),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.pop(dctx, true),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                          child: Text(s.stopOfferAction),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirm != true) return;
+
+                                  final success = await vm
+                                      .disableOffersForCategory(s, cat);
+                                  if (ctx.mounted) {
+                                    if (success) {
+                                      setSheetState(() {});
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            s.categoryOffersDisabledMsg(cat),
+                                          ),
+                                          backgroundColor: Colors.green,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            s.categoryOffersDisableFail,
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                icon: const Icon(
+                                  Icons.power_settings_new_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(s.stopOfferAction),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                )),
-              const SizedBox(height: 10),
-            ]),
+                const SizedBox(height: 10),
+              ],
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildStatisticsGrid(BuildContext context, HomeViewModel vm, AppLocalizations s) {
+  Widget _buildStatisticsGrid(
+    BuildContext context,
+    HomeViewModel vm,
+    AppLocalizations s,
+  ) {
     final colors = Theme.of(context).colorScheme;
-    final top = vm.topCategory;
     final screenWidth = MediaQuery.of(context).size.width;
 
     // Responsive Anpassung: max 3 Spalten auf Handys, mehr auf Tablets/Desktop
@@ -401,7 +590,12 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
               value: '${vm.totalProducts}',
               icon: Icons.inventory_2_rounded,
               iconColor: colors.primary,
-              onTap: () => _showProductsByFilter(context, s.filterAllProducts, vm.products, s),
+              onTap: () => _showProductsByFilter(
+                context,
+                s.filterAllProducts,
+                vm.products,
+                s,
+              ),
             );
           case 1:
             return _StatCard(
@@ -409,7 +603,12 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
               value: '${vm.activeProducts}',
               icon: Icons.check_circle_rounded,
               iconColor: Colors.green,
-              onTap: () => _showProductsByFilter(context, s.filterAvailable, vm.getActiveProducts(), s),
+              onTap: () => _showProductsByFilter(
+                context,
+                s.filterAvailable,
+                vm.getActiveProducts(),
+                s,
+              ),
             );
           case 2:
             return _StatCard(
@@ -417,7 +616,12 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
               value: '${vm.inactiveProducts}',
               icon: Icons.pause_circle_rounded,
               iconColor: Colors.orange,
-              onTap: () => _showProductsByFilter(context, s.filterUnavailable, vm.getInactiveProducts(), s),
+              onTap: () => _showProductsByFilter(
+                context,
+                s.filterUnavailable,
+                vm.getInactiveProducts(),
+                s,
+              ),
             );
           case 3:
             return _StatCard(
@@ -425,7 +629,12 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
               value: '${vm.productsWithOffer}',
               icon: Icons.local_offer_rounded,
               iconColor: Colors.purple,
-              onTap: () => _showProductsByFilter(context, s.filterActiveOffers, vm.getProductsWithOffer(), s),
+              onTap: () => _showProductsByFilter(
+                context,
+                s.filterActiveOffers,
+                vm.getProductsWithOffer(),
+                s,
+              ),
             );
           case 4:
             return _StatCard(
@@ -443,25 +652,24 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
               value: '${vm.productsWithoutImage}',
               icon: Icons.no_photography_rounded,
               iconColor: Colors.blueGrey,
-              onTap: () => _showProductsByFilter(context, s.filterNoImage, vm.getProductsWithoutImage(), s),
+              onTap: () => _showProductsByFilter(
+                context,
+                s.filterNoImage,
+                vm.getProductsWithoutImage(),
+                s,
+              ),
             );
         }
         return null;
       },
     );
   }
-
 }
 
 class _PremiumCard extends StatelessWidget {
   final Widget child;
-  final VoidCallback? onTap;
 
-  const _PremiumCard({
-    super.key,
-    required this.child,
-    this.onTap,
-  });
+  const _PremiumCard({required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -477,37 +685,23 @@ class _PremiumCard extends StatelessWidget {
             color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: child,
-          ),
-        ),
-      ),
+      child: Padding(padding: const EdgeInsets.all(16), child: child),
     );
   }
 }
 
 class _StatCard extends StatelessWidget {
   final String title, value;
-  final String? subValue;
   final IconData icon;
   final Color iconColor;
   final VoidCallback? onTap;
 
   const _StatCard({
-    super.key,
     required this.title,
     required this.value,
-    this.subValue,
     required this.icon,
     required this.iconColor,
     this.onTap,
@@ -522,7 +716,13 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Material(
         color: colors.surface,
@@ -534,16 +734,45 @@ class _StatCard extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: colors.outline.withValues(alpha: theme.brightness == Brightness.dark ? 0.3 : 0.1)),
+              border: Border.all(
+                color: colors.outline.withValues(
+                  alpha: theme.brightness == Brightness.dark ? 0.3 : 0.1,
+                ),
+              ),
             ),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: Icon(icon, size: 20, color: iconColor)),
-              const SizedBox(height: 10),
-              Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 2),
-              Text(title, style: TextStyle(fontSize: 10, color: theme.hintColor, fontWeight: FontWeight.w600), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-              if (subValue != null) Text(subValue!, style: TextStyle(fontSize: 9, color: colors.tertiary, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
-            ]),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 20, color: iconColor),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: theme.hintColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -563,7 +792,11 @@ class _FilteredProductsScreen extends StatelessWidget {
     final colors = theme.colorScheme;
 
     return Scaffold(
-      appBar: PremiumAnimatedAppBar(title: title, showBackButton: true, showSettings: false),
+      appBar: PremiumAnimatedAppBar(
+        title: title,
+        showBackButton: true,
+        showSettings: false,
+      ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: products.length,
@@ -571,23 +804,40 @@ class _FilteredProductsScreen extends StatelessWidget {
           final p = products[index];
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: ListTile(
               contentPadding: const EdgeInsets.all(12),
               leading: Container(
-                width: 60, height: 60,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
-                    color: colors.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12)
+                  color: colors.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: p.image.isNotEmpty
-                    ? ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(p.image, fit: BoxFit.cover, errorBuilder: (_,__,___)=>const Icon(Icons.image_not_supported)))
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          p.image,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              const Icon(Icons.image_not_supported),
+                        ),
+                      )
                     : const Icon(Icons.image_not_supported),
               ),
-              title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+              title: Text(
+                p.name,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
               subtitle: Text(
-                  '${p.price} € / ${p.sizeValue} ${p.sizeUnit}',
-                  style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold)
+                '${p.price} € / ${p.sizeValue} ${p.sizeUnit}',
+                style: TextStyle(
+                  color: colors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
               onTap: () => context.push('/edit/${p.id}', extra: p),

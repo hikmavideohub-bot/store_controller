@@ -16,7 +16,8 @@ import '../theme.dart';
 // =====================================================
 
 /// Callback for app initialization after consent
-typedef OnConsentAccepted = Future<void> Function(Locale locale, AppThemeMode theme);
+typedef OnConsentAccepted =
+    Future<void> Function(Locale locale, AppThemeMode theme);
 
 /// Saves and loads the consent status
 class PrivacyConsentPrefs {
@@ -178,7 +179,9 @@ class PrivacyConsentApp extends StatelessWidget {
       darkTheme: AppTheme.dark(),
       themeMode: initialTheme == AppThemeMode.system
           ? ThemeMode.system
-          : (initialTheme == AppThemeMode.dark ? ThemeMode.dark : ThemeMode.light),
+          : (initialTheme == AppThemeMode.dark
+                ? ThemeMode.dark
+                : ThemeMode.light),
       locale: initialLocale,
       supportedLocales: AppConfig.supportedLocales,
       localizationsDelegates: const [
@@ -230,7 +233,11 @@ class PrivacyConsentScreen extends StatelessWidget {
                   color: colors.primaryContainer,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.privacy_tip_outlined, size: 40, color: colors.onPrimaryContainer),
+                child: Icon(
+                  Icons.privacy_tip_outlined,
+                  size: 40,
+                  color: colors.onPrimaryContainer,
+                ),
               ),
               const SizedBox(height: 32),
 
@@ -268,10 +275,17 @@ class PrivacyConsentScreen extends StatelessWidget {
               // Link to full privacy policy
               TextButton.icon(
                 onPressed: () => _showFullPrivacyPolicy(context, s),
-                icon: Icon(Icons.description_outlined, size: 18, color: colors.primary),
+                icon: Icon(
+                  Icons.description_outlined,
+                  size: 18,
+                  color: colors.primary,
+                ),
                 label: Text(
                   s.privacyPolicyTitle,
-                  style: TextStyle(color: colors.primary, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
 
@@ -304,7 +318,9 @@ class PrivacyConsentScreen extends StatelessWidget {
                   label: Text(s.privacyAcceptButton),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -317,7 +333,9 @@ class PrivacyConsentScreen extends StatelessWidget {
                   onPressed: () => _showDeclineDialog(context, s),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: Text(s.privacyDeclineButton),
                 ),

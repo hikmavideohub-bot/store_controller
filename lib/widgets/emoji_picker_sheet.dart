@@ -6,18 +6,12 @@ class EmojiPickerSheet extends StatelessWidget {
   final String? selected;
   final ScrollController? scrollController;
 
-  const EmojiPickerSheet({
-    super.key,
-    this.selected,
-    this.scrollController,
-  });
+  const EmojiPickerSheet({super.key, this.selected, this.scrollController});
 
   /// Filtert unerwünschte Emojis (Flaggen)
   List<CategoryEmoji> _getFilteredEmojis() {
-
     return defaultEmojiSet.map((categoryEmoji) {
-      final filteredList = categoryEmoji.emoji
-          .toList();
+      final filteredList = categoryEmoji.emoji.toList();
       return CategoryEmoji(categoryEmoji.category, filteredList);
     }).toList();
   }
@@ -70,7 +64,8 @@ class EmojiPickerSheet extends StatelessWidget {
                   emojiViewConfig: EmojiViewConfig(
                     backgroundColor: colors.surface,
                     columns: 7,
-                    emojiSizeMax: 28 *
+                    emojiSizeMax:
+                        28 *
                         (foundation.defaultTargetPlatform == TargetPlatform.iOS
                             ? 1.20
                             : 1.0),
@@ -83,15 +78,17 @@ class EmojiPickerSheet extends StatelessWidget {
 
                   // ✅ SUCHE IST OBEN (TOP)
                   viewOrderConfig: const ViewOrderConfig(
-                    top: EmojiPickerItem.searchBar,      // Suche oben
+                    top: EmojiPickerItem.searchBar, // Suche oben
                     middle: EmojiPickerItem.categoryBar, // Kategorien mitte
-                    bottom: EmojiPickerItem.emojiView,   // Emojis unten
+                    bottom: EmojiPickerItem.emojiView, // Emojis unten
                   ),
 
                   // --- Design der Suchleiste ---
                   searchViewConfig: SearchViewConfig(
                     // Wir geben der Suche eine andere Hintergrundfarbe, damit man sie sieht
-                    backgroundColor: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                    backgroundColor: colors.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
                     buttonIconColor: colors.primary, // Icon in Teal
                     hintText: '🔍 بحث عن رمز...',
                     hintTextStyle: TextStyle(color: theme.hintColor),

@@ -65,7 +65,9 @@ class PricingCalculator {
     bool hasOffer = false;
     int? appliedDiscount;
 
-    if (plan.offerActive && plan.discountPercent != null && plan.discountPercent! > 0) {
+    if (plan.offerActive &&
+        plan.discountPercent != null &&
+        plan.discountPercent! > 0) {
       hasOffer = true;
       appliedDiscount = plan.discountPercent;
       finalTotal = totalBeforeDiscount * (1 - appliedDiscount! / 100);
@@ -130,7 +132,9 @@ class PricingCalculator {
     bool hasOffer = false;
     int? appliedDiscount;
 
-    if (plan.offerActive && plan.discountPercent != null && plan.discountPercent! > 0) {
+    if (plan.offerActive &&
+        plan.discountPercent != null &&
+        plan.discountPercent! > 0) {
       hasOffer = true;
       appliedDiscount = plan.discountPercent;
       finalTotal = totalBeforeDiscount * (1 - appliedDiscount! / 100);
@@ -164,8 +168,18 @@ class PricingCalculator {
 
     // 0 Dezimalstellen (keine Untereinheit)
     const zeroDecimal = [
-      'jpy', 'krw', 'vnd', 'clp', 'pyg', 'ugx', 'rwf',
-      'gnf', 'kmf', 'xaf', 'xof', 'xpf'
+      'jpy',
+      'krw',
+      'vnd',
+      'clp',
+      'pyg',
+      'ugx',
+      'rwf',
+      'gnf',
+      'kmf',
+      'xaf',
+      'xof',
+      'xpf',
     ];
 
     // 3 Dezimalstellen (z.B. Baisa, Fils)
@@ -186,7 +200,11 @@ class PricingCalculator {
   }
 
   /// Formatiert einen Preis mit korrekter Dezimalstellenzahl für die UI.
-  static String formatPriceForCurrency(double price, String currencyCode, String currencySymbol) {
+  static String formatPriceForCurrency(
+    double price,
+    String currencyCode,
+    String currencySymbol,
+  ) {
     final decimals = getCurrencyDecimals(currencyCode);
 
     if (decimals == 0) {

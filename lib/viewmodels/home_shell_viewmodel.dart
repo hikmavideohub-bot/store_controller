@@ -28,7 +28,8 @@ class HomeShellViewModel extends BaseViewModel {
 
   /// FAB ist nur gold wenn Trial aktiv oder bezahlt (active)
   bool get fabEnabled =>
-      AccessManager.isLoaded && (AccessManager.isActive || AccessManager.isTrial);
+      AccessManager.isLoaded &&
+      (AccessManager.isActive || AccessManager.isTrial);
 
   /// Gibt FAB-Farbe basierend auf Status zurück
   bool get isFabActive => fabEnabled;

@@ -25,7 +25,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
   List<Product> _products = [];
   bool _loading = true;
   bool _actionBusy = false;
-  String? _storeId;
   bool _missingStore = false;
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -93,7 +92,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
     if (!_isOfferInDateRange(p)) return '';
     final s = AppLocalizations.of(context)!;
     final end = _parseDateSafe(p.offerEndDate, DateTime.now());
-    final dateStr = "${end.day.toString().padLeft(2, '0')}/${end.month.toString().padLeft(2, '0')}/${end.year}";
+    final dateStr =
+        "${end.day.toString().padLeft(2, '0')}/${end.month.toString().padLeft(2, '0')}/${end.year}";
     return s.offerUntilDate(dateStr);
   }
 
@@ -104,7 +104,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
     }
     if (p.offerType == 'bundle') {
       final cur = _currency();
-      return s.bundleOfferLabel(_sizeFmt.format(p.bundleQty), _moneyFmt.format(p.bundlePrice), cur);
+      return s.bundleOfferLabel(
+        _sizeFmt.format(p.bundleQty),
+        _moneyFmt.format(p.bundlePrice),
+        cur,
+      );
     }
     return s.offerLabel;
   }
@@ -136,7 +140,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
         backgroundColor: bg,
         content: Text(
           msg,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
@@ -191,7 +198,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
       });
       return;
     }
-    _storeId = id;
     await _loadProducts();
   }
 
@@ -231,7 +237,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
             backgroundColor: _errorBg,
             content: Text(
               s.productsLoadError,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         );
@@ -250,16 +259,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     setState(() {
       final i = _products.indexWhere((x) => x.id == p.id);
-      if (i != -1) _products[i] = _products[i].copyWith(productActive: newValue);
+      if (i != -1) {
+        _products[i] = _products[i].copyWith(productActive: newValue);
+      }
     });
 
-    final success = await ApiService.updateProduct(p.copyWith(productActive: newValue));
+    final success = await ApiService.updateProduct(
+      p.copyWith(productActive: newValue),
+    );
     if (!mounted) return;
 
     if (!success) {
       setState(() {
         final i = _products.indexWhere((x) => x.id == p.id);
-        if (i != -1) _products[i] = _products[i].copyWith(productActive: p.productActive);
+        if (i != -1) {
+          _products[i] = _products[i].copyWith(productActive: p.productActive);
+        }
       });
       if (messenger != null) {
         messenger.hideCurrentSnackBar();
@@ -268,7 +283,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
             backgroundColor: _errorBg,
             content: Text(
               s.productUpdateStatusFail,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         );
@@ -292,13 +310,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
       if (i != -1) _products[i] = _products[i].copyWith(offerActive: newValue);
     });
 
-    final success = await ApiService.updateProduct(p.copyWith(offerActive: newValue));
+    final success = await ApiService.updateProduct(
+      p.copyWith(offerActive: newValue),
+    );
     if (!mounted) return;
 
     if (!success) {
       setState(() {
         final i = _products.indexWhere((x) => x.id == p.id);
-        if (i != -1) _products[i] = _products[i].copyWith(offerActive: p.offerActive);
+        if (i != -1) {
+          _products[i] = _products[i].copyWith(offerActive: p.offerActive);
+        }
       });
       if (messenger != null) {
         messenger.hideCurrentSnackBar();
@@ -307,7 +329,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
             backgroundColor: _errorBg,
             content: Text(
               s.offerUpdateFail,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         );
@@ -381,9 +406,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 backgroundColor: colors.error,
                 foregroundColor: colors.onError,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              child: Text(s.delete, style: const TextStyle(fontWeight: FontWeight.w900)),
+              child: Text(
+                s.delete,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
             ),
           ],
         );
@@ -412,12 +442,18 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   String _getUnitLabel(String unit, AppLocalizations s) {
     switch (unit) {
-      case 'kg': return s.unitKg;
-      case 'g': return s.unitG;
-      case 'l': return s.unitL;
-      case 'ml': return s.unitMl;
-      case 'pcs': return s.unitPcs;
-      default: return unit;
+      case 'kg':
+        return s.unitKg;
+      case 'g':
+        return s.unitG;
+      case 'l':
+        return s.unitL;
+      case 'ml':
+        return s.unitMl;
+      case 'pcs':
+        return s.unitPcs;
+      default:
+        return unit;
     }
   }
 
@@ -449,11 +485,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(isActive ? Icons.check_circle : Icons.cancel, size: 16, color: fg),
+          Icon(
+            isActive ? Icons.check_circle : Icons.cancel,
+            size: 16,
+            color: fg,
+          ),
           const SizedBox(width: 6),
           Text(
             isActive ? s.availableStatus : s.unavailableStatus,
-            style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 12),
+            style: TextStyle(
+              color: fg,
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -468,7 +512,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
       decoration: BoxDecoration(
         color: accentColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accentColor.withValues(alpha: 0.4), width: 1.1),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.4),
+          width: 1.1,
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Row(
@@ -514,12 +561,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
         InputDecoration deco(String label) => InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: theme.hintColor, fontWeight: FontWeight.w700),
+          labelStyle: TextStyle(
+            color: theme.hintColor,
+            fontWeight: FontWeight.w700,
+          ),
           filled: true,
           fillColor: colors.surface,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: colors.outline.withValues(alpha: 0.3)),
+            borderSide: BorderSide(
+              color: colors.outline.withValues(alpha: 0.3),
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -532,7 +584,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
             left: 16,
             right: 16,
             top: 10,
-            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + MediaQuery.of(sheetCtx).viewPadding.bottom + 20,
+            bottom:
+                MediaQuery.of(sheetCtx).viewInsets.bottom +
+                MediaQuery.of(sheetCtx).viewPadding.bottom +
+                20,
           ),
           child: StatefulBuilder(
             builder: (localCtx, setLocal) {
@@ -541,18 +596,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 children: [
                   Text(
                     s.filterTitle,
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: colors.onSurface),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: colors.onSurface,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     initialValue: cat,
                     dropdownColor: colors.surface,
                     iconEnabledColor: colors.primary,
-                    style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      color: colors.onSurface,
+                      fontWeight: FontWeight.w800,
+                    ),
                     decoration: deco(s.categoryLabel),
                     items: [
                       DropdownMenuItem(value: 'all', child: Text(s.filterAll)),
-                      ...categories.map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                      ...categories.map(
+                        (c) => DropdownMenuItem(value: c, child: Text(c)),
+                      ),
                     ],
                     onChanged: (v) => setLocal(() => cat = v ?? 'all'),
                   ),
@@ -561,12 +625,21 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     initialValue: offer,
                     dropdownColor: colors.surface,
                     iconEnabledColor: colors.primary,
-                    style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      color: colors.onSurface,
+                      fontWeight: FontWeight.w800,
+                    ),
                     decoration: deco(s.offersLabel),
                     items: [
                       DropdownMenuItem(value: 'all', child: Text(s.filterAll)),
-                      DropdownMenuItem(value: 'with', child: Text(s.filterWithOffer)),
-                      DropdownMenuItem(value: 'without', child: Text(s.filterWithoutOffer)),
+                      DropdownMenuItem(
+                        value: 'with',
+                        child: Text(s.filterWithOffer),
+                      ),
+                      DropdownMenuItem(
+                        value: 'without',
+                        child: Text(s.filterWithoutOffer),
+                      ),
                     ],
                     onChanged: (v) => setLocal(() => offer = v ?? 'all'),
                   ),
@@ -575,12 +648,21 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     initialValue: stock,
                     dropdownColor: colors.surface,
                     iconEnabledColor: colors.primary,
-                    style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      color: colors.onSurface,
+                      fontWeight: FontWeight.w800,
+                    ),
                     decoration: deco(s.stockStatusLabel),
                     items: [
                       DropdownMenuItem(value: 'all', child: Text(s.filterAll)),
-                      DropdownMenuItem(value: 'active', child: Text(s.filterActive)),
-                      DropdownMenuItem(value: 'inactive', child: Text(s.filterInactive)),
+                      DropdownMenuItem(
+                        value: 'active',
+                        child: Text(s.filterActive),
+                      ),
+                      DropdownMenuItem(
+                        value: 'inactive',
+                        child: Text(s.filterInactive),
+                      ),
                     ],
                     onChanged: (v) => setLocal(() => stock = v ?? 'all'),
                   ),
@@ -599,11 +681,18 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           },
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            side: BorderSide(color: colors.outline.withValues(alpha: 0.3)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            side: BorderSide(
+                              color: colors.outline.withValues(alpha: 0.3),
+                            ),
                             foregroundColor: theme.hintColor,
                           ),
-                          child: Text(s.filterReset, style: const TextStyle(fontWeight: FontWeight.w900)),
+                          child: Text(
+                            s.filterReset,
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -619,12 +708,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                             elevation: 0,
                             backgroundColor: colors.primary,
                             foregroundColor: colors.onPrimary,
                           ),
-                          child: Text(s.filterApply, style: const TextStyle(fontWeight: FontWeight.w900)),
+                          child: Text(
+                            s.filterApply,
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
                         ),
                       ),
                     ],
@@ -666,60 +760,120 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   p.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-                subtitle: Text('ID: ${p.id}', style: TextStyle(color: theme.hintColor)),
+                subtitle: Text(
+                  'ID: ${p.id}',
+                  style: TextStyle(color: theme.hintColor),
+                ),
               ),
               Divider(height: 1, color: theme.dividerColor),
               ListTile(
                 enabled: !_actionBusy,
                 leading: _actionBusy
-                    ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.2, color: colors.primary))
-                    : Icon(p.productActive ? Icons.check_circle : Icons.cancel, color: p.productActive ? _activeGreen : _inactiveGrey),
-                title: Text(p.productActive ? s.disableProduct : s.enableProduct, style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w700)),
-                onTap: _actionBusy ? null : () async {
-                  sheetNav.pop();
-                  await _runAction(() => _toggleActive(p));
-                },
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: colors.primary,
+                        ),
+                      )
+                    : Icon(
+                        p.productActive ? Icons.check_circle : Icons.cancel,
+                        color: p.productActive ? _activeGreen : _inactiveGrey,
+                      ),
+                title: Text(
+                  p.productActive ? s.disableProduct : s.enableProduct,
+                  style: TextStyle(
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                onTap: _actionBusy
+                    ? null
+                    : () async {
+                        sheetNav.pop();
+                        await _runAction(() => _toggleActive(p));
+                      },
               ),
               ListTile(
                 enabled: !_actionBusy,
                 leading: _actionBusy
-                    ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.2, color: colors.primary))
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: colors.primary,
+                        ),
+                      )
                     : Icon(Icons.local_offer, color: colors.tertiary),
-                title: Text(p.offerActive ? s.disableOffer : s.enableOffer, style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w700)),
-                onTap: _actionBusy ? null : () async {
-                  sheetNav.pop();
-                  await _runAction(() => _toggleOffer(p));
-                },
+                title: Text(
+                  p.offerActive ? s.disableOffer : s.enableOffer,
+                  style: TextStyle(
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                onTap: _actionBusy
+                    ? null
+                    : () async {
+                        sheetNav.pop();
+                        await _runAction(() => _toggleOffer(p));
+                      },
               ),
               ListTile(
                 enabled: !_actionBusy,
                 leading: Icon(Icons.edit, color: theme.hintColor),
-                title: Text(s.edit, style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w700)),
-                onTap: _actionBusy ? null : () async {
-                  sheetNav.pop();
-                  if (router == null) return;
-                  final result = await router.push('/edit/${p.id}', extra: p);
-                  if (!mounted) return;
-                  if (result is Product) {
-                    setState(() {
-                      final i = _products.indexWhere((x) => x.id == result.id);
-                      if (i != -1) _products[i] = result;
-                    });
-                    _snack(s.productUpdateSuccess, _successBg);
-                    _bustVParam();
-                  }
-                },
+                title: Text(
+                  s.edit,
+                  style: TextStyle(
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                onTap: _actionBusy
+                    ? null
+                    : () async {
+                        sheetNav.pop();
+                        if (router == null) return;
+                        final result = await router.push(
+                          '/edit/${p.id}',
+                          extra: p,
+                        );
+                        if (!mounted) return;
+                        if (result is Product) {
+                          setState(() {
+                            final i = _products.indexWhere(
+                              (x) => x.id == result.id,
+                            );
+                            if (i != -1) _products[i] = result;
+                          });
+                          _snack(s.productUpdateSuccess, _successBg);
+                          _bustVParam();
+                        }
+                      },
               ),
               ListTile(
                 enabled: !_actionBusy,
                 leading: const Icon(Icons.delete, color: Colors.redAccent),
-                title: Text(s.delete, style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w800)),
-                onTap: _actionBusy ? null : () async {
-                  sheetNav.pop();
-                  await _confirmDelete(p);
-                },
+                title: Text(
+                  s.delete,
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                onTap: _actionBusy
+                    ? null
+                    : () async {
+                        sheetNav.pop();
+                        await _confirmDelete(p);
+                      },
               ),
               const SizedBox(height: 10),
             ],
@@ -743,10 +897,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
       final matchesSearch = q.isEmpty || name.contains(q) || id.contains(q);
       final matchesCat = (_catFilter == 'all') || (p.category == _catFilter);
       final hasActiveOfferToday = _isOfferInDateRange(p);
-      final matchesOffer = (_offerFilter == 'all') ||
+      final matchesOffer =
+          (_offerFilter == 'all') ||
           (_offerFilter == 'with' && hasActiveOfferToday) ||
           (_offerFilter == 'without' && !hasActiveOfferToday);
-      final matchesStock = (_stockFilter == 'all') ||
+      final matchesStock =
+          (_stockFilter == 'all') ||
           (_stockFilter == 'active' && p.productActive == true) ||
           (_stockFilter == 'inactive' && p.productActive == false);
       return matchesSearch && matchesCat && matchesOffer && matchesStock;
@@ -772,13 +928,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
             color: colors.surface,
             border: Border.all(color: colors.outline.withValues(alpha: 0.2)),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
           child: Stack(
             children: [
               InkWell(
-                onLongPress: () { if (!_actionBusy) _openProductActions(p); },
+                onLongPress: () {
+                  if (!_actionBusy) _openProductActions(p);
+                },
                 onTap: () async {
                   if (_actionBusy || router == null) return;
                   final result = await router.push('/edit/${p.id}', extra: p);
@@ -801,26 +963,56 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       Stack(
                         children: [
                           Container(
-                            width: 74, height: 74,
+                            width: 74,
+                            height: 74,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
                               color: colors.surfaceContainerHighest,
-                              border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
+                              border: Border.all(
+                                color: colors.outline.withValues(alpha: 0.1),
+                              ),
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
                               child: (p.thumb.isNotEmpty || p.image.isNotEmpty)
-                                  ? Image.network((p.thumb.isNotEmpty ? p.thumb : p.image), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Center(child: Icon(Icons.image_not_supported, color: theme.hintColor, size: 28)))
-                                  : Center(child: Icon(Icons.image_not_supported, color: theme.hintColor, size: 28)),
+                                  ? Image.network(
+                                      (p.thumb.isNotEmpty ? p.thumb : p.image),
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Center(
+                                        child: Icon(
+                                          Icons.image_not_supported,
+                                          color: theme.hintColor,
+                                          size: 28,
+                                        ),
+                                      ),
+                                    )
+                                  : Center(
+                                      child: Icon(
+                                        Icons.image_not_supported,
+                                        color: theme.hintColor,
+                                        size: 28,
+                                      ),
+                                    ),
                             ),
                           ),
                           if (hasOfferToday)
                             Positioned(
-                              top: 6, left: 6,
+                              top: 6,
+                              left: 6,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                                decoration: BoxDecoration(color: colors.tertiary, borderRadius: BorderRadius.circular(12)),
-                                child: const Icon(Icons.local_offer, size: 14, color: Colors.black),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colors.tertiary,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.local_offer,
+                                  size: 14,
+                                  color: Colors.black,
+                                ),
                               ),
                             ),
                         ],
@@ -830,21 +1022,62 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(p.name, style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900, letterSpacing: 0.2, color: colors.onSurface), maxLines: 2, overflow: TextOverflow.ellipsis),
+                            Text(
+                              p.name,
+                              style: TextStyle(
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.2,
+                                color: colors.onSurface,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             const SizedBox(height: 6),
-                            Text(_priceLine(p), style: TextStyle(fontSize: 14.8, color: colors.primary, fontWeight: FontWeight.w900, letterSpacing: 0.2)),
+                            Text(
+                              _priceLine(p),
+                              style: TextStyle(
+                                fontSize: 14.8,
+                                color: colors.primary,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
                             if (offerLine != null) ...[
                               const SizedBox(height: 6),
-                              Row(children: [
-                                Icon(Icons.history_toggle_off, size: 16, color: colors.tertiary),
-                                const SizedBox(width: 6),
-                                Expanded(child: Text(offerLine, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: colors.tertiary))),
-                              ]),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.history_toggle_off,
+                                    size: 16,
+                                    color: colors.tertiary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      offerLine,
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w900,
+                                        color: colors.tertiary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                             const SizedBox(height: 10),
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
-                              child: Row(children: [_statusChip(p), if (p.hasOffer && p.offerActive) ...[const SizedBox(width: 8), _offerChip(p)]]),
+                              child: Row(
+                                children: [
+                                  _statusChip(p),
+                                  if (p.hasOffer && p.offerActive) ...[
+                                    const SizedBox(width: 8),
+                                    _offerChip(p),
+                                  ],
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -861,25 +1094,46 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     GestureDetector(
-                      onTap: _actionBusy ? null : () => _runAction(() => _toggleActive(p)),
+                      onTap: _actionBusy
+                          ? null
+                          : () => _runAction(() => _toggleActive(p)),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
-                        width: 52, height: 28,
+                        width: 52,
+                        height: 28,
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: p.productActive ? Colors.green.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
+                          color: p.productActive
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.grey.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(100),
-                          border: Border.all(color: p.productActive ? Colors.green : Colors.grey, width: 1.2),
-                        ),
-                        child: Stack(children: [
-                          AnimatedAlign(
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.fastOutSlowIn,
-                            alignment: p.productActive ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Container(width: 20, height: 20, decoration: BoxDecoration(shape: BoxShape.circle, color: p.productActive ? Colors.green : Colors.grey)),
+                          border: Border.all(
+                            color: p.productActive ? Colors.green : Colors.grey,
+                            width: 1.2,
                           ),
-                        ]),
+                        ),
+                        child: Stack(
+                          children: [
+                            AnimatedAlign(
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.fastOutSlowIn,
+                              alignment: p.productActive
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: p.productActive
+                                      ? Colors.green
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -890,8 +1144,18 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       onPressed: () async => await _confirmDelete(p),
                       icon: Container(
                         padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), shape: BoxShape.circle, border: Border.all(color: colors.error.withValues(alpha: 0.3))),
-                        child: Icon(Icons.delete_outline, size: 18, color: colors.error),
+                        decoration: BoxDecoration(
+                          color: colors.error.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: colors.error.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.delete_outline,
+                          size: 18,
+                          color: colors.error,
+                        ),
                       ),
                     ),
                   ],
@@ -910,17 +1174,58 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final s = AppLocalizations.of(context)!;
 
     if (_products.isEmpty) {
-      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.inventory_2_outlined, size: 80, color: theme.disabledColor), const SizedBox(height: 16), Text(s.noProductsFound, style: TextStyle(fontSize: 18, color: theme.disabledColor, fontWeight: FontWeight.w700))]));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 80,
+              color: theme.disabledColor,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              s.noProductsFound,
+              style: TextStyle(
+                fontSize: 18,
+                color: theme.disabledColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
     }
     if (filtered.isEmpty) {
-      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.search_off, size: 60, color: theme.disabledColor), const SizedBox(height: 16), Text(s.noSearchResults, style: TextStyle(color: theme.disabledColor, fontWeight: FontWeight.w700))]));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 60, color: theme.disabledColor),
+            const SizedBox(height: 16),
+            Text(
+              s.noSearchResults,
+              style: TextStyle(
+                color: theme.disabledColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(0, 16, 0, 20 + MediaQuery.of(context).viewPadding.bottom),
+      padding: EdgeInsets.fromLTRB(
+        0,
+        16,
+        0,
+        20 + MediaQuery.of(context).viewPadding.bottom,
+      ),
       itemCount: filtered.length,
-      itemBuilder: (context, index) => _buildProductCard(filtered[index], context),
+      itemBuilder: (context, index) =>
+          _buildProductCard(filtered[index], context),
     );
   }
 
@@ -929,7 +1234,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final colors = Theme.of(context).colorScheme;
     final s = AppLocalizations.of(context)!;
 
-    if (_loading) return Scaffold(body: Center(child: CircularProgressIndicator(color: colors.primary)));
+    if (_loading) {
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator(color: colors.primary)),
+      );
+    }
 
     if (_missingStore) {
       return Scaffold(
@@ -941,12 +1250,25 @@ class _ProductsScreenState extends State<ProductsScreen> {
               children: [
                 const Icon(Icons.store, size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
-                Text(s.noStoreFound, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                Text(
+                  s.noStoreFound,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 8),
                 Text(s.noStoreMsg, textAlign: TextAlign.center),
                 const SizedBox(height: 20),
-                ElevatedButton(onPressed: () => context.go('/setup'), child: Text(s.setupStoreButton)),
-                TextButton(onPressed: () => context.go('/login'), child: Text(s.reloginButton)),
+                ElevatedButton(
+                  onPressed: () => context.go('/setup'),
+                  child: Text(s.setupStoreButton),
+                ),
+                TextButton(
+                  onPressed: () => context.go('/login'),
+                  child: Text(s.reloginButton),
+                ),
               ],
             ),
           ),
@@ -954,7 +1276,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
       );
     }
 
-    final categories = _products.map((p) => p.category.trim()).where((c) => c.isNotEmpty).toSet().toList()..sort();
+    final categories =
+        _products
+            .map((p) => p.category.trim())
+            .where((c) => c.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
 
     return Scaffold(
       key: _scaffoldKey,
@@ -964,19 +1292,26 @@ class _ProductsScreenState extends State<ProductsScreen> {
         hasSearch: true,
         searchController: _searchCtrl,
         onSearchChanged: (v) => setState(() => _query = v),
-        onSearchCleared: () { _searchCtrl.clear(); setState(() => _query = ''); },
+        onSearchCleared: () {
+          _searchCtrl.clear();
+          setState(() => _query = '');
+        },
         onFiltersPressed: () => _openFiltersSheet(categories),
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
       ),
-      drawer: AppDrawer(currentRoute: '/products', headerSubtitle: s.manageProducts, onSync: () async => _loadProducts(silent: false)),
+      drawer: AppDrawer(
+        currentRoute: '/products',
+        headerSubtitle: s.manageProducts,
+        onSync: () async => _loadProducts(silent: false),
+      ),
       body: _loading
           ? Center(child: CircularProgressIndicator(color: colors.primary))
           : RefreshIndicator(
-        color: colors.primary,
-        backgroundColor: colors.surface,
-        onRefresh: () => _loadProducts(silent: true),
-        child: _buildProductList(context),
-      ),
+              color: colors.primary,
+              backgroundColor: colors.surface,
+              onRefresh: () => _loadProducts(silent: true),
+              child: _buildProductList(context),
+            ),
     );
   }
 }

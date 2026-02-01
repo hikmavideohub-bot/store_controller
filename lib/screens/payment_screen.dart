@@ -71,7 +71,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (publicDoc.exists && publicDoc.data() != null) {
         final rawData = publicDoc.data()!;
         final data = _sanitizeData(rawData);
-        apiCountry = data['api_address_country']?.toString().trim().toUpperCase();
+        apiCountry = data['api_address_country']
+            ?.toString()
+            .trim()
+            .toUpperCase();
         debugPrint("DEBUG: stores_public 'api_address_country': $apiCountry");
       }
     } catch (e) {
@@ -81,7 +84,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     // SCHRITT B: Manuelle Adresse aus stores_private lesen
     try {
       var storeConfig = await ApiService.fetchStoreConfig();
-      manualCountry = storeConfig?['address_country']?.toString().trim().toUpperCase();
+      manualCountry = storeConfig?['address_country']
+          ?.toString()
+          .trim()
+          .toUpperCase();
       debugPrint("DEBUG: stores_private 'address_country': $manualCountry");
     } catch (e) {
       debugPrint("DEBUG: Fehler beim Lesen von stores_private: $e");
@@ -91,12 +97,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
     // Wenn EINES von beiden SY ist, dann SY verwenden
     if (apiCountry == 'SY' || manualCountry == 'SY') {
       region = 'SY';
-      debugPrint("DEBUG: SY erkannt (API: $apiCountry, Manual: $manualCountry) → SY");
-    } else if (apiCountry != null && apiCountry.isNotEmpty && apiCountry != 'GLOBAL') {
+      debugPrint(
+        "DEBUG: SY erkannt (API: $apiCountry, Manual: $manualCountry) → SY",
+      );
+    } else if (apiCountry != null &&
+        apiCountry.isNotEmpty &&
+        apiCountry != 'GLOBAL') {
       // Sonst: API-Land hat Priorität (wenn nicht GLOBAL)
       region = apiCountry;
       debugPrint("DEBUG: Region aus API übernommen: $region");
-    } else if (manualCountry != null && manualCountry.isNotEmpty && manualCountry != 'GLOBAL') {
+    } else if (manualCountry != null &&
+        manualCountry.isNotEmpty &&
+        manualCountry != 'GLOBAL') {
       // Dann: Manuelles Land
       region = manualCountry;
       debugPrint("DEBUG: Region aus manueller Eingabe übernommen: $region");
@@ -106,9 +118,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (region == 'GLOBAL') {
       debugPrint("DEBUG: Region noch unklar. Starte Cloud Function...");
       try {
-        final result = await FirebaseFunctions.instanceFor(region: 'europe-west3')
-            .httpsCallable('resolveUserRegion')
-            .call();
+        final result = await FirebaseFunctions.instanceFor(
+          region: 'europe-west3',
+        ).httpsCallable('resolveUserRegion').call();
 
         debugPrint("DEBUG: Cloud Function Result: ${result.data}");
         if (result.data['country'] != null) {
@@ -153,7 +165,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
             fxRate = 1.0;
           }
 
-          debugPrint("DEBUG: FX-Rate für $userCurrencyCode: $fxRate (fallback: $fxIsFallback)");
+          debugPrint(
+            "DEBUG: FX-Rate für $userCurrencyCode: $fxRate (fallback: $fxIsFallback)",
+          );
         } catch (e) {
           debugPrint("DEBUG: FX-Rate Fehler: $e → EUR Fallback");
           userCurrencyCode = 'eur';
@@ -189,9 +203,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
           children: [
             Icon(Icons.stars_rounded, color: colors.tertiary, size: 80),
             const SizedBox(height: 16),
-            Text(s.activationSuccessTitle,
-                style: TextStyle(fontWeight: FontWeight.bold, color: colors.onSurface),
-                textAlign: TextAlign.center
+            Text(
+              s.activationSuccessTitle,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: colors.onSurface,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -203,7 +221,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         actions: [
           TextButton(
             onPressed: () => context.go('/home'),
-            child: Text(s.startNowButton, style: TextStyle(color: colors.primary)),
+            child: Text(
+              s.startNowButton,
+              style: TextStyle(color: colors.primary),
+            ),
           ),
         ],
       ),
@@ -226,13 +247,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
-            body: Center(child: CircularProgressIndicator(color: colors.primary)),
+            body: Center(
+              child: CircularProgressIndicator(color: colors.primary),
+            ),
           );
         }
 
         if (snapshot.hasError || !snapshot.hasData) {
           return Scaffold(
-            body: Center(child: Text('${s.loadingErrorPrefix}${snapshot.error}')),
+            body: Center(
+              child: Text('${s.loadingErrorPrefix}${snapshot.error}'),
+            ),
           );
         }
 
@@ -243,9 +268,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
         // Basis-Plan identifizieren (premium_monthly - einzige Quelle für regions!)
         // -----------------------------------------------------------
         final SubscriptionPlan basePlan = plans.firstWhere(
-              (p) => p.id == 'premium_monthly',
+          (p) => p.id == 'premium_monthly',
           orElse: () => plans.firstWhere(
-                (p) => p.billingCycle == 1,
+            (p) => p.billingCycle == 1,
             orElse: () => plans.first,
           ),
         );
@@ -259,17 +284,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
         // Weiche: Syria vs Global (basierend auf regionKey)
         // -----------------------------------------------------------
         if (regionKey == 'syria') {
-          return PaymentScreenSyria(
-            availablePlans: plans,
-            basePlan: basePlan,
-          );
+          return PaymentScreenSyria(availablePlans: plans, basePlan: basePlan);
         } else {
           // -----------------------------------------------------------
           // FX-Daten aus _fetchData (bereits mit Fallback-Logik)
           // -----------------------------------------------------------
-          final String userCurrencyCode = snapshot.data!['userCurrencyCode'] ?? 'eur';
-          final String userCurrencySymbol = snapshot.data!['userCurrencySymbol'] ?? '€';
-          final double fxRate = (snapshot.data!['fxRate'] as num?)?.toDouble() ?? 1.0;
+          final String userCurrencyCode =
+              snapshot.data!['userCurrencyCode'] ?? 'eur';
+          final String userCurrencySymbol =
+              snapshot.data!['userCurrencySymbol'] ?? '€';
+          final double fxRate =
+              (snapshot.data!['fxRate'] as num?)?.toDouble() ?? 1.0;
 
           return PaymentScreenGlobal(
             availablePlans: plans,
@@ -282,6 +307,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       },
     );
   }
+
   /// Wandelt Firestore Timestamps in Strings um, damit jsonEncode nicht abstürzt
   Map<String, dynamic> _sanitizeData(Map<String, dynamic> data) {
     return data.map((key, value) {

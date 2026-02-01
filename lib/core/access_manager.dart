@@ -193,12 +193,15 @@ class AccessManager extends ChangeNotifier {
     // Cache speichern
     SharedPreferences.getInstance().then((p) {
       try {
-        String encoded = json.encode(accessJson, toEncodable: (item) {
-          if (item is Timestamp) {
-            return item.toDate().toIso8601String();
-          }
-          return item.toString();
-        });
+        String encoded = json.encode(
+          accessJson,
+          toEncodable: (item) {
+            if (item is Timestamp) {
+              return item.toDate().toIso8601String();
+            }
+            return item.toString();
+          },
+        );
         p.setString(_prefsKey, encoded);
       } catch (e) {
         debugPrint('AccessManager: Failed to save cache: $e');

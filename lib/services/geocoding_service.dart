@@ -27,7 +27,9 @@ class GeocodingService {
         try {
           return await _getAddressFromCoordinatesNative(latitude, longitude);
         } catch (nativeError) {
-          debugLog('❌ [Geocoding] Native-Fallback auch fehlgeschlagen: $nativeError');
+          debugLog(
+            '❌ [Geocoding] Native-Fallback auch fehlgeschlagen: $nativeError',
+          );
         }
       }
 
@@ -70,7 +72,9 @@ class GeocodingService {
       throw GeocodingException('Keine Adresse gefunden');
     }
 
-    debugLog('✅ [Cloud Function] Ergebnis: $address (Land: $countryCode, Stadt: $city)');
+    debugLog(
+      '✅ [Cloud Function] Ergebnis: $address (Land: $countryCode, Stadt: $city)',
+    );
 
     return GeocodingResult(
       address: address,
@@ -108,7 +112,9 @@ class GeocodingService {
 
     final address = parts.join(', ');
 
-    debugLog('✅ [Native Geocoding] Ergebnis: $address (Land: ${p.isoCountryCode})');
+    debugLog(
+      '✅ [Native Geocoding] Ergebnis: $address (Land: ${p.isoCountryCode})',
+    );
 
     return GeocodingResult(
       address: address,
@@ -143,7 +149,8 @@ class GeocodingResult {
   });
 
   @override
-  String toString() => 'GeocodingResult(address: $address, countryCode: $countryCode)';
+  String toString() =>
+      'GeocodingResult(address: $address, countryCode: $countryCode)';
 }
 
 /// Geocoding-Fehler mit Details

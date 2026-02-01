@@ -19,14 +19,14 @@ class RatingPromptService {
   /// Beendet die Sitzung und speichert die Dauer
   static Future<void> endSession() async {
     if (_sessionStartTime == null) return;
-    
+
     final duration = DateTime.now().difference(_sessionStartTime!).inSeconds;
     final prefs = await SharedPreferences.getInstance();
-    
+
     int totalTime = prefs.getInt(_kTotalSessionTime) ?? 0;
     totalTime += duration;
     await prefs.setInt(_kTotalSessionTime, totalTime);
-    
+
     _sessionStartTime = null;
     await syncUsageToFirebase();
   }
@@ -34,7 +34,7 @@ class RatingPromptService {
   /// Erhöht den Zähler bei jedem App-Start und synchronisiert mit Firebase
   static Future<void> incrementLaunchCount() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     if (!prefs.containsKey(_kFirstLaunch)) {
       await prefs.setInt(_kFirstLaunch, DateTime.now().millisecondsSinceEpoch);
     }
@@ -58,17 +58,22 @@ class RatingPromptService {
     final count = launchCount ?? (prefs.getInt(_kLaunchCount) ?? 0);
 
     try {
-      await FirebaseFirestore.instance.collection('app_usage_stats').doc(storeId).set({
-        'storeId': storeId,
-        'storeName': ApiService.storeName ?? 'Unknown',
-        'launchCount': count,
-        'firstLaunch': Timestamp.fromMillisecondsSinceEpoch(firstLaunch),
-        'lastSeen': FieldValue.serverTimestamp(),
-        'hasRated': prefs.getBool(_kHasRatedOrDismissed) ?? false,
-        'totalTimeMinutes': (totalSeconds / 60).toStringAsFixed(2), // Zeit in Minuten
-        'subscriptionStatus': AccessManager.status, // Conversion-Tracking
-        'isPremium': AccessManager.isActive,
-      }, SetOptions(merge: true));
+      await FirebaseFirestore.instance
+          .collection('app_usage_stats')
+          .doc(storeId)
+          .set({
+            'storeId': storeId,
+            'storeName': ApiService.storeName ?? 'Unknown',
+            'launchCount': count,
+            'firstLaunch': Timestamp.fromMillisecondsSinceEpoch(firstLaunch),
+            'lastSeen': FieldValue.serverTimestamp(),
+            'hasRated': prefs.getBool(_kHasRatedOrDismissed) ?? false,
+            'totalTimeMinutes': (totalSeconds / 60).toStringAsFixed(
+              2,
+            ), // Zeit in Minuten
+            'subscriptionStatus': AccessManager.status, // Conversion-Tracking
+            'isPremium': AccessManager.isActive,
+          }, SetOptions(merge: true));
     } catch (e) {
       // Fehler silent ignorieren
     }
@@ -90,10 +95,13 @@ class RatingPromptService {
   static Future<void> markAsDone() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kHasRatedOrDismissed, true);
-    
+
     final storeId = ApiService.storeId;
     if (storeId != null) {
-      FirebaseFirestore.instance.collection('app_usage_stats').doc(storeId).update({'hasRated': true});
+      FirebaseFirestore.instance
+          .collection('app_usage_stats')
+          .doc(storeId)
+          .update({'hasRated': true});
     }
   }
 }

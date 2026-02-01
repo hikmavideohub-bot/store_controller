@@ -26,7 +26,9 @@ class StoreInfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+        ),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -40,7 +42,10 @@ class StoreInfoCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Text(
                   s.storeInfoTitle,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ],
             ),
@@ -89,12 +94,18 @@ class StoreInfoCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.3,
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.calendar_today_rounded, size: 16, color: theme.hintColor),
+                  Icon(
+                    Icons.calendar_today_rounded,
+                    size: 16,
+                    color: theme.hintColor,
+                  ),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
@@ -106,7 +117,7 @@ class StoreInfoCard extends StatelessWidget {
                 ],
               ),
             ),
-          ]
+          ],
         ],
       ),
     );
@@ -281,7 +292,10 @@ class _CurrencyDropdown extends StatelessWidget {
     ('Z\$', 'Z\$  ZWL - Zimbabwean Dollar'),
   ];
 
-  static List<(String, String)> get _allCurrencies => [..._preferred, ..._allOther];
+  static List<(String, String)> get _allCurrencies => [
+    ..._preferred,
+    ..._allOther,
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -297,10 +311,14 @@ class _CurrencyDropdown extends StatelessWidget {
           icon: const Icon(Icons.arrow_drop_down),
           onSelected: (val) => vm.setCurrency(val),
           constraints: const BoxConstraints(maxHeight: 400),
-          itemBuilder: (ctx) => _allCurrencies.map((e) => PopupMenuItem(
-            value: e.$1,
-            child: Text(e.$2, textDirection: TextDirection.ltr),
-          )).toList(),
+          itemBuilder: (ctx) => _allCurrencies
+              .map(
+                (e) => PopupMenuItem(
+                  value: e.$1,
+                  child: Text(e.$2, textDirection: TextDirection.ltr),
+                ),
+              )
+              .toList(),
         ),
       ),
     );
@@ -357,12 +375,13 @@ class _StoreLangDropdown extends StatelessWidget {
   const _StoreLangDropdown({required this.vm});
 
   // Unterstützte Sprachen für die öffentliche Web-App
-  static const List<(String code, String nativeName, String flag)> _languages = [
-    ('ar', 'العربية', '🇸🇦'),
-    ('en', 'English', '🇬🇧'),
-    ('de', 'Deutsch', '🇩🇪'),
-    ('tr', 'Türkçe', '🇹🇷'),
-  ];
+  static const List<(String code, String nativeName, String flag)> _languages =
+      [
+        ('ar', 'العربية', '🇸🇦'),
+        ('en', 'English', '🇬🇧'),
+        ('de', 'Deutsch', '🇩🇪'),
+        ('tr', 'Türkçe', '🇹🇷'),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -384,16 +403,20 @@ class _StoreLangDropdown extends StatelessWidget {
         suffixIcon: PopupMenuButton<String>(
           icon: const Icon(Icons.arrow_drop_down),
           onSelected: (val) => vm.setStoreLang(val),
-          itemBuilder: (ctx) => _languages.map((e) => PopupMenuItem(
-            value: e.$1,
-            child: Row(
-              children: [
-                Text(e.$3, style: const TextStyle(fontSize: 20)),
-                const SizedBox(width: 12),
-                Text(e.$2),
-              ],
-            ),
-          )).toList(),
+          itemBuilder: (ctx) => _languages
+              .map(
+                (e) => PopupMenuItem(
+                  value: e.$1,
+                  child: Row(
+                    children: [
+                      Text(e.$3, style: const TextStyle(fontSize: 20)),
+                      const SizedBox(width: 12),
+                      Text(e.$2),
+                    ],
+                  ),
+                ),
+              )
+              .toList(),
         ),
       ),
     );

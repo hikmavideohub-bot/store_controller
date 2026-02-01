@@ -21,7 +21,10 @@ class SecuritySection extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: ExpansionTile(
-        title: Text(s.securityTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          s.securityTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         leading: const Icon(Icons.shield_outlined),
         childrenPadding: const EdgeInsets.all(16),
         children: [
@@ -40,8 +43,14 @@ class SecuritySection extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(s.loginEmailLabel, style: TextStyle(fontSize: 12, color: theme.hintColor)),
-                      Text(vm.emailLogin.isNotEmpty ? vm.emailLogin : '-', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        s.loginEmailLabel,
+                        style: TextStyle(fontSize: 12, color: theme.hintColor),
+                      ),
+                      Text(
+                        vm.emailLogin.isNotEmpty ? vm.emailLogin : '-',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ],
                   ),
                 ),
@@ -61,20 +70,30 @@ class SecuritySection extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 // Button deaktiviert, wenn beschäftigt oder gerade gesendet wird
-                onPressed: (vm.busy || vm.sendingPasswordReset) ? null : () async {
-                  final success = await vm.sendPasswordReset(s);
-                  // Da der Screen nicht neu lädt, bleibt context.mounted true
-                  if (success && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(s.passwordResetSent)),
-                    );
-                  }
-                },
+                onPressed: (vm.busy || vm.sendingPasswordReset)
+                    ? null
+                    : () async {
+                        final success = await vm.sendPasswordReset(s);
+                        // Da der Screen nicht neu lädt, bleibt context.mounted true
+                        if (success && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(s.passwordResetSent)),
+                          );
+                        }
+                      },
                 // Zeigt Lade-Spinner IM Button anstatt global
                 icon: vm.sendingPasswordReset
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.email_outlined),
-                label: Text(vm.sendingPasswordReset ? s.sendingStatus : s.sendResetLinkButton),
+                label: Text(
+                  vm.sendingPasswordReset
+                      ? s.sendingStatus
+                      : s.sendResetLinkButton,
+                ),
               ),
             ),
           ] else ...[
@@ -82,14 +101,20 @@ class SecuritySection extends StatelessWidget {
               controller: vm.currentPasswordCtrl,
               label: s.currentPasswordLabel,
               visible: vm.showCurrentPassword,
-              onToggle: () { vm.showCurrentPassword = !vm.showCurrentPassword; vm.notifyListeners(); },
+              onToggle: () {
+                vm.showCurrentPassword = !vm.showCurrentPassword;
+                vm.notifyListeners();
+              },
             ),
             const SizedBox(height: 12),
             _PasswordField(
               controller: vm.newPasswordCtrl,
               label: s.newPasswordLabel,
               visible: vm.showNewPassword,
-              onToggle: () { vm.showNewPassword = !vm.showNewPassword; vm.notifyListeners(); },
+              onToggle: () {
+                vm.showNewPassword = !vm.showNewPassword;
+                vm.notifyListeners();
+              },
             ),
             const SizedBox(height: 12),
             _PasswordField(
@@ -102,12 +127,16 @@ class SecuritySection extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: vm.busy ? null : () async {
-                  final ok = await vm.changePassword(s);
-                  if (ok && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.passwordChangedSuccess)));
-                  }
-                },
+                onPressed: vm.busy
+                    ? null
+                    : () async {
+                        final ok = await vm.changePassword(s);
+                        if (ok && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(s.passwordChangedSuccess)),
+                          );
+                        }
+                      },
                 icon: const Icon(Icons.key_rounded),
                 label: Text(s.changePasswordButton),
               ),
@@ -149,7 +178,8 @@ class _PasswordFieldState extends State<_PasswordField> {
     if (trimmed.isEmpty) return null; // Default verwenden
     final firstChar = trimmed.codeUnitAt(0);
     // Arabisch: U+0600–U+06FF, U+0750–U+077F, U+08A0–U+08FF
-    final isArabic = (firstChar >= 0x0600 && firstChar <= 0x06FF) ||
+    final isArabic =
+        (firstChar >= 0x0600 && firstChar <= 0x06FF) ||
         (firstChar >= 0x0750 && firstChar <= 0x077F) ||
         (firstChar >= 0x08A0 && firstChar <= 0x08FF);
     return isArabic ? TextDirection.rtl : TextDirection.ltr;
@@ -166,10 +196,14 @@ class _PasswordFieldState extends State<_PasswordField> {
         labelText: widget.label,
         prefixIcon: const Icon(Icons.lock_outline),
         border: const OutlineInputBorder(),
-        suffixIcon: widget.showToggle ? IconButton(
-          icon: Icon(widget.visible ? Icons.visibility_off : Icons.visibility),
-          onPressed: widget.onToggle,
-        ) : null,
+        suffixIcon: widget.showToggle
+            ? IconButton(
+                icon: Icon(
+                  widget.visible ? Icons.visibility_off : Icons.visibility,
+                ),
+                onPressed: widget.onToggle,
+              )
+            : null,
       ),
     );
   }

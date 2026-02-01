@@ -85,7 +85,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             CircleAvatar(
               radius: 30,
               backgroundColor: Colors.orange.withValues(alpha: 0.1),
-              child: const Icon(Icons.hourglass_bottom_rounded, color: Colors.orange, size: 32),
+              child: const Icon(
+                Icons.hourglass_bottom_rounded,
+                color: Colors.orange,
+                size: 32,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -101,14 +105,21 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             Text(
               s.expirationAlertMsg(days),
               textAlign: TextAlign.center,
-              style: TextStyle(color: colors.onSurface.withValues(alpha: 0.7), fontSize: 16),
+              style: TextStyle(
+                color: colors.onSurface.withValues(alpha: 0.7),
+                fontSize: 16,
+              ),
             ),
             const SizedBox(height: 8),
             // Exklusiver Hinweis auf den Sparvorteil
             if (days <= 7)
               Text(
                 "Tipp: Sparen Sie 20% mit dem Jahresabo", // Hierfür einen .arb Key nutzen
-                style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold, fontSize: 13),
+                style: TextStyle(
+                  color: colors.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
           ],
         ),
@@ -128,12 +139,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               foregroundColor: colors.onPrimary,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
             onPressed: () {
               Navigator.pop(ctx);
               // Übergabe des Jahresabos als Standard-Empfehlung
-              context.push('/payment', extra: {'plan': 'premium_yearly', 'returnUrl': '/home'});
+              context.push(
+                '/payment',
+                extra: {'plan': 'premium_yearly', 'returnUrl': '/home'},
+              );
             },
             child: Text(
               s.renewNowButton,
@@ -168,7 +184,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final m = await ApiService.fetchWebsiteStatus();
     if (!mounted || m == null) return;
     final access = m['access'];
-    if (access is Map) AccessManager.updateFromApi(Map<String, dynamic>.from(access));
+    if (access is Map) {
+      AccessManager.updateFromApi(Map<String, dynamic>.from(access));
+    }
     await StoreConfigService.mergeNonEmpty(m);
   }
 
@@ -184,7 +202,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final url = (s?['public_store_url'] ?? '').toString().trim();
     if (url.isEmpty) return;
     final uri = Uri.tryParse(url);
-    if (uri != null && await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   late final List<Widget> pages = const [
@@ -199,7 +219,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final colors = theme.colorScheme;
     final s = AppLocalizations.of(context)!;
     final active = colors.primary; // Teal
-    final inactive = colors.onSurface.withValues(alpha:0.4);
+    final inactive = colors.onSurface.withValues(alpha: 0.4);
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -217,10 +237,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       floatingActionButton: ListenableBuilder(
         listenable: AccessManager(),
         builder: (context, _) {
-          final enabled = AccessManager.isLoaded && (AccessManager.isActive || AccessManager.isTrial);
+          final enabled =
+              AccessManager.isLoaded &&
+              (AccessManager.isActive || AccessManager.isTrial);
           // Premium = Gold, Standard = Teal (Primary)
           // Wir nutzen hier Teal (Primary) für den FAB, weil es ruhig und standard ist (wie WhatsApp)
-          final fabBaseColor = AccessManager.canWriteAdmin ? colors.primary : Colors.grey.shade400;
+          final fabBaseColor = AccessManager.canWriteAdmin
+              ? colors.primary
+              : Colors.grey.shade400;
 
           return AnimatedContainer(
             duration: const Duration(milliseconds: 250),
@@ -229,43 +253,56 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: enabled ? fabBaseColor.withValues(alpha:0.4) : Colors.black.withValues(alpha:0.1),
+                  color: enabled
+                      ? fabBaseColor.withValues(alpha: 0.4)
+                      : Colors.black.withValues(alpha: 0.1),
                   blurRadius: enabled ? 16 : 8,
                   spreadRadius: enabled ? 0.5 : 0,
                   offset: const Offset(0, 6),
-                )
+                ),
               ],
             ),
             child: Material(
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(20),
               child: Ink(
-                width: 56, height: 56,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   // Ruhiger Gradient in Teal (Primary) statt Gold
                   gradient: enabled
                       ? LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        colors.primary,
-                        colors.primary.withValues(alpha: 0.8)
-                      ]
-                  )
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            colors.primary,
+                            colors.primary.withValues(alpha: 0.8),
+                          ],
+                        )
                       : LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.grey.shade400, Colors.grey.shade600]
-                  ),
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.grey.shade400, Colors.grey.shade600],
+                        ),
                   border: enabled
-                      ? Border.all(color: Colors.white.withValues(alpha:0.4), width: 1.5)
-                      : Border.all(color: Colors.white.withValues(alpha:0.3), width: 1.0),
+                      ? Border.all(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          width: 1.5,
+                        )
+                      : Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 1.0,
+                        ),
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(20),
                   onTap: _onFabPressed,
-                  child: Icon(Icons.add_rounded, size: 28, color: enabled ? colors.onPrimary : Colors.white),
+                  child: Icon(
+                    Icons.add_rounded,
+                    size: 28,
+                    color: enabled ? colors.onPrimary : Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -279,16 +316,24 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                      height: 1.2,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [Colors.transparent, active.withValues(alpha:0.1), active.withValues(alpha:0.8), active.withValues(alpha:0.1), Colors.transparent])
-                      )
-                  )
-                ]
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  height: 1.2,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        active.withValues(alpha: 0.1),
+                        active.withValues(alpha: 0.8),
+                        active.withValues(alpha: 0.1),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
             BottomAppBar(
               height: 65,
@@ -300,14 +345,38 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               notchMargin: 8,
               child: Row(
                 children: [
-                  Expanded(child: _buildElegantItem(Icons.home_rounded, s.navHome, 0, active, inactive)),
-                  Expanded(child: _buildElegantItem(Icons.inventory_2_rounded, s.navProducts, 1, active, inactive)),
+                  Expanded(
+                    child: _buildElegantItem(
+                      Icons.home_rounded,
+                      s.navHome,
+                      0,
+                      active,
+                      inactive,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildElegantItem(
+                      Icons.inventory_2_rounded,
+                      s.navProducts,
+                      1,
+                      active,
+                      inactive,
+                    ),
+                  ),
                   const SizedBox(width: 70),
-                  Expanded(child: _buildElegantItem(Icons.grid_view_rounded, s.navCategories, 2, active, inactive)),
+                  Expanded(
+                    child: _buildElegantItem(
+                      Icons.grid_view_rounded,
+                      s.navCategories,
+                      2,
+                      active,
+                      inactive,
+                    ),
+                  ),
                   Expanded(child: _buildWolfItem(active, inactive, s.navStore)),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -315,8 +384,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Future<void> _onFabPressed() async {
-    final enabled = AccessManager.isLoaded && (AccessManager.isActive || AccessManager.isTrial);
-    
+    final enabled =
+        AccessManager.isLoaded &&
+        (AccessManager.isActive || AccessManager.isTrial);
+
     // 1. Erst prüfen, ob der User überhaupt Schreibrechte hat (Premium/Admin)
     if (!enabled) {
       final msg = buildPaywallMessage(context, forFab: true);
@@ -331,7 +402,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (mounted) context.push('/add');
   }
 
-  Future<void> _showFabPaywallDialog(BuildContext context, PaywallMessage msg) async {
+  Future<void> _showFabPaywallDialog(
+    BuildContext context,
+    PaywallMessage msg,
+  ) async {
     // 1. Daten VOR dem async-Gap holen
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
@@ -345,10 +419,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         title: Text(msg.title, textAlign: TextAlign.center),
         content: Text(msg.body, textAlign: TextAlign.center),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.laterButton)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.laterButton),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: accent, foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: accent,
+              foregroundColor: Colors.black,
+            ),
             child: Text(msg.ctaText ?? s.activateButton),
           ),
         ],
@@ -358,7 +438,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // 2. Der wichtigste Teil: Sicherstellen, dass wir noch im Baum sind
     if (result == true && context.mounted) {
       // Nutze context.mounted (ab Flutter 3.7 verfügbar) statt nur mounted
-      context.push('/payment', extra: {'plan': 'premium_yearly', 'returnUrl': '/home'});
+      context.push(
+        '/payment',
+        extra: {'plan': 'premium_yearly', 'returnUrl': '/home'},
+      );
     }
   }
 
@@ -370,7 +453,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildElegantItem(IconData icon, String label, int idx, Color active, Color inactive) {
+  Widget _buildElegantItem(
+    IconData icon,
+    String label,
+    int idx,
+    Color active,
+    Color inactive,
+  ) {
     final isSelected = _index == idx;
     return GestureDetector(
       onTap: () => _goToPage(idx),
@@ -379,9 +468,38 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          AnimatedContainer(duration: const Duration(milliseconds: 350), padding: const EdgeInsets.all(7), decoration: BoxDecoration(shape: BoxShape.circle, color: isSelected ? active.withValues(alpha:0.08) : Colors.transparent), child: AnimatedScale(duration: const Duration(milliseconds: 500), scale: isSelected ? 1.12 : 1.0, curve: Curves.elasticOut, child: Icon(icon, size: 22, color: isSelected ? active : inactive))),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isSelected
+                  ? active.withValues(alpha: 0.08)
+                  : Colors.transparent,
+            ),
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 500),
+              scale: isSelected ? 1.12 : 1.0,
+              curve: Curves.elasticOut,
+              child: Icon(
+                icon,
+                size: 22,
+                color: isSelected ? active : inactive,
+              ),
+            ),
+          ),
           const SizedBox(height: 1),
-          FittedBox(fit: BoxFit.scaleDown, child: Text(label, style: Theme.of(context).textTheme.labelSmall!.copyWith(fontSize: 9, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600, color: isSelected ? active : inactive))),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                fontSize: 9,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? active : inactive,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -404,11 +522,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: connected ? active.withValues(alpha: 0.08) : Colors.transparent,
+                  color: connected
+                      ? active.withValues(alpha: 0.08)
+                      : Colors.transparent,
                 ),
                 child: AnimatedScale(
                   duration: const Duration(milliseconds: 500),
-                  scale: connected ? 1.12 : 1.0, // Scale etwas erhöht wie bei den anderen Items
+                  scale: connected
+                      ? 1.12
+                      : 1.0, // Scale etwas erhöht wie bei den anderen Items
                   curve: Curves.elasticOut,
                   // NEU: Icon statt Image.asset
                   child: Icon(

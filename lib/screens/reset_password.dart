@@ -13,17 +13,18 @@ class ResetPasswordScreen extends StatelessWidget {
     final s = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(s.resetPasswordTitle),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text(s.resetPasswordTitle), centerTitle: true),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // استخدام اللون الأساسي (Teal) بدلاً من الأخضر الصلب
-            Icon(Icons.mark_email_read_outlined, size: 80, color: colors.primary),
+            Icon(
+              Icons.mark_email_read_outlined,
+              size: 80,
+              color: colors.primary,
+            ),
             const SizedBox(height: 24),
             Text(
               s.resetLinkSentTitle,
@@ -45,7 +46,9 @@ class ResetPasswordScreen extends StatelessWidget {
                   backgroundColor: colors.primary, // Teal بدلاً من الأسود
                   foregroundColor: colors.onPrimary, // أبيض
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: Text(s.backToLoginButton),
               ),

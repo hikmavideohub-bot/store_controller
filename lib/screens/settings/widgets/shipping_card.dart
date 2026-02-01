@@ -21,7 +21,10 @@ class ShippingCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: ExpansionTile(
-        title: Text(s.shippingTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          s.shippingTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         leading: const Icon(Icons.local_shipping_outlined),
         childrenPadding: const EdgeInsets.all(16),
         children: [
@@ -49,7 +52,10 @@ class ShippingCard extends StatelessWidget {
                 prefixIcon: const Icon(Icons.attach_money, size: 20),
                 suffixText: vm.currencyCtrl.text,
                 border: const OutlineInputBorder(),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
             ),
           ],

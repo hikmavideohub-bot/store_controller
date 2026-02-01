@@ -29,15 +29,27 @@ class AppearanceCard extends StatelessWidget {
             ),
             child: Icon(Icons.dark_mode_outlined, color: colors.primary),
           ),
-          title: Text(s.drawerTheme, style: const TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(
+            s.drawerTheme,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           trailing: DropdownButtonHideUnderline(
             child: DropdownButton<AppThemeMode>(
               value: currentTheme,
               borderRadius: BorderRadius.circular(12),
               items: [
-                DropdownMenuItem(value: AppThemeMode.system, child: Text(s.themeSystem)),
-                DropdownMenuItem(value: AppThemeMode.light, child: Text(s.themeLight)),
-                DropdownMenuItem(value: AppThemeMode.dark, child: Text(s.themeDark)),
+                DropdownMenuItem(
+                  value: AppThemeMode.system,
+                  child: Text(s.themeSystem),
+                ),
+                DropdownMenuItem(
+                  value: AppThemeMode.light,
+                  child: Text(s.themeLight),
+                ),
+                DropdownMenuItem(
+                  value: AppThemeMode.dark,
+                  child: Text(s.themeDark),
+                ),
               ],
               onChanged: (val) {
                 if (val != null) MyApp.setThemeOf(context, val);
@@ -59,7 +71,10 @@ class AppearanceCard extends StatelessWidget {
             ),
             child: Icon(Icons.language, color: colors.secondary),
           ),
-          title: Text(s.languageLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(
+            s.languageLabel,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           trailing: DropdownButtonHideUnderline(
             child: DropdownButton<Locale>(
               value: _supportedLocale(currentLocale),
@@ -70,7 +85,10 @@ class AppearanceCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Text('🇸🇦 ', style: TextStyle(fontSize: 16)),  // Saudi-Arabien statt Syrien
+                      Text(
+                        '🇸🇦 ',
+                        style: TextStyle(fontSize: 16),
+                      ), // Saudi-Arabien statt Syrien
                       Text('العربية'),
                     ],
                   ),

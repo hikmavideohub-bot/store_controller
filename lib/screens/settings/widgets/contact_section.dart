@@ -19,7 +19,10 @@ class ContactSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(s.contactAndAddressTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(
+          s.contactAndAddressTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
         const SizedBox(height: 16),
 
         _PhoneRow(
@@ -140,9 +143,15 @@ class _AddressSelector extends StatelessWidget {
                         hasAddress ? vm.addressCtrl.text : s.addressHint,
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: hasAddress ? FontWeight.w500 : FontWeight.normal,
-                          color: hasAddress ? colors.onSurface : theme.hintColor,
-                          fontStyle: hasAddress ? FontStyle.normal : FontStyle.italic,
+                          fontWeight: hasAddress
+                              ? FontWeight.w500
+                              : FontWeight.normal,
+                          color: hasAddress
+                              ? colors.onSurface
+                              : theme.hintColor,
+                          fontStyle: hasAddress
+                              ? FontStyle.normal
+                              : FontStyle.italic,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -151,10 +160,7 @@ class _AddressSelector extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           s.selectLocationOnMap,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colors.primary,
-                          ),
+                          style: TextStyle(fontSize: 12, color: colors.primary),
                         ),
                       ],
                     ],
@@ -179,7 +185,9 @@ class _AddressSelector extends StatelessWidget {
             // Map Button
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: vm.fetchingLocation ? null : () => _openMapPicker(context),
+                onPressed: vm.fetchingLocation
+                    ? null
+                    : () => _openMapPicker(context),
                 icon: const Icon(Icons.map_outlined, size: 18),
                 label: Text(s.selectLocationOnMap),
                 style: OutlinedButton.styleFrom(
@@ -248,7 +256,10 @@ class _PhoneRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
         const SizedBox(height: 8),
         Row(
           textDirection: TextDirection.ltr,
@@ -258,11 +269,15 @@ class _PhoneRow extends StatelessWidget {
                 showCountryPicker(
                   context: context,
                   showPhoneCode: true,
-                  onSelect: (Country country) => onPickCode('+${country.phoneCode}'),
+                  onSelect: (Country country) =>
+                      onPickCode('+${country.phoneCode}'),
                 );
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade400),
                   borderRadius: BorderRadius.circular(4),

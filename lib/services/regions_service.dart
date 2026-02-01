@@ -78,7 +78,6 @@ class RegionsService {
 
       debugPrint('[RegionsService] Loaded ${result.length} countries');
       return result;
-
     } catch (e) {
       debugPrint('[RegionsService] Error loading regions: $e');
       return _countriesCache ?? {};
@@ -95,7 +94,9 @@ class RegionsService {
     }
 
     // Fallback auf EUR
-    debugPrint('[RegionsService] No config for $normalized, using EUR fallback');
+    debugPrint(
+      '[RegionsService] No config for $normalized, using EUR fallback',
+    );
     return CountryConfig.eurFallback();
   }
 

@@ -14,47 +14,48 @@ class PremiumAnimations {
     bool isDark = true,
   }) {
     // Wir nutzen Builder, um auf das Theme zuzugreifen
-    return Builder(builder: (context) {
-      final colors = Theme.of(context).colorScheme;
-      // Schimmer-Farbe: Primärfarbe (Teal) oder Tertiary (Gold)
-      final shimmerColor = colors.primary;
-      final baseColor = isDark
-          ? colors.surfaceContainerHighest // Dunkles Grau im Dark Mode
-          : Colors.grey.shade200;
+    return Builder(
+      builder: (context) {
+        final colors = Theme.of(context).colorScheme;
+        // Schimmer-Farbe: Primärfarbe (Teal) oder Tertiary (Gold)
+        final shimmerColor = colors.primary;
+        final baseColor = isDark
+            ? colors
+                  .surfaceContainerHighest // Dunkles Grau im Dark Mode
+            : Colors.grey.shade200;
 
-      return Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: baseColor,
-          borderRadius: BorderRadius.circular(borderRadius),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(borderRadius),
-          child: ShaderMask(
-            shaderCallback: (bounds) {
-              return LinearGradient(
-                colors: [
-                  Colors.transparent,
-                  shimmerColor.withValues(alpha: 0.1),
-                  shimmerColor.withValues(alpha: 0.2),
-                  shimmerColor.withValues(alpha: 0.1),
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-                begin: const Alignment(-1.0, 0.0),
-                end: const Alignment(1.0, 0.0),
-                tileMode: TileMode.clamp,
-              ).createShader(bounds);
-            },
-            blendMode: BlendMode.srcATop,
-            child: Container(
-              color: colors.surface,
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: baseColor,
+            borderRadius: BorderRadius.circular(borderRadius),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(borderRadius),
+            child: ShaderMask(
+              shaderCallback: (bounds) {
+                return LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    shimmerColor.withValues(alpha: 0.1),
+                    shimmerColor.withValues(alpha: 0.2),
+                    shimmerColor.withValues(alpha: 0.1),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                  begin: const Alignment(-1.0, 0.0),
+                  end: const Alignment(1.0, 0.0),
+                  tileMode: TileMode.clamp,
+                ).createShader(bounds);
+              },
+              blendMode: BlendMode.srcATop,
+              child: Container(color: colors.surface),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   // ==============================
@@ -73,10 +74,7 @@ class PremiumAnimations {
       duration: const Duration(milliseconds: 1500),
       curve: Curves.easeInOut,
       builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: child,
-        );
+        return Transform.scale(scale: value, child: child);
       },
       child: child,
     );
@@ -155,35 +153,37 @@ class PremiumAnimations {
   }) {
     if (!animate) return child;
 
-    return Builder(builder: (context) {
-      // Tertiary ist unser neues Gold
-      final glowColor = Theme.of(context).colorScheme.tertiary;
+    return Builder(
+      builder: (context) {
+        // Tertiary ist unser neues Gold
+        final glowColor = Theme.of(context).colorScheme.tertiary;
 
-      return TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0.0, end: 1.0),
-        duration: const Duration(milliseconds: 2000),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
-          final double glowValue = (value * 2 * pi);
-          final double glow = (sin(glowValue) + 1) / 2 * intensity;
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 2000),
+          curve: Curves.easeInOut,
+          builder: (context, value, child) {
+            final double glowValue = (value * 2 * pi);
+            final double glow = (sin(glowValue) + 1) / 2 * intensity;
 
-          return Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: glowColor.withValues(alpha: glow),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: child,
-          );
-        },
-        child: child,
-      );
-    });
+            return Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: glowColor.withValues(alpha: glow),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: child,
+            );
+          },
+          child: child,
+        );
+      },
+    );
   }
 
   // ==============================
@@ -201,10 +201,7 @@ class PremiumAnimations {
       duration: duration,
       curve: curve,
       builder: (context, value, child) {
-        return Transform.translate(
-          offset: value,
-          child: child,
-        );
+        return Transform.translate(offset: value, child: child);
       },
       child: child,
     );
@@ -218,19 +215,21 @@ class PremiumAnimations {
     Color? color,
     double strokeWidth = 2.5,
   }) {
-    return Builder(builder: (context) {
-      // Default: Primary (Teal) statt Gold
-      final c = color ?? Theme.of(context).colorScheme.primary;
+    return Builder(
+      builder: (context) {
+        // Default: Primary (Teal) statt Gold
+        final c = color ?? Theme.of(context).colorScheme.primary;
 
-      return SizedBox(
-        width: size,
-        height: size,
-        child: CircularProgressIndicator(
-          strokeWidth: strokeWidth,
-          valueColor: AlwaysStoppedAnimation<Color>(c),
-        ),
-      );
-    });
+        return SizedBox(
+          width: size,
+          height: size,
+          child: CircularProgressIndicator(
+            strokeWidth: strokeWidth,
+            valueColor: AlwaysStoppedAnimation<Color>(c),
+          ),
+        );
+      },
+    );
   }
 
   // ==============================
@@ -289,40 +288,42 @@ class PremiumAnimations {
   }) {
     if (!active) return child;
 
-    return Builder(builder: (context) {
-      // Default: Primary (Teal)
-      final c = pulseColor ?? Theme.of(context).colorScheme.primary;
+    return Builder(
+      builder: (context) {
+        // Default: Primary (Teal)
+        final c = pulseColor ?? Theme.of(context).colorScheme.primary;
 
-      return TweenAnimationBuilder<double>(
-        tween: Tween(begin: 1.0, end: maxScale),
-        duration: const Duration(milliseconds: 1500),
-        curve: Curves.easeInOut,
-        builder: (context, scale, child) {
-          return TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.3, end: 0.0),
-            duration: const Duration(milliseconds: 1500),
-            builder: (context, opacity, child) {
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: c.withValues(alpha: opacity),
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 1.0, end: maxScale),
+          duration: const Duration(milliseconds: 1500),
+          curve: Curves.easeInOut,
+          builder: (context, scale, child) {
+            return TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.3, end: 0.0),
+              duration: const Duration(milliseconds: 1500),
+              builder: (context, opacity, child) {
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: c.withValues(alpha: opacity),
+                      ),
+                      width: 100 * scale,
+                      height: 100 * scale,
                     ),
-                    width: 100 * scale,
-                    height: 100 * scale,
-                  ),
-                  child!,
-                ],
-              );
-            },
-            child: child,
-          );
-        },
-        child: child,
-      );
-    });
+                    child!,
+                  ],
+                );
+              },
+              child: child,
+            );
+          },
+          child: child,
+        );
+      },
+    );
   }
 
   // ==============================
@@ -334,35 +335,37 @@ class PremiumAnimations {
     Color? rippleColor,
     double rippleRadius = 20,
   }) {
-    return Builder(builder: (context) {
-      // Default: Primary (Teal)
-      final c = rippleColor ?? Theme.of(context).colorScheme.primary;
+    return Builder(
+      builder: (context) {
+        // Default: Primary (Teal)
+        final c = rippleColor ?? Theme.of(context).colorScheme.primary;
 
-      return GestureDetector(
-        onTap: onTap,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            child,
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 500),
-              builder: (context, value, child) {
-                return Container(
-                  width: rippleRadius * value * 2,
-                  height: rippleRadius * value * 2,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: c.withValues(alpha: 1 - value),
-                  ),
-                );
-              },
-              child: null,
-            ),
-          ],
-        ),
-      );
-    });
+        return GestureDetector(
+          onTap: onTap,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              child,
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 500),
+                builder: (context, value, child) {
+                  return Container(
+                    width: rippleRadius * value * 2,
+                    height: rippleRadius * value * 2,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: c.withValues(alpha: 1 - value),
+                    ),
+                  );
+                },
+                child: null,
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   // ==============================

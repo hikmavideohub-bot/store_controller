@@ -41,10 +41,17 @@ WorkingHours _emptyWeek() => {
   for (final k in _weekKeys) k: <Map<String, dynamic>>[],
 };
 
-const List<String> _weekKeys = ['mon','tue','wed','thu','fri','sat','sun'];
+const List<String> _weekKeys = [
+  'mon',
+  'tue',
+  'wed',
+  'thu',
+  'fri',
+  'sat',
+  'sun',
+];
 
-bool isValidHHmm(String s) =>
-    RegExp(r'^\d{2}:\d{2}$').hasMatch(s);
+bool isValidHHmm(String s) => RegExp(r'^\d{2}:\d{2}$').hasMatch(s);
 
 int hhmmToMinutes(String hhmm) {
   final parts = hhmm.split(':');

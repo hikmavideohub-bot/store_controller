@@ -64,8 +64,10 @@ class DefaultFirebaseOptions {
     messagingSenderId: '536854500452',
     projectId: 'aldeebtech-1ec64',
     storageBucket: 'aldeebtech-1ec64.firebasestorage.app',
-    androidClientId: '536854500452-clold3nqrrpnghi2fcf5ujsd9i112pm6.apps.googleusercontent.com',
-    iosClientId: '536854500452-i2b5lrsjpgevrgsf3le6m90t6lhq4nf5.apps.googleusercontent.com',
+    androidClientId:
+        '536854500452-clold3nqrrpnghi2fcf5ujsd9i112pm6.apps.googleusercontent.com',
+    iosClientId:
+        '536854500452-i2b5lrsjpgevrgsf3le6m90t6lhq4nf5.apps.googleusercontent.com',
     iosBundleId: 'com.example.storeController',
   );
 
@@ -75,8 +77,10 @@ class DefaultFirebaseOptions {
     messagingSenderId: '536854500452',
     projectId: 'aldeebtech-1ec64',
     storageBucket: 'aldeebtech-1ec64.firebasestorage.app',
-    androidClientId: '536854500452-clold3nqrrpnghi2fcf5ujsd9i112pm6.apps.googleusercontent.com',
-    iosClientId: '536854500452-i2b5lrsjpgevrgsf3le6m90t6lhq4nf5.apps.googleusercontent.com',
+    androidClientId:
+        '536854500452-clold3nqrrpnghi2fcf5ujsd9i112pm6.apps.googleusercontent.com',
+    iosClientId:
+        '536854500452-i2b5lrsjpgevrgsf3le6m90t6lhq4nf5.apps.googleusercontent.com',
     iosBundleId: 'com.example.storeController',
   );
 
@@ -89,5 +93,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'aldeebtech-1ec64.firebasestorage.app',
     measurementId: 'G-H9L06ZJS8Y',
   );
-
 }

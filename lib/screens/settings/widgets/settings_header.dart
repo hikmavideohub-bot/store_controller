@@ -9,11 +9,7 @@ class SettingsHeader extends StatelessWidget {
   final SettingsViewModel vm;
   final bool compact;
 
-  const SettingsHeader({
-    super.key,
-    required this.vm,
-    this.compact = false,
-  });
+  const SettingsHeader({super.key, required this.vm, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +27,7 @@ class SettingsHeader extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             colors.primary.withValues(alpha: 0.15),
-            colors.primary.withValues(alpha: 0.05)
+            colors.primary.withValues(alpha: 0.05),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -45,7 +41,9 @@ class SettingsHeader extends StatelessWidget {
           const SizedBox(height: 16),
 
           Text(
-            vm.storeNameCtrl.text.isNotEmpty ? vm.storeNameCtrl.text : s.storeFallbackName,
+            vm.storeNameCtrl.text.isNotEmpty
+                ? vm.storeNameCtrl.text
+                : s.storeFallbackName,
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
             textAlign: TextAlign.center,
           ),
@@ -78,20 +76,20 @@ class SettingsHeader extends StatelessWidget {
             decoration: BoxDecoration(
               color: colors.surface,
               shape: BoxShape.circle,
-              border: Border.all(color: colors.primary.withValues(alpha: 0.5), width: 3),
+              border: Border.all(
+                color: colors.primary.withValues(alpha: 0.5),
+                width: 3,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
-                )
+                ),
               ],
             ),
             child: Center(
-              child: Text(
-                vm.logoEmoji,
-                style: const TextStyle(fontSize: 40),
-              ),
+              child: Text(vm.logoEmoji, style: const TextStyle(fontSize: 40)),
             ),
           ),
           Container(
@@ -122,7 +120,9 @@ class SettingsHeader extends StatelessWidget {
 
     switch (status) {
       case 'trial':
-        label = daysRemaining != null ? s.statusTrialDays(daysRemaining) : s.statusTrial;
+        label = daysRemaining != null
+            ? s.statusTrialDays(daysRemaining)
+            : s.statusTrial;
         bgColor = colors.tertiary.withValues(alpha: 0.1);
         textColor = colors.tertiary; // Gold
         icon = Icons.hourglass_top_rounded;
@@ -167,7 +167,11 @@ class SettingsHeader extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(fontSize: 12, color: textColor, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 12,
+                color: textColor,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
@@ -182,11 +186,10 @@ class SettingsHeader extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-          child: const EmojiPickerSheet(
-            selected: null,
-            scrollController: null,
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
+          child: const EmojiPickerSheet(selected: null, scrollController: null),
         );
       },
     );

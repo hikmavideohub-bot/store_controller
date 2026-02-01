@@ -9,7 +9,7 @@ class StoreConfigService {
 
   /// ✅ Reactive state: alle Screens können darauf hören
   static final ValueNotifier<Map<String, dynamic>?> storeNotifier =
-  ValueNotifier<Map<String, dynamic>?>(null);
+      ValueNotifier<Map<String, dynamic>?>(null);
 
   /// ✅ Backwards compatible: wie vorher StoreConfigService.store
   static Map<String, dynamic>? get store => storeNotifier.value;
@@ -77,7 +77,9 @@ class StoreConfigService {
     }
     if (value is Map) {
       return Map<String, dynamic>.fromEntries(
-        value.entries.map((e) => MapEntry(e.key.toString(), _sanitize(e.value))),
+        value.entries.map(
+          (e) => MapEntry(e.key.toString(), _sanitize(e.value)),
+        ),
       );
     }
     if (value is List) {

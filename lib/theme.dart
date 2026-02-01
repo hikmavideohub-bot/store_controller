@@ -6,24 +6,30 @@ class AppTheme {
 
   // Primärfarbe: "Royal Indigo" - Stark, modern, vertrauenswürdig
   static const _primaryLight = Color(0xFF0288D1); // Ruhiges Blau-Aqua
-  static const _primaryDark  = Color(0xFF00ACC1); // Helleres Petrol
-
-
+  static const _primaryDark = Color(0xFF00ACC1); // Helleres Petrol
 
   // Hintergrund: "Slate" (Kühles, modernes Grau statt schmutziges Braun-Grau)
-// "Royal White": Rein, hell, mit einem luxuriösen, warmen Gold-Unterton.
-  static const _bgLight = Color(0xFFFFFEFA);      // "Snow with Gold" - Fast Weiß, sehr edel.
-  static const _bgDark = Color(0xFF14120E);       // "Onyx" - Ein sehr tiefes, warmes Schwarz.
+  // "Royal White": Rein, hell, mit einem luxuriösen, warmen Gold-Unterton.
+  static const _bgLight = Color(
+    0xFFFFFEFA,
+  ); // "Snow with Gold" - Fast Weiß, sehr edel.
+  static const _bgDark = Color(
+    0xFF14120E,
+  ); // "Onyx" - Ein sehr tiefes, warmes Schwarz.
   // Oberflächen
-  static const _surfaceLight = Color(0xFFFFFFFF); // Reinweiß für maximalen Kontrast
-  static const _surfaceDark = Color(0xFF1E293B);  // Slate 800 (sichtbar heller als BG)
+  static const _surfaceLight = Color(
+    0xFFFFFFFF,
+  ); // Reinweiß für maximalen Kontrast
+  static const _surfaceDark = Color(
+    0xFF1E293B,
+  ); // Slate 800 (sichtbar heller als BG)
 
   // Premium / Akzent (Gold - angepasst für Blau)
-  static const _gold = Color(0xFFFFD700);         // Helles Gold
-  static const _goldDark = Color(0xFFD4AF37);     // Metallic Gold
+  static const _gold = Color(0xFFFFD700); // Helles Gold
+  static const _goldDark = Color(0xFFD4AF37); // Metallic Gold
 
   // Fehler
-  static const _danger = Color(0xFFEF4444);       // Modernes, klares Rot
+  static const _danger = Color(0xFFEF4444); // Modernes, klares Rot
 
   // --- THEME DATA BUILDER ---
 
@@ -39,7 +45,7 @@ class AppTheme {
         surface: _surfaceLight,
         onSurface: Color(0xFF0F172A), // Fast schwarz, sehr gut lesbar
         error: _danger,
-        outline: Color(0xFFE2E8F0),   // Sehr subtile Ränder
+        outline: Color(0xFFE2E8F0), // Sehr subtile Ränder
       ),
       scaffoldBg: _bgLight,
     );
@@ -50,7 +56,8 @@ class AppTheme {
       brightness: Brightness.dark,
       colorScheme: const ColorScheme.dark(
         primary: _primaryDark,
-        onPrimary: Colors.black, // Schwarzer Text auf hellem Indigo liest sich besser
+        onPrimary:
+            Colors.black, // Schwarzer Text auf hellem Indigo liest sich besser
         secondary: _primaryDark,
         onSecondary: Colors.black,
         tertiary: _gold,
@@ -106,7 +113,9 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: colorScheme.outline.withAlpha(50), // Feine Outline statt fetter Schatten
+            color: colorScheme.outline.withAlpha(
+              50,
+            ), // Feine Outline statt fetter Schatten
             width: 1,
           ),
         ),
@@ -118,9 +127,13 @@ class AppTheme {
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           elevation: 2,
-          shadowColor: colorScheme.primary.withAlpha(100), // Farbiger Schatten (Glow-Effekt)
+          shadowColor: colorScheme.primary.withAlpha(
+            100,
+          ), // Farbiger Schatten (Glow-Effekt)
           textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
@@ -151,7 +164,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: colorScheme.primary, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
       ),
 
       // Bottom Nav

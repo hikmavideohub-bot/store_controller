@@ -19,10 +19,7 @@ import 'widgets/shipping_card.dart';
 class SettingsScreen extends StatefulWidget {
   final bool firstSetup;
 
-  const SettingsScreen({
-    super.key,
-    required this.firstSetup
-  });
+  const SettingsScreen({super.key, required this.firstSetup});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -38,7 +35,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (trimmed.isEmpty) return null; // Default verwenden
     final firstChar = trimmed.codeUnitAt(0);
     // Arabisch: U+0600–U+06FF, U+0750–U+077F, U+08A0–U+08FF
-    final isArabic = (firstChar >= 0x0600 && firstChar <= 0x06FF) ||
+    final isArabic =
+        (firstChar >= 0x0600 && firstChar <= 0x06FF) ||
         (firstChar >= 0x0750 && firstChar <= 0x077F) ||
         (firstChar >= 0x08A0 && firstChar <= 0x08FF);
     return isArabic ? TextDirection.rtl : TextDirection.ltr;
@@ -95,7 +93,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (vm.saving)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             )
           else
             IconButton(
@@ -117,9 +119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.storefront_outlined,
             title: s.storeInfoSectionTitle,
             subtitle: s.storeInfoSectionSubtitle,
-            children: [
-              StoreInfoCard(vm: vm),
-            ],
+            children: [StoreInfoCard(vm: vm)],
           ),
           const SizedBox(height: 12),
 
@@ -145,9 +145,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.local_shipping_outlined,
             title: s.step3Title,
             subtitle: s.step3Subtitle,
-            children: [
-              ShippingCard(vm: vm),
-            ],
+            children: [ShippingCard(vm: vm)],
           ),
           const SizedBox(height: 12),
 
@@ -158,9 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.access_time_outlined,
             title: s.step4Title,
             subtitle: s.step4Subtitle,
-            children: [
-              WorkingHoursCard(vm: vm),
-            ],
+            children: [WorkingHoursCard(vm: vm)],
           ),
           const SizedBox(height: 12),
 
@@ -171,9 +167,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.security_outlined,
             title: s.securitySectionTitle,
             subtitle: s.securitySectionSubtitle,
-            children: [
-              SecuritySection(vm: vm),
-            ],
+            children: [SecuritySection(vm: vm)],
           ),
           const SizedBox(height: 12),
 
@@ -184,9 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.palette_outlined,
             title: s.appearanceSectionTitle,
             subtitle: s.appearanceSectionSubtitle,
-            children: [
-              const AppearanceCard(),
-            ],
+            children: [const AppearanceCard()],
           ),
 
           const SizedBox(height: 32),
@@ -200,14 +192,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.primary,
                 foregroundColor: colors.onPrimary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
               icon: vm.saving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.save),
               label: Text(
                 vm.saving ? s.savingButton : s.saveChangesButton,
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
               ),
             ),
           ),
@@ -222,7 +226,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: colors.error),
               padding: const EdgeInsets.all(16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
         ],
@@ -253,12 +259,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         boxShadow: isExpanded
             ? [
-          BoxShadow(
-            color: colors.primary.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ]
+                BoxShadow(
+                  color: colors.primary.withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
             : null,
       ),
       child: Theme(
@@ -297,10 +303,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           subtitle: Text(
             subtitle,
-            style: TextStyle(
-              fontSize: 12,
-              color: theme.hintColor,
-            ),
+            style: TextStyle(fontSize: 12, color: theme.hintColor),
           ),
           trailing: AnimatedRotation(
             turns: isExpanded ? 0.5 : 0,
@@ -325,7 +328,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Icons.phone,
     Icons.local_shipping,
     Icons.schedule,
-    Icons.check_circle
+    Icons.check_circle,
   ];
 
   void _dismissKeyboard() {
@@ -345,7 +348,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       s.stepContact,
       s.stepDelivery,
       s.stepHours,
-      s.stepFinish
+      s.stepFinish,
     ];
     final totalSteps = stepTitles.length;
 
@@ -357,14 +360,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           centerTitle: true,
           leading: _currentWizardStep > 0
               ? IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              _pageController.previousPage(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            },
-          )
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    _pageController.previousPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                )
               : null,
         ),
         body: Column(
@@ -409,7 +412,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: Center(
                             child: isCompleted
                                 ? Icon(Icons.check, size: 18, color: stepColor)
-                                : Icon(_stepIcons[index], size: 16, color: stepColor),
+                                : Icon(
+                                    _stepIcons[index],
+                                    size: 16,
+                                    color: stepColor,
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -417,7 +424,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           stepTitles[index],
                           style: TextStyle(
                             fontSize: 10,
-                            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: isActive
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                             color: stepColor,
                           ),
                         ),
@@ -433,9 +442,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: PageView(
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
-                onPageChanged: (idx) => setState(() => _currentWizardStep = idx),
+                onPageChanged: (idx) =>
+                    setState(() => _currentWizardStep = idx),
                 children: [
-
                   // STEP 1: Identität
                   _buildWizardStep(
                     context: context,
@@ -447,17 +456,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         SettingsHeader(vm: vm, compact: true),
                         const SizedBox(height: 24),
-                        StoreInfoCard(vm: vm, hideDescription: true, showWebsite: false, showCreatedDate: false),
+                        StoreInfoCard(
+                          vm: vm,
+                          hideDescription: true,
+                          showWebsite: false,
+                          showCreatedDate: false,
+                        ),
                         const SizedBox(height: 16),
                         TextField(
                           controller: vm.pageDescCtrl,
                           maxLines: 3,
-                          textDirection: _getTextDirection(vm.pageDescCtrl.text),
-                          onChanged: (_) => setState(() {}), // Rebuild für Richtungswechsel
+                          textDirection: _getTextDirection(
+                            vm.pageDescCtrl.text,
+                          ),
+                          onChanged: (_) =>
+                              setState(() {}), // Rebuild für Richtungswechsel
                           decoration: InputDecoration(
                             labelText: s.shortDescriptionLabel,
                             hintText: '...',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             alignLabelWithHint: true,
                           ),
                         ),
@@ -495,14 +514,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           decoration: BoxDecoration(
                             color: colors.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colors.outline.withValues(alpha: 0.2)),
+                            border: Border.all(
+                              color: colors.outline.withValues(alpha: 0.2),
+                            ),
                           ),
                           child: SwitchListTile(
-                            title: Text(s.enableDeliveryLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(vm.shippingEnabled
-                                ? s.deliveryEnabled
-                                : s.deliveryDisabled,
-                                style: TextStyle(color: theme.hintColor, fontSize: 12)
+                            title: Text(
+                              s.enableDeliveryLabel,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              vm.shippingEnabled
+                                  ? s.deliveryEnabled
+                                  : s.deliveryDisabled,
+                              style: TextStyle(
+                                color: theme.hintColor,
+                                fontSize: 12,
+                              ),
                             ),
                             value: vm.shippingEnabled,
                             // FIX: Veraltete activeColor entfernt, nimmt Theme Primary
@@ -521,7 +551,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               helperMaxLines: 2,
                               prefixIcon: const Icon(Icons.attach_money),
                               suffixText: vm.currencyCtrl.text,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               filled: true,
                               fillColor: colors.surface,
                             ),
@@ -546,7 +578,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildWizardStep(
                     context: context,
                     icon: Icons.check_circle_outline_rounded,
-                    iconColor: colors.tertiary, // Erfolg / Abschluss Farbe aus Theme
+                    iconColor:
+                        colors.tertiary, // Erfolg / Abschluss Farbe aus Theme
                     title: s.step5Title,
                     subtitle: kIsWeb ? s.step5SubtitleWeb : s.step5Subtitle,
                     isOptional: false,
@@ -557,10 +590,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Text(
                           s.setupCompleteMessage,
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16, color: colors.onSurface.withValues(alpha: 0.7)),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: colors.onSurface.withValues(alpha: 0.7),
+                          ),
                         ),
                         const SizedBox(height: 40),
-                        Icon(Icons.rocket_launch, size: 60, color: colors.primary.withValues(alpha: 0.5)),
+                        Icon(
+                          Icons.rocket_launch,
+                          size: 60,
+                          color: colors.primary.withValues(alpha: 0.5),
+                        ),
                       ],
                     ),
                   ),
@@ -585,7 +625,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 top: false,
                 child: Row(
                   children: [
-                    if (_currentWizardStep >= 2 && _currentWizardStep < (totalSteps - 1))
+                    if (_currentWizardStep >= 2 &&
+                        _currentWizardStep < (totalSteps - 1))
                       Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: TextButton(
@@ -595,35 +636,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               curve: Curves.easeInOut,
                             );
                           },
-                          child: Text(s.skipButton, style: TextStyle(color: colors.onSurface.withValues(alpha: 0.6))),
+                          child: Text(
+                            s.skipButton,
+                            style: TextStyle(
+                              color: colors.onSurface.withValues(alpha: 0.6),
+                            ),
+                          ),
                         ),
                       ),
                     const Spacer(),
                     if (_currentWizardStep < (totalSteps - 1))
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 14,
+                            horizontal: 24,
+                          ),
                           backgroundColor: colors.primary,
                           foregroundColor: colors.onPrimary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         onPressed: () => _validateAndProceed(vm),
                         icon: const Icon(Icons.arrow_forward, size: 20),
-                        label: Text(s.nextButton, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        label: Text(
+                          s.nextButton,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       )
                     else
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                          backgroundColor: colors.tertiary, // Nutze Tertiary für Abschluss/Erfolg
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 14,
+                            horizontal: 24,
+                          ),
+                          backgroundColor: colors
+                              .tertiary, // Nutze Tertiary für Abschluss/Erfolg
                           foregroundColor: colors.onTertiary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         onPressed: vm.busy ? null : () => _finishWizard(vm),
                         icon: vm.busy
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : const Icon(Icons.check_circle, size: 20),
-                        label: Text(s.finishSetupButton, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        label: Text(
+                          s.finishSetupButton,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -673,12 +749,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               if (isOptional) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: hintColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(s.optionalBadge, style: TextStyle(fontSize: 10, color: hintColor)),
+                  child: Text(
+                    s.optionalBadge,
+                    style: TextStyle(fontSize: 10, color: hintColor),
+                  ),
                 ),
                 const SizedBox(width: 8),
               ],
@@ -705,7 +787,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_currentWizardStep == 0) {
       if (vm.storeNameCtrl.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.validationEnterStoreName), backgroundColor: colors.error),
+          SnackBar(
+            content: Text(s.validationEnterStoreName),
+            backgroundColor: colors.error,
+          ),
         );
         return;
       }
@@ -714,13 +799,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_currentWizardStep == 1) {
       if (vm.phoneCtrl.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.validationEnterPhone), backgroundColor: colors.error),
+          SnackBar(
+            content: Text(s.validationEnterPhone),
+            backgroundColor: colors.error,
+          ),
         );
         return;
       }
       if (vm.addressCtrl.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.validationEnterAddress), backgroundColor: colors.error),
+          SnackBar(
+            content: Text(s.validationEnterAddress),
+            backgroundColor: colors.error,
+          ),
         );
         return;
       }
@@ -738,7 +829,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final currentLocale = Localizations.localeOf(context).languageCode;
 
     // Speichern
-    final success = await vm.save(s, checkPaywall: false, isFirstSetup: true, currentLocale: currentLocale);
+    final success = await vm.save(
+      s,
+      checkPaywall: false,
+      isFirstSetup: true,
+      currentLocale: currentLocale,
+    );
 
     // FIX: Context usage across async gap
     if (!mounted) return;
@@ -748,7 +844,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _showCongratulationsDialog(vm);
     } else if (vm.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(vm.errorMessage!), backgroundColor: colors.error),
+        SnackBar(
+          content: Text(vm.errorMessage!),
+          backgroundColor: colors.error,
+        ),
       );
       vm.clearError();
     }
@@ -826,14 +925,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: colors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: colors.primary.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Column(
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.link_rounded, size: 18, color: colors.primary),
+                          Icon(
+                            Icons.link_rounded,
+                            size: 18,
+                            color: colors.primary,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             s.yourStoreLinkLabel,
@@ -880,12 +985,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.primary,
                   foregroundColor: colors.onPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 icon: const Icon(Icons.arrow_forward_rounded),
                 label: Text(
                   s.goToHomeButton,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -909,9 +1019,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
 
     if (success) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(s.saveSuccessMsg)),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(s.saveSuccessMsg)));
       // Settings/Profil → Nach Home zurück (Index 0)
       context.go('/home');
     } else if (vm.hasError) {
@@ -934,10 +1042,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(s.logoutButton),
         content: Text(s.logoutConfirmMsg),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.cancel),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: colors.error, foregroundColor: colors.onError),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.error,
+              foregroundColor: colors.onError,
+            ),
             child: Text(s.logoutConfirmButton),
           ),
         ],

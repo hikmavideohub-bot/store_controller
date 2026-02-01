@@ -45,10 +45,14 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) throw Exception('Permission denied');
+        if (permission == LocationPermission.denied) {
+          throw Exception('Permission denied');
+        }
       }
 
-      if (permission == LocationPermission.deniedForever) throw Exception('Permission denied forever');
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Permission denied forever');
+      }
 
       final pos = await Geolocator.getCurrentPosition();
       if (mounted) {
@@ -77,59 +81,61 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             onPressed: _selectedLocation == null
                 ? null
                 : () {
-              Navigator.of(context).pop(_selectedLocation);
-            },
+                    Navigator.of(context).pop(_selectedLocation);
+                  },
             child: Text(
               s.saveLabel, // "Speichern"
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-          )
+          ),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Stack(
-        children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _selectedLocation ?? _defaultLocation,
-              zoom: 15,
-            ),
-            onMapCreated: (controller) => _controller = controller,
-            onTap: (pos) {
-              setState(() => _selectedLocation = pos);
-            },
-            markers: _selectedLocation == null
-                ? {}
-                : {
-              Marker(
-                markerId: const MarkerId('selected'),
-                position: _selectedLocation!,
-              ),
-            },
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-          ),
-          if (_selectedLocation == null)
-            Positioned(
-              bottom: 30,
-              left: 20,
-              right: 20,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(8),
+              children: [
+                GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _selectedLocation ?? _defaultLocation,
+                    zoom: 15,
+                  ),
+                  onMapCreated: (controller) => _controller = controller,
+                  onTap: (pos) {
+                    setState(() => _selectedLocation = pos);
+                  },
+                  markers: _selectedLocation == null
+                      ? {}
+                      : {
+                          Marker(
+                            markerId: const MarkerId('selected'),
+                            position: _selectedLocation!,
+                          ),
+                        },
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
                 ),
-                child: Text(
-                  s.tapMapHint, // "Bitte tippe auf die Karte..."
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: theme.colorScheme.onErrorContainer),
-                ),
-              ),
+                if (_selectedLocation == null)
+                  Positioned(
+                    bottom: 30,
+                    left: 20,
+                    right: 20,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        s.tapMapHint, // "Bitte tippe auf die Karte..."
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: theme.colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-        ],
-      ),
     );
   }
 }

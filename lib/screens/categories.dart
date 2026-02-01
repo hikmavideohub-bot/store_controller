@@ -15,11 +15,17 @@ import '../core/paywall_messages.dart';
 
 class _CommaFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final sanitized = newValue.text.replaceAll(RegExp(r'[^0-9,]'), '');
     if (sanitized.startsWith(',')) return oldValue;
     if (sanitized.split(',').length > 2) return oldValue;
-    return TextEditingValue(text: sanitized, selection: TextSelection.collapsed(offset: sanitized.length));
+    return TextEditingValue(
+      text: sanitized,
+      selection: TextSelection.collapsed(offset: sanitized.length),
+    );
   }
 }
 
@@ -72,27 +78,34 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   Future<bool> _confirmDeleteCategorySwipe(String name) async {
-    if (!await _checkWriteAccess()) return false;
-
+    // Capture context and localization BEFORE async operation
     final ctx = _scaffoldKey.currentContext;
     if (ctx == null) return false;
     final s = AppLocalizations.of(ctx)!;
 
+    if (!await _checkWriteAccess()) return false;
+
+    // Check context is still valid after async
+    if (!mounted || !ctx.mounted) return false;
+
     return await showDialog<bool>(
-      context: ctx,
-      builder: (dctx) => AlertDialog(
-        title: Text(s.deleteCategoryTitle),
-        content: Text(s.deleteCategoryMsg(name)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dctx, false), child: Text(s.cancel)),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(s.delete),
+          context: ctx,
+          builder: (dctx) => AlertDialog(
+            title: Text(s.deleteCategoryTitle),
+            content: Text(s.deleteCategoryMsg(name)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dctx, false),
+                child: Text(s.cancel),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(dctx, true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: Text(s.delete),
+              ),
+            ],
           ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
   }
 
@@ -243,9 +256,15 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   Future<void> _renameCategory(String oldName) async {
+    // Capture context and all context-dependent values BEFORE async
+    final ctx = _scaffoldKey.currentContext;
+    if (ctx == null) return;
+    final s = AppLocalizations.of(ctx)!;
+    final errorColor = Theme.of(ctx).colorScheme.error;
+    final messenger = ScaffoldMessenger.of(ctx);
+
     if (!await _checkWriteAccess()) return;
-    final context = _scaffoldKey.currentContext!;
-    final s = AppLocalizations.of(context)!;
+    if (!mounted || !ctx.mounted) return;
 
     final newName = await _askText(
       title: s.categoryRenameTitle,
@@ -262,7 +281,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       if (ok) {
         await _reload(silent: true);
         if (mounted) {
-          final messenger = ScaffoldMessenger.of(_scaffoldKey.currentContext!);
           messenger.hideCurrentSnackBar();
           messenger.showSnackBar(
             SnackBar(
@@ -277,21 +295,17 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         }
       } else {
         if (mounted) {
-          final messenger = ScaffoldMessenger.of(_scaffoldKey.currentContext!);
           messenger.showSnackBar(
             SnackBar(
               content: Text(s.categoryRenameFail),
-              backgroundColor: Theme.of(context).colorScheme.error,
+              backgroundColor: errorColor,
             ),
           );
         }
       }
     } catch (_) {
       if (mounted) {
-        final messenger = ScaffoldMessenger.of(_scaffoldKey.currentContext!);
-        messenger.showSnackBar(
-          SnackBar(content: Text(s.categoryRenameError)),
-        );
+        messenger.showSnackBar(SnackBar(content: Text(s.categoryRenameError)));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -299,16 +313,21 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   Future<void> _deleteCategory(String name) async {
-    if (!await _checkWriteAccess()) return;
-
+    // Capture context and all context-dependent values BEFORE async
+    final ctx = _scaffoldKey.currentContext;
+    if (ctx == null) return;
+    final s = AppLocalizations.of(ctx)!;
+    final errorColor = Theme.of(ctx).colorScheme.error;
+    final messenger = ScaffoldMessenger.of(ctx);
     const moveTo = 'اخرى';
-    final BuildContext context = _scaffoldKey.currentContext!;
-    final s = AppLocalizations.of(context)!;
+
+    if (!await _checkWriteAccess()) return;
+    if (!mounted || !ctx.mounted) return;
 
     final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        final theme = Theme.of(ctx);
+      context: ctx,
+      builder: (dialogCtx) {
+        final theme = Theme.of(dialogCtx);
         return Dialog(
           backgroundColor: theme.colorScheme.surface,
           shape: RoundedRectangleBorder(
@@ -346,13 +365,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
+                      onPressed: () => Navigator.pop(dialogCtx, false),
                       child: Text(s.cancel),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.pop(ctx, true);
+                        Navigator.pop(dialogCtx, true);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
@@ -377,13 +396,15 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     setState(() => _busy = true);
 
     try {
-      final success = await ApiService.deleteCategory(name, moveToCategory: moveTo);
+      final success = await ApiService.deleteCategory(
+        name,
+        moveToCategory: moveTo,
+      );
       if (!mounted) return;
 
       if (success) {
         await _reload(silent: true);
         if (mounted) {
-          final messenger = ScaffoldMessenger.of(_scaffoldKey.currentContext!);
           messenger.hideCurrentSnackBar();
           messenger.showSnackBar(
             SnackBar(
@@ -398,21 +419,17 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         }
       } else {
         if (mounted) {
-          final messenger = ScaffoldMessenger.of(_scaffoldKey.currentContext!);
           messenger.showSnackBar(
             SnackBar(
               content: Text(s.categoryDeleteFail),
-              backgroundColor: Theme.of(context).colorScheme.error,
+              backgroundColor: errorColor,
             ),
           );
         }
       }
     } catch (_) {
       if (mounted) {
-        final messenger = ScaffoldMessenger.of(_scaffoldKey.currentContext!);
-        messenger.showSnackBar(
-          SnackBar(content: Text(s.categoryDeleteError)),
-        );
+        messenger.showSnackBar(SnackBar(content: Text(s.categoryDeleteError)));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -427,16 +444,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     Navigator.push(
       _scaffoldKey.currentContext!,
       MaterialPageRoute(
-        builder: (context) => CategoryProductsScreen(
-          category: category,
-          products: items,
-        ),
+        builder: (context) =>
+            CategoryProductsScreen(category: category, products: items),
       ),
     );
   }
 
   bool _categoryHasFullOffer(String category) {
-    final items = _products.where((p) => p.category.trim() == category.trim()).toList();
+    final items = _products
+        .where((p) => p.category.trim() == category.trim())
+        .toList();
     if (items.isEmpty) return false;
     return items.every((p) => p.hasOffer && p.offerActive);
   }
@@ -451,64 +468,100 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       context: ctx,
       backgroundColor: colors.surface,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (sheetCtx, setSheetState) {
           return Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, 30 + MediaQuery.of(sheetCtx).viewPadding.bottom),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Row(children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
-                  child: Icon(Icons.category_rounded, color: colors.primary, size: 26),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              30 + MediaQuery.of(sheetCtx).viewPadding.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.category_rounded,
+                        color: colors.primary,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          Text(
+                            s.productsCount(productCount),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(category, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-                  Text(s.productsCount(productCount), style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                ])),
-              ]),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              _buildActionTile(
-                icon: Icons.list_alt_rounded,
-                iconColor: Colors.blue,
-                title: s.viewProductsAction,
-                subtitle: s.viewProductsSubtitle,
-                onTap: () {
-                  Navigator.pop(sheetCtx);
-                  _openCategoryProducts(category);
-                },
-              ),
-
-              const SizedBox(height: 12),
-
-              _buildActionTile(
-                icon: Icons.local_offer_rounded,
-                iconColor: colors.tertiary,
-                title: s.applyCategoryOfferAction,
-                subtitle: s.applyCategoryOfferSubtitle,
-                onTap: () {
-                  Navigator.pop(sheetCtx);
-                  _showApplyOfferDialog(category);
-                },
-              ),
-
-              if (hasFullOffer) ...[
-                const SizedBox(height: 12),
                 _buildActionTile(
-                  icon: Icons.power_settings_new_rounded,
-                  iconColor: Colors.red,
-                  title: s.stopCategoryOffersAction,
-                  subtitle: s.stopCategoryOffersSubtitle,
-                  onTap: () async {
+                  icon: Icons.list_alt_rounded,
+                  iconColor: Colors.blue,
+                  title: s.viewProductsAction,
+                  subtitle: s.viewProductsSubtitle,
+                  onTap: () {
                     Navigator.pop(sheetCtx);
-                    await _disableCategoryOffers(category);
+                    _openCategoryProducts(category);
                   },
                 ),
+
+                const SizedBox(height: 12),
+
+                _buildActionTile(
+                  icon: Icons.local_offer_rounded,
+                  iconColor: colors.tertiary,
+                  title: s.applyCategoryOfferAction,
+                  subtitle: s.applyCategoryOfferSubtitle,
+                  onTap: () {
+                    Navigator.pop(sheetCtx);
+                    _showApplyOfferDialog(category);
+                  },
+                ),
+
+                if (hasFullOffer) ...[
+                  const SizedBox(height: 12),
+                  _buildActionTile(
+                    icon: Icons.power_settings_new_rounded,
+                    iconColor: Colors.red,
+                    title: s.stopCategoryOffersAction,
+                    subtitle: s.stopCategoryOffersSubtitle,
+                    onTap: () async {
+                      Navigator.pop(sheetCtx);
+                      await _disableCategoryOffers(category);
+                    },
+                  ),
+                ],
               ],
-            ]),
+            ),
           );
         },
       ),
@@ -534,149 +587,262 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: iconColor.withValues(alpha: 0.15)),
           ),
-          child: Row(children: [
-            Icon(icon, color: iconColor, size: 24),
-            const SizedBox(width: 16),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-              Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            ])),
-            Icon(Icons.chevron_right_rounded, color: iconColor.withValues(alpha: 0.5)),
-          ]),
+          child: Row(
+            children: [
+              Icon(icon, color: iconColor, size: 24),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: iconColor.withValues(alpha: 0.5),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   void _showApplyOfferDialog(String category) async {
-    if (!await _checkWriteAccess()) return;
-
-    final ctx = _scaffoldKey.currentContext!;
+    // Capture context and all context-dependent values BEFORE async
+    final ctx = _scaffoldKey.currentContext;
+    if (ctx == null) return;
     final colors = Theme.of(ctx).colorScheme;
     final s = AppLocalizations.of(ctx)!;
     final percentCtrl = TextEditingController();
     DateTime startDate = DateTime.now();
     DateTime endDate = DateTime.now().add(const Duration(days: 5));
 
+    if (!await _checkWriteAccess()) return;
+    if (!mounted || !ctx.mounted) return;
+
     final sp = await SharedPreferences.getInstance();
+    if (!mounted || !ctx.mounted) return;
     final defaultDays = sp.getInt('default_offer_days') ?? 5;
     endDate = startDate.add(Duration(days: defaultDays));
-
-    if (!mounted) return;
 
     showModalBottomSheet(
       context: ctx,
       backgroundColor: colors.surface,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (sheetCtx, setSheetState) {
           return Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, 30 + MediaQuery.of(sheetCtx).viewInsets.bottom + MediaQuery.of(sheetCtx).viewPadding.bottom),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Row(children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: colors.tertiary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
-                  child: Icon(Icons.bolt_rounded, color: colors.tertiary, size: 26),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              30 +
+                  MediaQuery.of(sheetCtx).viewInsets.bottom +
+                  MediaQuery.of(sheetCtx).viewPadding.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.tertiary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.bolt_rounded,
+                        color: colors.tertiary,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.categoryFullOfferTitle,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          Text(
+                            s.applyToCategorySubtitle(category),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(s.categoryFullOfferTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                  Text(s.applyToCategorySubtitle(category), style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                ])),
-              ]),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              TextFormField(
-                controller: percentCtrl,
-                inputFormatters: [_CommaFormatter()],
-                decoration: InputDecoration(
-                  labelText: s.percentageLabel,
-                  prefixIcon: const Icon(Icons.percent_rounded),
-                  hintText: s.percentageHint,
-                ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              const SizedBox(height: 16),
-
-              InkWell(
-                onTap: () async {
-                  final res = await showDateRangePicker(
-                    context: sheetCtx,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                    initialDateRange: DateTimeRange(start: startDate, end: endDate),
-                  );
-                  if (res != null) {
-                    setSheetState(() {
-                      startDate = res.start;
-                      endDate = res.end;
-                    });
-                  }
-                },
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Theme.of(sheetCtx).dividerColor),
+                TextFormField(
+                  controller: percentCtrl,
+                  inputFormatters: [_CommaFormatter()],
+                  decoration: InputDecoration(
+                    labelText: s.percentageLabel,
+                    prefixIcon: const Icon(Icons.percent_rounded),
+                    hintText: s.percentageHint,
                   ),
-                  child: Row(children: [
-                    Icon(Icons.date_range_rounded, color: colors.primary),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                InkWell(
+                  onTap: () async {
+                    final res = await showDateRangePicker(
+                      context: sheetCtx,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      initialDateRange: DateTimeRange(
+                        start: startDate,
+                        end: endDate,
+                      ),
+                    );
+                    if (res != null) {
+                      setSheetState(() {
+                        startDate = res.start;
+                        endDate = res.end;
+                      });
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Theme.of(sheetCtx).dividerColor,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.date_range_rounded, color: colors.primary),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s.offerValidityLabel,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(sheetCtx).hintColor,
+                                ),
+                              ),
+                              Text(
+                                '${startDate.day}/${startDate.month}/${startDate.year} - ${endDate.day}/${endDate.month}/${endDate.year}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.edit_calendar_rounded, size: 20),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(sheetCtx),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(s.cancel),
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(s.offerValidityLabel, style: TextStyle(fontSize: 12, color: Theme.of(sheetCtx).hintColor)),
-                      Text('${startDate.day}/${startDate.month}/${startDate.year} - ${endDate.day}/${endDate.month}/${endDate.year}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ])),
-                    const Icon(Icons.edit_calendar_rounded, size: 20),
-                  ]),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(sheetCtx),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final val =
+                              double.tryParse(
+                                percentCtrl.text.replaceAll(',', '.'),
+                              ) ??
+                              0;
+                          if (val <= 0) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(
+                                content: Text(s.invalidPercentageError),
+                                backgroundColor: Colors.orange,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
+                          Navigator.pop(sheetCtx);
+                          await _applyCategoryOffer(
+                            category,
+                            val,
+                            startDate,
+                            endDate,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.primary,
+                          foregroundColor: colors.onPrimary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          s.applyOfferButton,
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
                     ),
-                    child: Text(s.cancel),
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final val = double.tryParse(percentCtrl.text.replaceAll(',', '.')) ?? 0;
-                      if (val <= 0) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(s.invalidPercentageError), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating));
-                        return;
-                      }
-                      Navigator.pop(sheetCtx);
-                      await _applyCategoryOffer(category, val, startDate, endDate);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primary,
-                      foregroundColor: colors.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: Text(s.applyOfferButton, style: const TextStyle(fontWeight: FontWeight.w900)),
-                  ),
-                ),
-              ]),
-            ]),
+              ],
+            ),
           );
         },
       ),
     );
   }
 
-  Future<void> _applyCategoryOffer(String category, double percent, DateTime start, DateTime end) async {
+  Future<void> _applyCategoryOffer(
+    String category,
+    double percent,
+    DateTime start,
+    DateTime end,
+  ) async {
     setState(() => _busy = true);
     final s = AppLocalizations.of(context)!;
     try {
@@ -687,15 +853,29 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         'percent': percent,
         'bundle_price': 0,
         'bundle_qty': 0,
-        'offer_start_date': "${start.year}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')}",
-        'offer_end_date': "${end.year}-${end.month.toString().padLeft(2, '0')}-${end.day.toString().padLeft(2, '0')}",
+        'offer_start_date':
+            "${start.year}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')}",
+        'offer_end_date':
+            "${end.year}-${end.month.toString().padLeft(2, '0')}-${end.day.toString().padLeft(2, '0')}",
       });
       if (mounted) {
         if (success) {
           await _reload(silent: true);
-          ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(SnackBar(content: Text(s.categoryOfferAppliedMsg(category)), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating));
+          ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(
+            SnackBar(
+              content: Text(s.categoryOfferAppliedMsg(category)),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         } else {
-          ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(SnackBar(content: Text(s.categoryOfferApplyFail), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
+          ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(
+            SnackBar(
+              content: Text(s.categoryOfferApplyFail),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
       }
     } finally {
@@ -707,13 +887,27 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     setState(() => _busy = true);
     final s = AppLocalizations.of(context)!;
     try {
-      final success = await ApiService.updateCategoryOffers(category, {'offer_active': false});
+      final success = await ApiService.updateCategoryOffers(category, {
+        'offer_active': false,
+      });
       if (mounted) {
         if (success) {
           await _reload(silent: true);
-          ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(SnackBar(content: Text(s.categoryOffersDisabledMsg(category)), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating));
+          ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(
+            SnackBar(
+              content: Text(s.categoryOffersDisabledMsg(category)),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         } else {
-          ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(SnackBar(content: Text(s.categoryOffersDisableFail), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
+          ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(
+            SnackBar(
+              content: Text(s.categoryOffersDisableFail),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
       }
     } finally {
@@ -743,8 +937,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.delete_sweep_rounded, color: Colors.red, size: 28),
-              Text(s.delete, style: theme.textTheme.labelSmall?.copyWith(color: Colors.red, fontWeight: FontWeight.bold)),
+              const Icon(
+                Icons.delete_sweep_rounded,
+                color: Colors.red,
+                size: 28,
+              ),
+              Text(
+                s.delete,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ),
@@ -759,8 +963,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.mode_edit_outline_rounded, color: colors.primary, size: 28),
-              Text(s.edit, style: theme.textTheme.labelSmall?.copyWith(color: colors.primary, fontWeight: FontWeight.bold)),
+              Icon(
+                Icons.mode_edit_outline_rounded,
+                color: colors.primary,
+                size: 28,
+              ),
+              Text(
+                s.edit,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ),
@@ -783,7 +997,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           decoration: BoxDecoration(
             color: colors.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: colors.outline.withValues(alpha: 0.2), width: 1),
+            border: Border.all(
+              color: colors.outline.withValues(alpha: 0.2),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.03),
@@ -806,13 +1023,20 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       height: 54,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [colors.primary.withValues(alpha: 0.15), colors.primary.withValues(alpha: 0.05)],
+                          colors: [
+                            colors.primary.withValues(alpha: 0.15),
+                            colors.primary.withValues(alpha: 0.05),
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(15),
                       ),
-                      child: Icon(Icons.grid_view_rounded, color: colors.primary, size: 26),
+                      child: Icon(
+                        Icons.grid_view_rounded,
+                        color: colors.primary,
+                        size: 26,
+                      ),
                     ),
                     const SizedBox(width: 16),
 
@@ -822,20 +1046,33 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         children: [
                           Text(
                             category,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                              color: isDark
+                                  ? Colors.white10
+                                  : Colors.black.withValues(alpha: 0.05),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               s.productsCount(count),
-                              style: TextStyle(fontSize: 12, color: theme.hintColor, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.hintColor,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -869,7 +1106,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  Widget _buildActionCircle({required IconData icon, required Color color, required VoidCallback onTap}) {
+  Widget _buildActionCircle({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return Material(
       color: color.withValues(alpha: 0.1),
       shape: const CircleBorder(),
@@ -906,132 +1147,156 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       ),
       body: _loading
           ? Center(
-        child: CircularProgressIndicator(
-          color: colors.primary,
-          strokeWidth: 2.5,
-        ),
-      )
+              child: CircularProgressIndicator(
+                color: colors.primary,
+                strokeWidth: 2.5,
+              ),
+            )
           : RefreshIndicator(
-        color: colors.primary,
-        backgroundColor: colors.surface,
-        onRefresh: () => _reload(silent: true),
-        child: Stack(
-          children: [
-            ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
+              color: colors.primary,
+              backgroundColor: colors.surface,
+              onRefresh: () => _reload(silent: true),
+              child: Stack(
+                children: [
+                  ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: colors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.grid_view_rounded, size: 16, color: colors.primary),
-                            const SizedBox(width: 6),
-                            Text(
-                              s.categoriesCountLabel(cats.length),
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: colors.primary,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: colors.primary.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.grid_view_rounded,
+                                    size: 16,
+                                    color: colors.primary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    s.categoriesCountLabel(cats.length),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: colors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colors.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: colors.outline.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.inventory_2_rounded,
+                                    size: 16,
+                                    color: theme.hintColor,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    s.productsCount(_products.length),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: theme.hintColor,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: colors.outline.withValues(alpha: 0.2)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.inventory_2_rounded, size: 16, color: theme.hintColor),
-                            const SizedBox(width: 6),
-                            Text(
-                              s.productsCount(_products.length),
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: theme.hintColor,
+
+                      const SizedBox(height: 16),
+
+                      if (cats.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(40),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.grid_view_rounded,
+                                size: 60,
+                                color: theme.hintColor.withValues(alpha: 0.3),
                               ),
-                            ),
-                          ],
-                        ),
+                              const SizedBox(height: 20),
+                              Text(
+                                s.noCategoriesTitle,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                s.noCategoriesSubtitle,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: theme.hintColor,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        ...List.generate(cats.length, (index) {
+                          final category = cats[index];
+                          final count = counts[category] ?? 0;
+                          return _buildCategoryCard(category, count, index);
+                        }),
+
+                      SizedBox(
+                        height: 140 + MediaQuery.of(context).viewPadding.bottom,
                       ),
                     ],
                   ),
-                ),
 
-                const SizedBox(height: 16),
-
-                if (cats.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.grid_view_rounded,
-                          size: 60,
-                          color: theme.hintColor.withValues(alpha: 0.3),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          s.noCategoriesTitle,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                  if (_busy)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: colors.primary,
+                            strokeWidth: 2.5,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          s.noCategoriesSubtitle,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: theme.hintColor,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                      ),
                     ),
-                  )
-                else
-                  ...List.generate(cats.length, (index) {
-                    final category = cats[index];
-                    final count = counts[category] ?? 0;
-                    return _buildCategoryCard(category, count, index);
-                  }),
-
-                SizedBox(height: 140 + MediaQuery.of(context).viewPadding.bottom),
-              ],
-            ),
-
-            if (_busy)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      color: colors.primary,
-                      strokeWidth: 2.5,
-                    ),
-                  ),
-                ),
+                ],
               ),
-          ],
-        ),
-      ),
+            ),
     );
   }
 }
@@ -1104,7 +1369,8 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
     if (!_isOfferInDateRange(p)) return '';
     final end = _parseDateSafe(p.offerEndDate, DateTime.now());
     final s = AppLocalizations.of(context)!;
-    final dateStr = "${end.day.toString().padLeft(2, '0')}/${end.month.toString().padLeft(2, '0')}/${end.year}";
+    final dateStr =
+        "${end.day.toString().padLeft(2, '0')}/${end.month.toString().padLeft(2, '0')}/${end.year}";
     return s.offerUntilDate(dateStr);
   }
 
@@ -1115,7 +1381,11 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
     }
     if (p.offerType == 'bundle') {
       final cur = _currency();
-      return s.bundleOfferLabel(_sizeFmt.format(p.bundleQty), _moneyFmt.format(p.bundlePrice), cur);
+      return s.bundleOfferLabel(
+        _sizeFmt.format(p.bundleQty),
+        _moneyFmt.format(p.bundlePrice),
+        cur,
+      );
     }
     return s.offerLabel;
   }
@@ -1153,11 +1423,19 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(isActive ? Icons.check_circle : Icons.cancel, size: 16, color: fg),
+          Icon(
+            isActive ? Icons.check_circle : Icons.cancel,
+            size: 16,
+            color: fg,
+          ),
           const SizedBox(width: 6),
           Text(
             isActive ? s.availableStatus : s.unavailableStatus,
-            style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 12),
+            style: TextStyle(
+              color: fg,
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -1174,7 +1452,10 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
       decoration: BoxDecoration(
         color: accentColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accentColor.withValues(alpha: 0.4), width: 1.1),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.4),
+          width: 1.1,
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Row(
@@ -1211,7 +1492,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
       if (i != -1) _items[i] = _items[i].copyWith(productActive: newValue);
     });
 
-    final success = await ApiService.updateProduct(p.copyWith(productActive: newValue));
+    final success = await ApiService.updateProduct(
+      p.copyWith(productActive: newValue),
+    );
 
     if (!mounted) return;
     setState(() => _actionBusy = false);
@@ -1219,9 +1502,13 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
     if (!success) {
       setState(() {
         final i = _items.indexWhere((x) => x.id == p.id);
-        if (i != -1) _items[i] = _items[i].copyWith(productActive: p.productActive);
+        if (i != -1) {
+          _items[i] = _items[i].copyWith(productActive: p.productActive);
+        }
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.updateFail), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.updateFail), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -1242,10 +1529,16 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
         title: Text(s.deleteProductTitle),
         content: Text(s.deleteProductConfirmMsg(p.name)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.cancel),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: colors.error, foregroundColor: colors.onError),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.error,
+              foregroundColor: colors.onError,
+            ),
             child: Text(s.delete),
           ),
         ],
@@ -1260,9 +1553,16 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
 
       if (success) {
         setState(() => _items.removeWhere((x) => x.id == p.id));
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.deleteSuccess), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(s.deleteSuccess),
+            backgroundColor: Colors.green,
+          ),
+        );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.deleteFail), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.deleteFail), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -1318,29 +1618,33 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             color: colors.surfaceContainerHighest,
-                            border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
+                            border: Border.all(
+                              color: colors.outline.withValues(alpha: 0.1),
+                            ),
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
                             child: (p.thumb.isNotEmpty || p.image.isNotEmpty)
                                 ? Image.network(
-                              (p.thumb.isNotEmpty ? p.thumb : p.image),
-                              fit: BoxFit.cover,
-                              errorBuilder: (ctx, error, stackTrace) {
-                                return Center(
-                                  child: Icon(Icons.image_not_supported,
-                                      color: theme.hintColor,
-                                      size: 28
-                                  ),
-                                );
-                              },
-                            )
+                                    (p.thumb.isNotEmpty ? p.thumb : p.image),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (ctx, error, stackTrace) {
+                                      return Center(
+                                        child: Icon(
+                                          Icons.image_not_supported,
+                                          color: theme.hintColor,
+                                          size: 28,
+                                        ),
+                                      );
+                                    },
+                                  )
                                 : Center(
-                              child: Icon(Icons.image_not_supported,
-                                  color: theme.hintColor,
-                                  size: 28
-                              ),
-                            ),
+                                    child: Icon(
+                                      Icons.image_not_supported,
+                                      color: theme.hintColor,
+                                      size: 28,
+                                    ),
+                                  ),
                           ),
                         ),
                         if (hasOfferToday)
@@ -1348,12 +1652,19 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                             top: 6,
                             left: 6,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 5,
+                              ),
                               decoration: BoxDecoration(
                                 color: colors.tertiary,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(Icons.local_offer, size: 14, color: Colors.black),
+                              child: const Icon(
+                                Icons.local_offer,
+                                size: 14,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                       ],
@@ -1388,7 +1699,11 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                Icon(Icons.history_toggle_off, size: 16, color: colors.tertiary),
+                                Icon(
+                                  Icons.history_toggle_off,
+                                  size: 16,
+                                  color: colors.tertiary,
+                                ),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
@@ -1413,7 +1728,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                                 if (p.hasOffer && p.offerActive) ...[
                                   const SizedBox(width: 8),
                                   _offerChip(p),
-                                ]
+                                ],
                               ],
                             ),
                           ),
@@ -1440,7 +1755,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                       height: 28,
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: p.productActive ? Colors.green.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
+                        color: p.productActive
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.grey.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(100),
                         border: Border.all(
                           color: p.productActive ? Colors.green : Colors.grey,
@@ -1452,13 +1769,17 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                           AnimatedAlign(
                             duration: const Duration(milliseconds: 250),
                             curve: Curves.fastOutSlowIn,
-                            alignment: p.productActive ? Alignment.centerRight : Alignment.centerLeft,
+                            alignment: p.productActive
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
                             child: Container(
                               width: 20,
                               height: 20,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: p.productActive ? Colors.green : Colors.grey,
+                                color: p.productActive
+                                    ? Colors.green
+                                    : Colors.grey,
                               ),
                             ),
                           ),
@@ -1477,9 +1798,15 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                       decoration: BoxDecoration(
                         color: colors.error.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
-                        border: Border.all(color: colors.error.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: colors.error.withValues(alpha: 0.3),
+                        ),
                       ),
-                      child: Icon(Icons.delete_outline, size: 18, color: colors.error),
+                      child: Icon(
+                        Icons.delete_outline,
+                        size: 18,
+                        color: colors.error,
+                      ),
                     ),
                   ),
                 ],

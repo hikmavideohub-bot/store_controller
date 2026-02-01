@@ -133,9 +133,15 @@ class Product {
       bundlePrice: _toDouble(data['bundle_price'] ?? data['bundlePrice']),
       bulkQty: _toInt(data['bulk_qty'] ?? data['bulkQty']),
       bulkPrice: _toDouble(data['bulk_price'] ?? data['bulkPrice']),
-      offerStartDate: _normalizeDate(data['offer_start_date'] ?? data['offerStartDate']),
-      offerEndDate: _normalizeDate(data['offer_end_date'] ?? data['offerEndDate']),
-      offerActive: _toBool(data['offer_active'] ?? data['offerActive'] ?? data['offer_aktive']),
+      offerStartDate: _normalizeDate(
+        data['offer_start_date'] ?? data['offerStartDate'],
+      ),
+      offerEndDate: _normalizeDate(
+        data['offer_end_date'] ?? data['offerEndDate'],
+      ),
+      offerActive: _toBool(
+        data['offer_active'] ?? data['offerActive'] ?? data['offer_aktive'],
+      ),
     );
   }
 

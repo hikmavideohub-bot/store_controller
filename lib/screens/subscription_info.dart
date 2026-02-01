@@ -44,11 +44,11 @@ class SubscriptionInfoScreen extends StatelessWidget {
       ),
       bottomNavigationBar: AccessManager.status != 'active'
           ? SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: _buildUpgradeButton(context),
-        ),
-      )
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: _buildUpgradeButton(context),
+              ),
+            )
           : null,
     );
   }
@@ -97,7 +97,7 @@ class SubscriptionInfoScreen extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             statusColor.withValues(alpha: 0.15),
-            statusColor.withValues(alpha: 0.05)
+            statusColor.withValues(alpha: 0.05),
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -178,58 +178,91 @@ class SubscriptionInfoScreen extends StatelessWidget {
       icon: Icons.calendar_month_rounded,
       child: Column(
         children: [
-          _infoRow(context, Icons.storefront, s.storeLabel,
-              store?['store_name'] ?? s.storeFallbackName),
+          _infoRow(
+            context,
+            Icons.storefront,
+            s.storeLabel,
+            store?['store_name'] ?? s.storeFallbackName,
+          ),
           _divider(context),
           _infoRow(
-              context,
-              Icons.info_outline,
-              s.subscriptionTypeLabel,
-              status == 'active' ? s.premiumYearly : s.trialFree),
+            context,
+            Icons.info_outline,
+            s.subscriptionTypeLabel,
+            status == 'active' ? s.premiumYearly : s.trialFree,
+          ),
 
           if (createdAt.isNotEmpty) ...[
             _divider(context),
-            _infoRow(context, Icons.add_circle_outline, s.creationDate,
-                _formatDate(createdAt)),
+            _infoRow(
+              context,
+              Icons.add_circle_outline,
+              s.creationDate,
+              _formatDate(createdAt),
+            ),
           ],
 
           // Anzeige basierend auf Status
           if (status == 'active') ...[
             if (activatedAt.isNotEmpty) ...[
               _divider(context),
-              _infoRow(context, Icons.verified_rounded, s.activatedAt,
-                  _formatDate(activatedAt),
-                  valueColor: Colors.green),
+              _infoRow(
+                context,
+                Icons.verified_rounded,
+                s.activatedAt,
+                _formatDate(activatedAt),
+                valueColor: Colors.green,
+              ),
             ],
             if (subscriptionEndAt.isNotEmpty) ...[
               _divider(context),
-              _infoRow(context, Icons.event_available_rounded,
-                  s.subscriptionEndsAt, _formatDate(subscriptionEndAt),
-                  valueColor: colors.tertiary),
+              _infoRow(
+                context,
+                Icons.event_available_rounded,
+                s.subscriptionEndsAt,
+                _formatDate(subscriptionEndAt),
+                valueColor: colors.tertiary,
+              ),
             ],
           ] else if (status == 'trial') ...[
             if (trialStartAt.isNotEmpty) ...[
               _divider(context),
-              _infoRow(context, Icons.play_arrow_rounded, s.trialStartedAt,
-                  _formatDate(trialStartAt)),
+              _infoRow(
+                context,
+                Icons.play_arrow_rounded,
+                s.trialStartedAt,
+                _formatDate(trialStartAt),
+              ),
             ],
             if (trialEndAt.isNotEmpty) ...[
               _divider(context),
-              _infoRow(context, Icons.timer_outlined, s.trialEndsAt,
-                  _formatDate(trialEndAt),
-                  valueColor: colors.tertiary),
+              _infoRow(
+                context,
+                Icons.timer_outlined,
+                s.trialEndsAt,
+                _formatDate(trialEndAt),
+                valueColor: colors.tertiary,
+              ),
             ],
           ] else if (status == 'expired') ...[
             if (subscriptionEndAt.isNotEmpty) ...[
               _divider(context),
-              _infoRow(context, Icons.event_busy_rounded, s.subscriptionEndedAt,
-                  _formatDate(subscriptionEndAt),
-                  valueColor: colors.error),
+              _infoRow(
+                context,
+                Icons.event_busy_rounded,
+                s.subscriptionEndedAt,
+                _formatDate(subscriptionEndAt),
+                valueColor: colors.error,
+              ),
             ] else if (trialEndAt.isNotEmpty) ...[
               _divider(context),
-              _infoRow(context, Icons.timer_off_outlined, s.trialEndedAt,
-                  _formatDate(trialEndAt),
-                  valueColor: colors.error),
+              _infoRow(
+                context,
+                Icons.timer_off_outlined,
+                s.trialEndedAt,
+                _formatDate(trialEndAt),
+                valueColor: colors.error,
+              ),
             ],
           ],
         ],
@@ -246,14 +279,26 @@ class SubscriptionInfoScreen extends StatelessWidget {
       child: Column(
         children: [
           _benefitItem(context, s.benefitUnlimitedProducts, true),
-          _benefitItem(context, s.benefitHighQualityImages,
-              AccessManager.canShowImagesPublic),
           _benefitItem(
-              context, s.benefitShowPrices, AccessManager.canShowPricesPublic),
+            context,
+            s.benefitHighQualityImages,
+            AccessManager.canShowImagesPublic,
+          ),
           _benefitItem(
-              context, s.benefitFullControl, AccessManager.canWriteAdmin),
+            context,
+            s.benefitShowPrices,
+            AccessManager.canShowPricesPublic,
+          ),
           _benefitItem(
-              context, s.benefitDirectSupport, AccessManager.status == 'active'),
+            context,
+            s.benefitFullControl,
+            AccessManager.canWriteAdmin,
+          ),
+          _benefitItem(
+            context,
+            s.benefitDirectSupport,
+            AccessManager.status == 'active',
+          ),
         ],
       ),
     );
@@ -268,22 +313,21 @@ class SubscriptionInfoScreen extends StatelessWidget {
       iconColor: Colors.blue,
       child: Column(
         children: [
-          _stageItem(
-              context, 1, s.restrictionStage1, AccessManager.stage >= 1),
-          _stageItem(
-              context, 2, s.restrictionStage2, AccessManager.stage >= 2),
-          _stageItem(
-              context, 3, s.restrictionStage3, AccessManager.stage >= 3),
+          _stageItem(context, 1, s.restrictionStage1, AccessManager.stage >= 1),
+          _stageItem(context, 2, s.restrictionStage2, AccessManager.stage >= 2),
+          _stageItem(context, 3, s.restrictionStage3, AccessManager.stage >= 3),
         ],
       ),
     );
   }
 
-  Widget _cardWrapper(BuildContext context,
-      {required String title,
-        required IconData icon,
-        required Widget child,
-        Color? iconColor}) {
+  Widget _cardWrapper(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required Widget child,
+    Color? iconColor,
+  }) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
@@ -312,7 +356,9 @@ class SubscriptionInfoScreen extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ],
             ),
@@ -327,8 +373,12 @@ class SubscriptionInfoScreen extends StatelessWidget {
   }
 
   Widget _infoRow(
-      BuildContext context, IconData icon, String label, String value,
-      {Color? valueColor}) {
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value, {
+    Color? valueColor,
+  }) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -338,12 +388,14 @@ class SubscriptionInfoScreen extends StatelessWidget {
           const SizedBox(width: 12),
           Text(label, style: TextStyle(color: theme.hintColor, fontSize: 14)),
           const Spacer(),
-          Text(value,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: valueColor,
-              )),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: valueColor,
+            ),
+          ),
         ],
       ),
     );
@@ -388,7 +440,11 @@ class SubscriptionInfoScreen extends StatelessWidget {
   }
 
   Widget _stageItem(
-      BuildContext context, int number, String text, bool reached) {
+    BuildContext context,
+    int number,
+    String text,
+    bool reached,
+  ) {
     final colors = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -435,9 +491,10 @@ class SubscriptionInfoScreen extends StatelessWidget {
   }
 
   Widget _divider(BuildContext context) => Divider(
-      height: 1,
-      thickness: 0.5,
-      color: Theme.of(context).dividerColor.withValues(alpha: 0.1));
+    height: 1,
+    thickness: 0.5,
+    color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+  );
 
   Widget _buildUpgradeButton(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -458,14 +515,17 @@ class SubscriptionInfoScreen extends StatelessWidget {
       ),
       child: ElevatedButton(
         onPressed: () {
-          context.push('/payment',
-              extra: {'plan': 'premium_yearly', 'returnUrl': '/home'});
+          context.push(
+            '/payment',
+            extra: {'plan': 'premium_yearly', 'returnUrl': '/home'},
+          );
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: colors.primary,
           foregroundColor: colors.onPrimary,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
           elevation: 0,
         ),
         child: Text(

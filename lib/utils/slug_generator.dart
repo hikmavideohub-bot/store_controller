@@ -194,9 +194,8 @@ const Map<String, String> arabicToLatinMap = {
   '\u064E': 'a', // Fatha
   '\u064F': 'u', // Damma
   '\u0650': 'i', // Kasra
-  '\u0651': '',  // Shadda (double consonant - handled separately)
-  '\u0652': '',  // Sukun (no vowel)
-
+  '\u0651': '', // Shadda (double consonant - handled separately)
+  '\u0652': '', // Sukun (no vowel)
   // Persian/Urdu additions
   'پ': 'p',
   'چ': 'ch',
@@ -370,11 +369,13 @@ class SlugGenerator {
 
         // Check if remainder is in dictionary
         if (arabicWordDictionary.containsKey(remainder)) {
-          final prefixTrans = arabicWordDictionary[prefix] ?? _transliterateWord(prefix);
+          final prefixTrans =
+              arabicWordDictionary[prefix] ?? _transliterateWord(prefix);
           return '$prefixTrans${arabicWordDictionary[remainder]}';
         }
         if (arabicWordDictionary.containsKey(cleanRemainder)) {
-          final prefixTrans = arabicWordDictionary[prefix] ?? _transliterateWord(prefix);
+          final prefixTrans =
+              arabicWordDictionary[prefix] ?? _transliterateWord(prefix);
           return '$prefixTrans${arabicWordDictionary[cleanRemainder]}';
         }
       }
@@ -395,8 +396,6 @@ class SlugGenerator {
       if (arabicToLatinMap.containsKey(char)) {
         final latin = arabicToLatinMap[char]!;
         buffer.write(latin);
-
-
       } else {
         buffer.write(char);
       }
@@ -404,10 +403,6 @@ class SlugGenerator {
 
     return buffer.toString();
   }
-
-
-
-
 
   /// Checks if a proposed slug is reserved
   static bool isReserved(String slug) {

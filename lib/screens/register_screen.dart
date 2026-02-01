@@ -22,7 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _googleBusy = false;
   bool _obscurePass = true;
   bool _obscureConfirm = true;
-  bool _requireEmailVerify = false;
+  final bool _requireEmailVerify = false;
 
   /// True wenn User bereits über Google eingeloggt ist (vom Login-Flow)
   bool _isGoogleUserPending = false;
@@ -34,7 +34,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (trimmed.isEmpty) return null; // Default verwenden
     final firstChar = trimmed.codeUnitAt(0);
     // Arabisch: U+0600–U+06FF, U+0750–U+077F, U+08A0–U+08FF
-    final isArabic = (firstChar >= 0x0600 && firstChar <= 0x06FF) ||
+    final isArabic =
+        (firstChar >= 0x0600 && firstChar <= 0x06FF) ||
         (firstChar >= 0x0750 && firstChar <= 0x077F) ||
         (firstChar >= 0x08A0 && firstChar <= 0x08FF);
     return isArabic ? TextDirection.rtl : TextDirection.ltr;
@@ -54,7 +55,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _isGoogleUserPending = true;
           _pendingGoogleEmail = pending?.email;
         });
-        debugPrint('🟢 Register: Found pending Google user: $_pendingGoogleEmail');
+        debugPrint(
+          '🟢 Register: Found pending Google user: $_pendingGoogleEmail',
+        );
       }
     }
   }
@@ -164,7 +167,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _googleBusy = false;
       });
 
-      debugPrint('🟢 Register: Google credential obtained, showing store name input');
+      debugPrint(
+        '🟢 Register: Google credential obtained, showing store name input',
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _googleBusy = false);
@@ -256,10 +261,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: _googleBusy ? null : () async {
-            await _cancelPendingGoogleRegistration();
-            if (mounted) context.go('/login');
-          },
+          onPressed: _googleBusy
+              ? null
+              : () async {
+                  await _cancelPendingGoogleRegistration();
+                  if (mounted) context.go('/login');
+                },
         ),
         title: Text(s.registerTitle),
         centerTitle: true,
@@ -354,7 +361,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _storeNameCtrl,
                     enabled: !_googleBusy,
                     textDirection: _getTextDirection(_storeNameCtrl.text),
-                    onChanged: (_) => setState(() {}), // Rebuild für Richtungswechsel
+                    onChanged: (_) =>
+                        setState(() {}), // Rebuild für Richtungswechsel
                     autofocus: true,
                     decoration: InputDecoration(
                       labelText: s.storeNameLabel,
@@ -413,26 +421,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     child: _googleBusy
                         ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : Text(
-                      s.createStoreButton,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                    ),
+                            s.createStoreButton,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
                   ),
 
                   const SizedBox(height: 16),
 
                   TextButton(
-                    onPressed: _googleBusy ? null : () async {
-                      await _cancelPendingGoogleRegistration();
-                      if (mounted) context.go('/login');
-                    },
+                    onPressed: _googleBusy
+                        ? null
+                        : () async {
+                            await _cancelPendingGoogleRegistration();
+                            if (mounted) context.go('/login');
+                          },
                     child: Text(
                       s.cancelAndReturnToLogin,
                       style: TextStyle(
@@ -491,7 +504,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     // Google Sign-In Button
                     OutlinedButton.icon(
-                      onPressed: (_busy || _googleBusy) ? null : _signInWithGoogle,
+                      onPressed: (_busy || _googleBusy)
+                          ? null
+                          : _signInWithGoogle,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -503,17 +518,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       icon: _googleBusy
                           ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : Image.asset(
-                        'assets/icon/google_logo.png',
-                        width: 20,
-                        height: 20,
-                      ),
+                              'assets/icon/google_logo.png',
+                              width: 20,
+                              height: 20,
+                            ),
                       label: Text(
-                        _googleBusy ? s.googleRegistering : s.googleRegisterButton,
+                        _googleBusy
+                            ? s.googleRegistering
+                            : s.googleRegisterButton,
                         style: TextStyle(color: colors.onSurface),
                       ),
                     ),
@@ -527,7 +544,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
                             s.orSeparator,
-                            style: TextStyle(color: colors.onSurface.withValues(alpha: 0.5)),
+                            style: TextStyle(
+                              color: colors.onSurface.withValues(alpha: 0.5),
+                            ),
                           ),
                         ),
                         Expanded(child: Divider(color: theme.dividerColor)),
@@ -541,7 +560,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _storeNameCtrl,
                       enabled: !_busy && !_googleBusy,
                       textDirection: _getTextDirection(_storeNameCtrl.text),
-                      onChanged: (_) => setState(() {}), // Rebuild für Richtungswechsel
+                      onChanged: (_) =>
+                          setState(() {}), // Rebuild für Richtungswechsel
                       decoration: InputDecoration(
                         labelText: s.storeNameLabel,
                         hintText: s.storeNameHint,
@@ -551,7 +571,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return s.storeNameRequired;
+                        if (v == null || v.trim().isEmpty) {
+                          return s.storeNameRequired;
+                        }
                         if (v.trim().length < 3) return s.storeNameTooShort;
                         return null;
                       },
@@ -564,8 +586,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _emailCtrl,
                       enabled: !_busy && !_googleBusy,
                       keyboardType: TextInputType.emailAddress,
-                      textDirection: _getTextDirection(_emailCtrl.text) ?? TextDirection.ltr,
-                      onChanged: (_) => setState(() {}), // Rebuild für Richtungswechsel
+                      textDirection:
+                          _getTextDirection(_emailCtrl.text) ??
+                          TextDirection.ltr,
+                      onChanged: (_) =>
+                          setState(() {}), // Rebuild für Richtungswechsel
                       decoration: InputDecoration(
                         labelText: s.emailLabel,
                         hintText: s.emailHint,
@@ -590,7 +615,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       enabled: !_busy && !_googleBusy,
                       obscureText: _obscurePass,
                       textDirection: _getTextDirection(_passwordCtrl.text),
-                      onChanged: (_) => setState(() {}), // Rebuild für Richtungswechsel
+                      onChanged: (_) =>
+                          setState(() {}), // Rebuild für Richtungswechsel
                       decoration: InputDecoration(
                         labelText: s.passwordLabel,
                         prefixIcon: const Icon(Icons.lock_outlined),
@@ -598,8 +624,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         suffixIcon: IconButton(
-                          onPressed: () => setState(() => _obscurePass = !_obscurePass),
-                          icon: Icon(_obscurePass ? Icons.visibility : Icons.visibility_off),
+                          onPressed: () =>
+                              setState(() => _obscurePass = !_obscurePass),
+                          icon: Icon(
+                            _obscurePass
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
                         ),
                       ),
                       validator: (v) {
@@ -617,7 +648,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       enabled: !_busy && !_googleBusy,
                       obscureText: _obscureConfirm,
                       textDirection: _getTextDirection(_confirmPassCtrl.text),
-                      onChanged: (_) => setState(() {}), // Rebuild für Richtungswechsel
+                      onChanged: (_) =>
+                          setState(() {}), // Rebuild für Richtungswechsel
                       decoration: InputDecoration(
                         labelText: s.confirmPasswordLabel,
                         prefixIcon: const Icon(Icons.lock_outlined),
@@ -625,8 +657,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         suffixIcon: IconButton(
-                          onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                          icon: Icon(_obscureConfirm ? Icons.visibility : Icons.visibility_off),
+                          onPressed: () => setState(
+                            () => _obscureConfirm = !_obscureConfirm,
+                          ),
+                          icon: Icon(
+                            _obscureConfirm
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
                         ),
                       ),
                       validator: (v) {
@@ -637,12 +675,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 16),
 
-
                     const SizedBox(height: 16),
 
                     // Register Button
                     ElevatedButton(
-                      onPressed: (_busy || _googleBusy) ? null : _registerWithEmail,
+                      onPressed: (_busy || _googleBusy)
+                          ? null
+                          : _registerWithEmail,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colors.primary, // Teal
                         foregroundColor: colors.onPrimary,
@@ -653,17 +692,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       child: _busy
                           ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
                           : Text(
-                        s.createAccountButton,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                      ),
+                              s.createAccountButton,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
                     ),
 
                     const SizedBox(height: 16),
@@ -674,13 +716,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       children: [
                         Text(
                           s.alreadyHaveAccount,
-                          style: TextStyle(color: colors.onSurface.withValues(alpha: 0.7)),
+                          style: TextStyle(
+                            color: colors.onSurface.withValues(alpha: 0.7),
+                          ),
                         ),
                         TextButton(
-                          onPressed: (_busy || _googleBusy) ? null : () => context.go('/login'),
+                          onPressed: (_busy || _googleBusy)
+                              ? null
+                              : () => context.go('/login'),
                           child: Text(
                             s.loginLink,
-                            style: TextStyle(fontWeight: FontWeight.w700, color: colors.primary),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: colors.primary,
+                            ),
                           ),
                         ),
                       ],

@@ -78,10 +78,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final s = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(s.forgotPasswordTitle),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text(s.forgotPasswordTitle), centerTitle: true),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -90,17 +87,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.lock_reset_rounded, size: 80, color: colors.primary), // Teal statt Gold
+                Icon(
+                  Icons.lock_reset_rounded,
+                  size: 80,
+                  color: colors.primary,
+                ), // Teal statt Gold
                 const SizedBox(height: 24),
                 Text(
                   s.restorePasswordHeadline,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   s.restorePasswordDesc,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha:0.7)),
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
                 ),
                 const SizedBox(height: 32),
 
@@ -126,11 +132,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colors.primary, // Teal
                       foregroundColor: colors.onPrimary, // Weiß
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: _busy
                         ? CircularProgressIndicator(color: colors.onPrimary)
-                        : Text(s.sendLinkButton, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                        : Text(
+                            s.sendLinkButton,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                            ),
+                          ),
                   ),
                 ),
 

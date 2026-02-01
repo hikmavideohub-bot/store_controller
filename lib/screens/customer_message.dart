@@ -61,9 +61,10 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
 
       // Falls URL mit https:// beginnt, kürzen wir sie für die Vorschau
       if (_publicUrl != null) {
-        _publicUrl = _publicUrl!.replaceFirst('https://', '').replaceFirst('http://', '');
+        _publicUrl = _publicUrl!
+            .replaceFirst('https://', '')
+            .replaceFirst('http://', '');
       }
-
     } catch (e) {
       if (!mounted) return;
       final s = AppLocalizations.of(context)!;
@@ -110,8 +111,14 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
         title: Text(s.deleteMessageTitle),
         content: Text(s.deleteMessageConfirm),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.cancel)),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s.delete, style: const TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.delete, style: const TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
@@ -138,7 +145,9 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
           left: 20,
@@ -153,29 +162,51 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
               width: 40,
               height: 4,
               margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            Text(s.chooseTemplateTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              s.chooseTemplateTitle,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             Flexible(
               child: ListView(
                 shrinkWrap: true,
-                children: templates.map((t) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: colors.primary.withValues(alpha: 0.05), // Primary statt Gold
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    leading: Icon(Icons.description_outlined, color: colors.primary),
-                    title: Text(t['title']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(t['text']!, maxLines: 2, overflow: TextOverflow.ellipsis),
-                    onTap: () {
-                      setState(() => _ctrl.text = t['text']!);
-                      Navigator.pop(ctx);
-                    },
-                  ),
-                )).toList(),
+                children: templates
+                    .map(
+                      (t) => Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: colors.primary.withValues(
+                            alpha: 0.05,
+                          ), // Primary statt Gold
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.description_outlined,
+                            color: colors.primary,
+                          ),
+                          title: Text(
+                            t['title']!,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            t['text']!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () {
+                            setState(() => _ctrl.text = t['text']!);
+                            Navigator.pop(ctx);
+                          },
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
             ),
           ],
@@ -190,7 +221,9 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
       SnackBar(
         content: Text(msg),
         // Success: Grün, Error: Rot, Sonst: Primary (Teal)
-        backgroundColor: isSuccess ? Colors.green : (isError ? colors.error : colors.primary),
+        backgroundColor: isSuccess
+            ? Colors.green
+            : (isError ? colors.error : colors.primary),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -215,43 +248,53 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
       body: _loading
           ? Center(child: CircularProgressIndicator(color: colors.primary))
           : SingleChildScrollView(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
-          bottom: 40 + bottomPadding,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader(s.previewTitle),
-            const SizedBox(height: 12),
-            _buildLivePreview(isDark, s),
-            const SizedBox(height: 32),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: 40 + bottomPadding,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader(s.previewTitle),
+                  const SizedBox(height: 12),
+                  _buildLivePreview(isDark, s),
+                  const SizedBox(height: 32),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildSectionHeader(s.editMessageTitle),
-                TextButton.icon(
-                  onPressed: _showTemplates,
-                  icon: Icon(Icons.auto_awesome, size: 16, color: colors.primary),
-                  label: Text(s.templatesButton, style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold)),
-                ),
-              ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildSectionHeader(s.editMessageTitle),
+                      TextButton.icon(
+                        onPressed: _showTemplates,
+                        icon: Icon(
+                          Icons.auto_awesome,
+                          size: 16,
+                          color: colors.primary,
+                        ),
+                        label: Text(
+                          s.templatesButton,
+                          style: TextStyle(
+                            color: colors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildEditCard(isDark, s),
+
+                  const SizedBox(height: 24),
+                  _buildSectionHeader(s.displayDurationTitle),
+                  const SizedBox(height: 12),
+                  _buildExpiryOptions(s),
+
+                  const SizedBox(height: 32),
+                  _buildActionButtons(hasChanged, s),
+                ],
+              ),
             ),
-            _buildEditCard(isDark, s),
-
-            const SizedBox(height: 24),
-            _buildSectionHeader(s.displayDurationTitle),
-            const SizedBox(height: 12),
-            _buildExpiryOptions(s),
-
-            const SizedBox(height: 32),
-            _buildActionButtons(hasChanged, s),
-          ],
-        ),
-      ),
     );
   }
 
@@ -259,7 +302,11 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
     // Primary Color statt Gold für die Section Headers
     return Text(
       title,
-      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: Theme.of(context).colorScheme.primary,
+      ),
     );
   }
 
@@ -280,7 +327,10 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
             children: [
               const Icon(Icons.language, size: 14, color: Colors.grey),
               const SizedBox(width: 8),
-              Text(_publicUrl ?? 'your-store.web.app', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+              Text(
+                _publicUrl ?? 'your-store.web.app',
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+              ),
             ],
           ),
           const Divider(height: 20),
@@ -299,13 +349,19 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
           ),
           const SizedBox(height: 12),
           Row(
-            children: List.generate(3, (i) => Expanded(
-              child: Container(
-                height: 40,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+            children: List.generate(
+              3,
+              (i) => Expanded(
+                child: Container(
+                  height: 40,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
               ),
-            )),
+            ),
           ),
         ],
       ),
@@ -317,7 +373,13 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -329,7 +391,10 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
             // textAlign: TextAlign.right, // Entfernt: TextDirection wird automatisch gesteuert durch App Direction
             decoration: InputDecoration(
               hintText: s.messageHint,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
               contentPadding: const EdgeInsets.all(20),
               counterText: "",
             ),
@@ -344,10 +409,15 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: _ctrl.text.length > (_maxLen * 0.9) ? Colors.red : Colors.grey,
+                    color: _ctrl.text.length > (_maxLen * 0.9)
+                        ? Colors.red
+                        : Colors.grey,
                   ),
                 ),
-                Text(s.engageTextHint, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(
+                  s.engageTextHint,
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
               ],
             ),
           ),
@@ -377,14 +447,18 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
             child: ChoiceChip(
               label: Text(opt['label'] as String),
               selected: isSelected,
-              onSelected: (val) => setState(() => _selectedDays = opt['days'] as int),
+              onSelected: (val) =>
+                  setState(() => _selectedDays = opt['days'] as int),
               selectedColor: colors.primary, // Teal
               labelStyle: TextStyle(
-                  color: isSelected ? colors.onPrimary : colors.primary,
-                  fontWeight: FontWeight.bold
+                color: isSelected ? colors.onPrimary : colors.primary,
+                fontWeight: FontWeight.bold,
               ),
               backgroundColor: colors.primary.withValues(alpha: 0.05),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide.none),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide.none,
+              ),
             ),
           );
         }).toList(),
@@ -402,12 +476,26 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
           height: 55,
           child: ElevatedButton.icon(
             onPressed: (_busy || !hasChanged) ? null : _save,
-            icon: _busy ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: colors.onPrimary)) : const Icon(Icons.send_rounded),
-            label: Text(s.saveAndPublishButton, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            icon: _busy
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colors.onPrimary,
+                    ),
+                  )
+                : const Icon(Icons.send_rounded),
+            label: Text(
+              s.saveAndPublishButton,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: colors.primary, // Teal
               foregroundColor: colors.onPrimary, // White
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               elevation: 0,
             ),
           ),
@@ -423,7 +511,9 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.redAccent,
                   side: const BorderSide(color: Colors.redAccent),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
@@ -437,7 +527,9 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.grey,
                   side: const BorderSide(color: Colors.grey),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),

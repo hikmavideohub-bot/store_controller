@@ -212,7 +212,9 @@ class ProductsViewModel extends BaseViewModel {
       notifyListeners();
     }
 
-    final success = await ApiService.updateProduct(p.copyWith(productActive: newValue));
+    final success = await ApiService.updateProduct(
+      p.copyWith(productActive: newValue),
+    );
 
     if (!success && idx != -1) {
       // Rollback
@@ -240,7 +242,9 @@ class ProductsViewModel extends BaseViewModel {
       notifyListeners();
     }
 
-    final success = await ApiService.updateProduct(p.copyWith(offerActive: newValue));
+    final success = await ApiService.updateProduct(
+      p.copyWith(offerActive: newValue),
+    );
 
     if (!success && idx != -1) {
       // Rollback
@@ -298,15 +302,18 @@ class ProductsViewModel extends BaseViewModel {
       final id = p.id.toLowerCase();
       final matchesSearch = q.isEmpty || name.contains(q) || id.contains(q);
 
-      final matchesCat = (_categoryFilter == 'all') || (p.category == _categoryFilter);
+      final matchesCat =
+          (_categoryFilter == 'all') || (p.category == _categoryFilter);
 
       final hasActiveOfferToday = isOfferInDateRange(p);
 
-      final matchesOffer = (_offerFilter == 'all') ||
+      final matchesOffer =
+          (_offerFilter == 'all') ||
           (_offerFilter == 'with' && hasActiveOfferToday) ||
           (_offerFilter == 'without' && !hasActiveOfferToday);
 
-      final matchesStock = (_stockFilter == 'all') ||
+      final matchesStock =
+          (_stockFilter == 'all') ||
           (_stockFilter == 'active' && p.productActive == true) ||
           (_stockFilter == 'inactive' && p.productActive == false);
 
@@ -346,12 +353,18 @@ class ProductsViewModel extends BaseViewModel {
 
   String _getUnitLabel(String unit, AppLocalizations s) {
     switch (unit) {
-      case 'kg': return s.unitKg;
-      case 'g': return s.unitG;
-      case 'l': return s.unitL;
-      case 'ml': return s.unitMl;
-      case 'pcs': return s.unitPcs;
-      default: return unit;
+      case 'kg':
+        return s.unitKg;
+      case 'g':
+        return s.unitG;
+      case 'l':
+        return s.unitL;
+      case 'ml':
+        return s.unitMl;
+      case 'pcs':
+        return s.unitPcs;
+      default:
+        return unit;
     }
   }
 
@@ -360,7 +373,11 @@ class ProductsViewModel extends BaseViewModel {
       return s.discountPercent(_sizeFmt.format(p.percent));
     }
     if (p.offerType == 'bundle') {
-      return s.bundleOfferLabel(_sizeFmt.format(p.bundleQty), _moneyFmt.format(p.bundlePrice), currency);
+      return s.bundleOfferLabel(
+        _sizeFmt.format(p.bundleQty),
+        _moneyFmt.format(p.bundlePrice),
+        currency,
+      );
     }
     return s.offerLabel;
   }
@@ -369,7 +386,8 @@ class ProductsViewModel extends BaseViewModel {
     if (!isOfferInDateRange(p)) return '';
 
     final end = _parseDateSafe(p.offerEndDate, DateTime.now());
-    final dateStr = "${end.day.toString().padLeft(2, '0')}/${end.month.toString().padLeft(2, '0')}/${end.year}";
+    final dateStr =
+        "${end.day.toString().padLeft(2, '0')}/${end.month.toString().padLeft(2, '0')}/${end.year}";
 
     return s.offerUntilDate(dateStr);
   }

@@ -13,7 +13,9 @@ class PremiumAnimations {
   }) {
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: duration.inMilliseconds + (index * delay.inMilliseconds)),
+      duration: Duration(
+        milliseconds: duration.inMilliseconds + (index * delay.inMilliseconds),
+      ),
       curve: curve,
       builder: (context, value, child) {
         return Opacity(
@@ -35,37 +37,37 @@ class PremiumAnimations {
     bool isLoading = false,
     Color? shimmerColor,
   }) {
-    return Builder(builder: (context) {
-      final color = shimmerColor ?? Theme.of(context).colorScheme.tertiary;
-      return Stack(
-        children: [
-          child,
-          if (isLoading)
-            Positioned.fill(
-              child: ShaderMask(
-                shaderCallback: (bounds) {
-                  return LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      color.withValues(alpha: 0.15),
-                      color.withValues(alpha: 0.3),
-                      color.withValues(alpha: 0.15),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ).createShader(bounds);
-                },
-                blendMode: BlendMode.srcATop,
-                child: Container(
-                  color: Colors.transparent,
+    return Builder(
+      builder: (context) {
+        final color = shimmerColor ?? Theme.of(context).colorScheme.tertiary;
+        return Stack(
+          children: [
+            child,
+            if (isLoading)
+              Positioned.fill(
+                child: ShaderMask(
+                  shaderCallback: (bounds) {
+                    return LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        color.withValues(alpha: 0.15),
+                        color.withValues(alpha: 0.3),
+                        color.withValues(alpha: 0.15),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ).createShader(bounds);
+                  },
+                  blendMode: BlendMode.srcATop,
+                  child: Container(color: Colors.transparent),
                 ),
               ),
-            ),
-        ],
-      );
-    });
+          ],
+        );
+      },
+    );
   }
 
   /// Pulse animation for important elements
@@ -81,20 +83,14 @@ class PremiumAnimations {
       duration: duration,
       curve: Curves.easeInOut,
       builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: child,
-        );
+        return Transform.scale(scale: value, child: child);
       },
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0.9, end: 1.0),
         duration: duration,
         curve: Curves.easeInOut,
         builder: (context, value, child) {
-          return Opacity(
-            opacity: value,
-            child: child,
-          );
+          return Opacity(opacity: value, child: child);
         },
         child: child,
       ),
@@ -102,37 +98,36 @@ class PremiumAnimations {
   }
 
   /// Gold shimmer effect for premium elements
-  static Widget goldShimmer({
-    required Widget child,
-    bool active = true,
-  }) {
-    return Builder(builder: (context) {
-      final gold = Theme.of(context).colorScheme.tertiary;
-      return Stack(
-        children: [
-          child,
-          if (active)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.transparent,
-                        gold.withValues(alpha: 0.08),
-                        Colors.transparent,
-                      ],
-                      stops: const [0.0, 0.5, 1.0],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+  static Widget goldShimmer({required Widget child, bool active = true}) {
+    return Builder(
+      builder: (context) {
+        final gold = Theme.of(context).colorScheme.tertiary;
+        return Stack(
+          children: [
+            child,
+            if (active)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          gold.withValues(alpha: 0.08),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.5, 1.0],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
-      );
-    });
+          ],
+        );
+      },
+    );
   }
 
   /// Elegant scale animation for buttons
@@ -157,10 +152,7 @@ class PremiumAnimations {
       child: AnimatedBuilder(
         animation: controller,
         builder: (context, child) {
-          return Transform.scale(
-            scale: controller.value,
-            child: child,
-          );
+          return Transform.scale(scale: controller.value, child: child);
         },
         child: child,
       ),
@@ -177,7 +169,8 @@ class PremiumAnimations {
 }
 
 /// Premium App Bar with enhanced animations
-class PremiumAnimatedAppBar extends StatefulWidget implements PreferredSizeWidget {
+class PremiumAnimatedAppBar extends StatefulWidget
+    implements PreferredSizeWidget {
   final String title;
   final bool showBackButton;
   final bool showSettings;
@@ -257,17 +250,17 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
       centerTitle: true,
       leading: widget.showBackButton
           ? _buildScaleOnTapIcon(
-        onTap: () => Navigator.of(context).pop(),
-        icon: const Icon(Icons.arrow_back_rounded),
-        color: colors.onSurface,
-      )
+              onTap: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back_rounded),
+              color: colors.onSurface,
+            )
           : widget.onMenuPressed != null
           ? _buildScaleOnTapIcon(
-        onTap: widget.onMenuPressed!,
-        icon: const Icon(Icons.menu_rounded),
-        color: colors.onSurface,
-        tooltip: s.menuTooltip,
-      )
+              onTap: widget.onMenuPressed!,
+              icon: const Icon(Icons.menu_rounded),
+              color: colors.onSurface,
+              tooltip: s.menuTooltip,
+            )
           : null,
       title: FadeTransition(
         opacity: _titleAnimation,
@@ -289,70 +282,91 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
       actions: widget.actions ?? [],
       bottom: widget.hasSearch
           ? PreferredSize(
-        preferredSize: const Size.fromHeight(50),
-        child: FadeTransition(
-          opacity: _titleAnimation,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      // Nutzt Input-Fill-Color oder Surface
-                      color: theme.inputDecorationTheme.fillColor ?? colors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.outline.withValues(alpha: 0.3), width: 1),
-                    ),
-                    child: TextField(
-                      controller: widget.searchController,
-                      onChanged: widget.onSearchChanged,
-                      style: TextStyle(
-                        color: colors.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      decoration: InputDecoration(
-                        hintStyle: TextStyle(
-                          color: theme.hintColor,
-                          fontWeight: FontWeight.w500,
+              preferredSize: const Size.fromHeight(50),
+              child: FadeTransition(
+                opacity: _titleAnimation,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            // Nutzt Input-Fill-Color oder Surface
+                            color:
+                                theme.inputDecorationTheme.fillColor ??
+                                colors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: colors.outline.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: TextField(
+                            controller: widget.searchController,
+                            onChanged: widget.onSearchChanged,
+                            style: TextStyle(
+                              color: colors.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            decoration: InputDecoration(
+                              hintStyle: TextStyle(
+                                color: theme.hintColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              prefixIcon: Icon(
+                                Icons.search_rounded,
+                                color: premiumColor,
+                              ),
+                              suffixIcon:
+                                  widget.searchController?.text.isNotEmpty ==
+                                      true
+                                  ? _buildScaleOnTapIcon(
+                                      onTap: widget.onSearchCleared ?? () {},
+                                      icon: const Icon(
+                                        Icons.clear_rounded,
+                                        size: 18,
+                                      ),
+                                      color: theme.hintColor,
+                                    )
+                                  : null,
+                              filled: false,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 10,
+                                horizontal: 14,
+                              ),
+                            ),
+                          ),
                         ),
-                        prefixIcon: Icon(Icons.search_rounded, color: premiumColor),
-                        suffixIcon: widget.searchController?.text.isNotEmpty == true
-                            ? _buildScaleOnTapIcon(
-                          onTap: widget.onSearchCleared ?? () {},
-                          icon: const Icon(Icons.clear_rounded, size: 18),
-                          color: theme.hintColor,
-                        )
-                            : null,
-                        filled: false,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
                       ),
-                    ),
+                      if (widget.onFiltersPressed != null) ...[
+                        const SizedBox(width: 8),
+                        _buildScaleOnTapIcon(
+                          onTap: widget.onFiltersPressed!,
+                          icon: const Icon(Icons.tune_rounded),
+                          color: premiumColor,
+                          tooltip: s.filterTooltip,
+                          containerDecoration: BoxDecoration(
+                            color:
+                                theme.inputDecorationTheme.fillColor ??
+                                colors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: colors.outline.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                if (widget.onFiltersPressed != null) ...[
-                  const SizedBox(width: 8),
-                  _buildScaleOnTapIcon(
-                    onTap: widget.onFiltersPressed!,
-                    icon: const Icon(Icons.tune_rounded),
-                    color: premiumColor,
-                    tooltip: s.filterTooltip,
-                    containerDecoration: BoxDecoration(
-                      color: theme.inputDecorationTheme.fillColor ?? colors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.outline.withValues(alpha: 0.3), width: 1),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      )
+              ),
+            )
           : null,
     );
   }
@@ -460,7 +474,9 @@ class _AnimatedStatCardState extends State<AnimatedStatCard> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.04),
+                  color: Colors.black.withValues(
+                    alpha: _isHovered ? 0.08 : 0.04,
+                  ),
                   blurRadius: _isHovered ? 12 : 8,
                   offset: Offset(0, _isHovered ? 4 : 3),
                 ),
@@ -542,7 +558,8 @@ class AnimatedQuickActionButton extends StatefulWidget {
   });
 
   @override
-  State<AnimatedQuickActionButton> createState() => _AnimatedQuickActionButtonState();
+  State<AnimatedQuickActionButton> createState() =>
+      _AnimatedQuickActionButtonState();
 }
 
 class _AnimatedQuickActionButtonState extends State<AnimatedQuickActionButton> {
@@ -582,7 +599,9 @@ class _AnimatedQuickActionButtonState extends State<AnimatedQuickActionButton> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: _isHovered ? 0.06 : 0.03),
+                  color: Colors.black.withValues(
+                    alpha: _isHovered ? 0.06 : 0.03,
+                  ),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -594,14 +613,12 @@ class _AnimatedQuickActionButtonState extends State<AnimatedQuickActionButton> {
                   duration: const Duration(milliseconds: 300),
                   padding: EdgeInsets.all(_isHovered ? 10 : 8),
                   decoration: BoxDecoration(
-                    color: activeColor.withValues(alpha: _isHovered ? 0.15 : 0.1),
+                    color: activeColor.withValues(
+                      alpha: _isHovered ? 0.15 : 0.1,
+                    ),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    widget.icon,
-                    color: activeColor,
-                    size: 18,
-                  ),
+                  child: Icon(widget.icon, color: activeColor, size: 18),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -655,7 +672,10 @@ class PremiumLoadingScreen extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: premiumColor.withValues(alpha: 0.1),
-              border: Border.all(color: premiumColor.withValues(alpha: 0.3), width: 2),
+              border: Border.all(
+                color: premiumColor.withValues(alpha: 0.3),
+                width: 2,
+              ),
             ),
             child: Icon(
               Icons.storefront_rounded,
