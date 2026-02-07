@@ -9,7 +9,6 @@ import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../models/product.dart';
 import 'cache_store.dart';
 import 'store_config_service.dart';
-import 'slug_service.dart';
 import '../storage/store_prefs.dart';
 import 'package:store_controller/core/access_manager.dart';
 
@@ -214,6 +213,82 @@ class ApiService {
     } catch (e) {
       debugPrint('requestAccountDeletion Error: $e');
       return false;
+    }
+  }
+
+  /// SECURE: Store-Setup abschließen und Slug atomar reservieren
+  ///
+  /// Diese Funktion wird beim Abschließen des Wizard aufgerufen.
+  /// Die Cloud Function macht in einer Transaction:
+  /// 1. Prüft ob Slug frei ist
+  /// 2. Erstellt slugs/{slug} Dokument
+  /// 3. Updated stores_public + stores_private mit slug + status
+  ///
+  /// Returns: {success: true, slug: "...", publicUrl: "..."} oder {success: false, error: "..."}
+  static Future<ApiResult<Map<String, dynamic>>> finalizeStoreSetup({
+    required String storeName,
+    String? desiredSlug,
+  }) async {
+    if (_storeId == null) {
+      return const ApiResult.fail('not_authenticated');
+    }
+
+    try {
+      final callable = FirebaseFunctions.instanceFor(
+        region: 'europe-west3',
+      ).httpsCallable('finalizeStoreSetup');
+
+      final result = await callable.call({
+        'storeName': storeName,
+        if (desiredSlug != null && desiredSlug.isNotEmpty)
+          'desiredSlug': desiredSlug,
+      });
+
+      final data = Map<String, dynamic>.from(result.data as Map);
+
+      if (data['success'] == true) {
+        // Refresh store config to get new slug/url
+        await fetchStoreConfig();
+        return ApiResult.ok(data);
+      } else {
+        return ApiResult.fail(
+          data['error']?.toString() ?? 'unknown_error',
+          details: data['message']?.toString(),
+        );
+      }
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('finalizeStoreSetup FirebaseError: ${e.code} - ${e.message}');
+      return ApiResult.fail(e.code, details: e.message);
+    } catch (e) {
+      debugPrint('finalizeStoreSetup Error: $e');
+      return ApiResult.fail('function_error', details: e.toString());
+    }
+  }
+
+  /// Prüft ob der Store bereits finalisiert wurde (Slug vorhanden)
+  static Future<bool> isStoreFinalized() async {
+    if (_storeId == null) return false;
+    try {
+      final doc = await _storesPublic.doc(_storeId).get();
+      if (!doc.exists) return false;
+      final data = doc.data();
+      final status = data?['status']?.toString();
+      final slug = data?['store_slug']?.toString();
+      return status == 'active' && slug != null && slug.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Holt den aktuellen Store-Status
+  static Future<String> getStoreStatus() async {
+    if (_storeId == null) return 'unknown';
+    try {
+      final doc = await _storesPrivate.doc(_storeId).get();
+      if (!doc.exists) return 'unknown';
+      return doc.data()?['status']?.toString() ?? 'draft';
+    } catch (e) {
+      return 'unknown';
     }
   }
 
@@ -495,19 +570,19 @@ class ApiService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// Öffentliche Store-Daten (für stores_public)
+  /// Bei Registrierung: slug und public_url sind null (Draft-Status)
+  /// Nach finalizeStoreSetup: slug und public_url werden von Cloud Function gesetzt
   static Map<String, dynamic> _buildPublicStoreData({
     required String uid,
     required String storeName,
-    required String slug,
-    required String publicUrl,
     String? emailSupport,
     String? selectedCountry,
   }) {
     return {
       'store_name': storeName,
       'store_id': uid,
-      'store_slug': slug,
-      'public_store_url': publicUrl,
+      // WICHTIG: Kein slug/url bei Registrierung - wird erst bei finalizeStoreSetup gesetzt
+      'status': 'draft', // draft → active (nach Wizard-Abschluss)
       'email_support': emailSupport ?? '',
       'currency': '€',
       'page_description': '',
@@ -527,6 +602,8 @@ class ApiService {
   }
 
   /// Private Store-Daten (für stores_private)
+  /// Bei Registrierung: status = 'draft' (noch kein Slug)
+  /// Nach finalizeStoreSetup: status = 'active' (Slug + public URL vorhanden)
   static Map<String, dynamic> _buildPrivateStoreData({
     required String uid,
     required String loginEmail,
@@ -534,12 +611,11 @@ class ApiService {
     required String storeName,
     required bool isVerified,
     String? selectedCountry,
-    String? slug,
   }) {
     final now = DateTime.now().toUtc();
     return {
       'store_id': uid,
-      'store_slug': slug,
+      'status': 'draft', // draft → active (nach Wizard-Abschluss)
       'email_login': loginEmail,
       'owner_email': loginEmail,
       'auth_provider': authProvider,
@@ -604,23 +680,17 @@ class ApiService {
         return ApiResult.ok({'storeId': uid, 'existing': 'true'});
       }
 
-      final (slug, publicUrl) = await SlugService.generateSlugForNewStore(
-        storeId: uid,
-        storeName: storeName,
-      );
+      // ═══════════════════════════════════════════════════════════════════════
+      // DRAFT STORE CREATION (ohne Slug!)
+      // Slug wird erst bei finalizeStoreSetup via Cloud Function erstellt
+      // ═══════════════════════════════════════════════════════════════════════
 
       final loginEmail =
           _pendingGoogleCredential?.email ?? _auth.currentUser?.email ?? '';
 
-      // ═══════════════════════════════════════════════════════════════════════
-      // DUAL COLLECTION WRITE
-      // ═══════════════════════════════════════════════════════════════════════
-
       final publicData = _buildPublicStoreData(
         uid: uid,
         storeName: storeName,
-        slug: slug,
-        publicUrl: publicUrl,
         selectedCountry: selectedCountry,
       );
 
@@ -631,7 +701,6 @@ class ApiService {
         isVerified: true, // Google = automatisch verifiziert
         storeName: storeName,
         selectedCountry: selectedCountry,
-        slug: slug,
       );
 
       try {
@@ -648,26 +717,7 @@ class ApiService {
         );
       }
 
-      try {
-        await SlugService.createSlugDocument(
-          slug: slug,
-          storeId: uid,
-          storeName: storeName,
-        );
-      } catch (e) {
-        // Rollback: Lösche erstellte Store-Dokumente
-        try {
-          final batch = _db.batch();
-          batch.delete(_storesPublic.doc(uid));
-          batch.delete(_storesPrivate.doc(uid));
-          await batch.commit();
-        } catch (_) {}
-        await _handleRegistrationFailure(isNewUser: isNewUser);
-        return ApiResult.fail(
-          'slug_creation_failed',
-          details: mapFirebaseErrorToArabic(e, s),
-        );
-      }
+      // KEIN Slug-Dokument erstellen - das macht die Cloud Function!
 
       hasStore = true;
       _pendingGoogleCredential = null;
@@ -675,7 +725,7 @@ class ApiService {
       await StorePrefs.setStoreId(uid);
       await fetchStoreConfig();
 
-      return ApiResult.ok({'storeId': uid});
+      return ApiResult.ok({'storeId': uid, 'status': 'draft'});
     } catch (e) {
       await _handleRegistrationFailure(isNewUser: _isCurrentUserNew);
       return ApiResult.fail(
@@ -741,20 +791,15 @@ class ApiService {
       final uid = cred.user!.uid;
       final loginEmail = username.trim();
       final storeName = (store['store_name'] ?? 'My Store').toString();
-      final (slug, publicUrl) = await SlugService.generateSlugForNewStore(
-        storeId: uid,
-        storeName: storeName,
-      );
 
       // ═══════════════════════════════════════════════════════════════════════
-      // DUAL COLLECTION WRITE
+      // DRAFT STORE CREATION (ohne Slug!)
+      // Slug wird erst bei finalizeStoreSetup via Cloud Function erstellt
       // ═══════════════════════════════════════════════════════════════════════
 
       final publicData = _buildPublicStoreData(
         uid: uid,
         storeName: storeName,
-        slug: slug,
-        publicUrl: publicUrl,
         emailSupport: store['email_support']?.toString(),
         selectedCountry: store['address_country']?.toString(),
       );
@@ -787,7 +832,6 @@ class ApiService {
         isVerified: false, // Email muss verifiziert werden
         storeName: storeName,
         selectedCountry: store['address_country']?.toString(),
-        slug: slug,
       );
 
       // Batch write für Atomizität
@@ -796,18 +840,14 @@ class ApiService {
       batch.set(_storesPrivate.doc(uid), privateData);
       await batch.commit();
 
-      await SlugService.createSlugDocument(
-        slug: slug,
-        storeId: uid,
-        storeName: storeName,
-      );
+      // KEIN Slug-Dokument erstellen - das macht die Cloud Function!
 
       hasStore = true;
       bumpAuthTick();
 
       await _auth.currentUser?.sendEmailVerification();
 
-      return ApiResult.ok({'storeId': uid});
+      return ApiResult.ok({'storeId': uid, 'status': 'draft'});
     } catch (e) {
       await _auth.signOut();
       return ApiResult.fail(
@@ -973,7 +1013,10 @@ class ApiService {
     for (final path in files) {
       try {
         await storage.ref(path).delete();
-      } catch (_) {}
+        debugPrint('[Storage] Deleted: $path');
+      } catch (e) {
+        debugPrint('[Storage] Skip (not found): $path');
+      }
     }
   }
 
@@ -1099,9 +1142,11 @@ class ApiService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// Öffentliche Felder die in stores_public geschrieben werden
+  /// WICHTIG: store_slug und public_store_url sind NICHT hier!
+  /// Diese werden NUR über finalizeStoreSetup (Cloud Function) gesetzt.
   static const Set<String> _publicFields = {
     'store_name',
-    'store_slug',
+    // 'store_slug',      // NUR via Cloud Function!
     'store_id',
     'currency',
     'page_description',
@@ -1109,14 +1154,16 @@ class ApiService {
     'whatsapp',
     'email_support',
     'address',
+    'address_description',
     'shipping',
     'shipping_price',
     'has_logo',
+    'show_name_with_logo',
     'working_hours',
     'tiktok',
     'instagram',
     'facebook',
-    'public_store_url',
+    // 'public_store_url', // NUR via Cloud Function!
     'customer_message',
     'customer_message_expiry',
   };

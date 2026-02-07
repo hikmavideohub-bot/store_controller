@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../../viewmodels/base_viewmodel.dart';
@@ -19,9 +21,14 @@ class SettingsViewModel extends BaseViewModel {
   final currencyCtrl = TextEditingController(text: '€');
   final pageDescCtrl = TextEditingController();
   final addressCtrl = TextEditingController();
+  final addressDescCtrl = TextEditingController();
   final storeWebsiteCtrl = TextEditingController();
   String? selectedCountry;
-  String logoEmoji = '🏪';
+  String logoUrl = '';
+
+  // Ob der Store-Name neben dem Logo angezeigt werden soll
+  // true = Name + Logo, false = nur Logo
+  bool showNameWithLogo = true;
 
   // Store/Website Sprache (für die öffentliche Web-App)
   String storeLang = 'ar'; // Standard: Arabisch
@@ -55,6 +62,8 @@ class SettingsViewModel extends BaseViewModel {
   final facebookCtrl = TextEditingController();
   final emailSupportCtrl = TextEditingController();
 
+  bool showAddressDescription = false;
+
   bool shippingEnabled = false;
   final shippingPriceCtrl = TextEditingController();
 
@@ -64,6 +73,21 @@ class SettingsViewModel extends BaseViewModel {
   String storeId = '';
 
   WorkingHours workingHours = {};
+
+  // Track unsaved changes
+  bool _isDirty = false;
+  bool get isDirty => _isDirty;
+
+  void markDirty() {
+    if (!_isDirty) {
+      _isDirty = true;
+      notifyListeners();
+    }
+  }
+
+  void clearDirty() {
+    _isDirty = false;
+  }
 
   // Passwort-Controller
   final currentPasswordCtrl = TextEditingController();
@@ -76,22 +100,69 @@ class SettingsViewModel extends BaseViewModel {
   // INIT & LADEN
   // ===========================================================================
 
-  void init() {
+  /// Wird auf true gesetzt wenn es sich um den ersten Setup-Wizard handelt
+  bool _isFirstSetup = false;
+
+  void init({bool isFirstSetup = false}) {
+    _isFirstSetup = isFirstSetup;
     phoneCtrl.addListener(_onPhoneChanged);
+    _addDirtyListeners();
     loadData();
+  }
+
+  void _addDirtyListeners() {
+    // Add listeners to all text controllers to mark dirty on change
+    final controllers = [
+      storeNameCtrl,
+      currencyCtrl,
+      pageDescCtrl,
+      addressCtrl,
+      addressDescCtrl,
+      storeWebsiteCtrl,
+      phoneCtrl,
+      waCtrl,
+      tiktokCtrl,
+      instagramCtrl,
+      facebookCtrl,
+      emailSupportCtrl,
+      shippingPriceCtrl,
+    ];
+
+    for (final ctrl in controllers) {
+      ctrl.addListener(_markDirtyFromTextField);
+    }
+  }
+
+  void _markDirtyFromTextField() {
+    // Only mark dirty after initial load is complete (not during _fillFromMap)
+    if (!busy && !_phoneWaSyncLock) {
+      markDirty();
+    }
   }
 
   Future<void> loadData() async {
     await runBusyAction(() async {
-      await StoreConfigService.load(allowNetworkIfEmpty: true);
-      var s = StoreConfigService.store;
+      Map<String, dynamic>? s;
 
-      // Falls keine Daten oder store_name fehlt, frisch vom Server laden
-      if (s == null || (s['store_name']?.toString().trim().isEmpty ?? true)) {
+      // Bei First Setup: IMMER frisch vom Server laden (keine stale Cache-Daten)
+      if (_isFirstSetup) {
         final fresh = await ApiService.fetchStoreConfig();
         if (fresh != null) {
           await StoreConfigService.set(fresh);
           s = fresh;
+        }
+      } else {
+        // Normaler Fall: erst Cache, dann Server falls nötig
+        await StoreConfigService.load(allowNetworkIfEmpty: true);
+        s = StoreConfigService.store;
+
+        // Falls keine Daten oder store_name fehlt, frisch vom Server laden
+        if (s == null || (s['store_name']?.toString().trim().isEmpty ?? true)) {
+          final fresh = await ApiService.fetchStoreConfig();
+          if (fresh != null) {
+            await StoreConfigService.set(fresh);
+            s = fresh;
+          }
         }
       }
 
@@ -111,11 +182,19 @@ class SettingsViewModel extends BaseViewModel {
 
     storeId = (s['store_id'] ?? s['storeId'] ?? '').toString();
     createdAtRaw = (s['created_at'] ?? s['createdAt'] ?? '').toString();
-    storeNameCtrl.text = (s['store_name'] ?? s['storeName'] ?? '').toString();
+
+    // Store-Name aus Firestore laden (wird im Wizard vom User ausgefüllt)
+    final firestoreStoreName = (s['store_name'] ?? s['storeName'] ?? '').toString().trim();
+    if (firestoreStoreName.isNotEmpty) {
+      storeNameCtrl.text = firestoreStoreName;
+    }
     currencyCtrl.text = (s['currency'] ?? '€').toString();
     pageDescCtrl.text = (s['page_description'] ?? s['pageDescription'] ?? '')
         .toString();
     addressCtrl.text = (s['address'] ?? '').toString();
+    final rawAddrDesc = (s['address_description'] ?? '').toString();
+    addressDescCtrl.text = rawAddrDesc;
+    if (rawAddrDesc.trim().isNotEmpty) showAddressDescription = true;
     selectedCountry = s['address_country']?.toString();
     if (selectedCountry?.isEmpty ?? false) selectedCountry = null;
     storeWebsiteCtrl.text = (s['public_store_url'] ?? '').toString();
@@ -138,7 +217,18 @@ class SettingsViewModel extends BaseViewModel {
 
     final rawLogo = s['has_logo'] ?? s['hasLogo'];
     if (rawLogo is String && rawLogo.trim().isNotEmpty) {
-      logoEmoji = rawLogo.trim();
+      logoUrl = rawLogo.trim();
+    } else {
+      logoUrl = '';
+    }
+
+    // Ob Store-Name neben Logo angezeigt werden soll (Standard: true)
+    final rawShowName = s['show_name_with_logo'];
+    if (rawShowName != null) {
+      showNameWithLogo = rawShowName == true ||
+          rawShowName.toString().toLowerCase() == 'true';
+    } else {
+      showNameWithLogo = true; // Default: Name anzeigen
     }
 
     // Store/Website Sprache laden
@@ -216,60 +306,162 @@ class SettingsViewModel extends BaseViewModel {
   // ACTIONS
   // ===========================================================================
 
-  void setLogo(String emoji) {
-    logoEmoji = emoji;
+  void setLogoUrl(String url) {
+    debugPrint('📝 SettingsViewModel.setLogoUrl called:');
+    debugPrint('   old logoUrl: $logoUrl');
+    debugPrint('   new logoUrl: $url');
+
+    // Altes Logo im Hintergrund löschen (falls vorhanden und unterschiedlich)
+    final oldUrl = logoUrl;
+    if (oldUrl.isNotEmpty && oldUrl != url && oldUrl.startsWith('http') && storeId.isNotEmpty) {
+      CachedNetworkImage.evictFromCache(oldUrl);
+      _deleteOldLogo(storeId, oldUrl);
+    }
+    logoUrl = url;
+    markDirty();
     notifyListeners();
+    debugPrint('✅ logoUrl updated - Click SAVE to persist!');
+  }
+
+  Future<void> deleteLogo() async {
+    if (logoUrl.isEmpty || storeId.isEmpty) return;
+
+    final oldUrl = logoUrl;
+    logoUrl = '';
+    markDirty();
+    notifyListeners();
+
+    // Altes Bild aus dem Image-Cache entfernen
+    CachedNetworkImage.evictFromCache(oldUrl);
+
+    // Lösche alle Varianten im Hintergrund
+    await _deleteOldLogo(storeId, oldUrl);
+  }
+
+  void setShowNameWithLogo(bool value) {
+    showNameWithLogo = value;
+    markDirty();
+    notifyListeners();
+  }
+
+  Future<void> _deleteOldLogo(String storeId, String oldLogoUrl) async {
+    try {
+      final storage = FirebaseStorage.instanceFor(
+        bucket: 'gs://aldeebtech-1ec64.firebasestorage.app',
+      );
+
+      // Extrahiere Basisname aus URL (z.B. logo_17065678123)
+      final filename = _extractBaseFilename(oldLogoUrl);
+      if (filename == null) return;
+
+      final baseRef = storage.ref('stores/$storeId/logo');
+
+      // Alle Varianten löschen
+      final filesToDelete = [
+        '$filename.jpg',
+        '$filename.jpeg',
+        '${filename}_360x360.jpeg',
+        '${filename}_1600x1600.jpeg',
+      ];
+
+      for (final file in filesToDelete) {
+        try {
+          await baseRef.child(file).delete();
+          debugPrint('Deleted logo: $file');
+        } catch (_) {
+          // Datei existiert möglicherweise nicht
+        }
+      }
+    } catch (e) {
+      debugPrint('Error deleting old logo: $e');
+    }
+  }
+
+  String? _extractBaseFilename(String url) {
+    try {
+      final uri = Uri.parse(url.trim());
+      final pathSegments = uri.pathSegments;
+      if (pathSegments.isEmpty) return null;
+
+      String filename = pathSegments.last;
+      // Entferne Suffixe und Extensions um den Basisnamen zu bekommen
+      filename = filename
+          .replaceAll('_1600x1600.jpeg', '')
+          .replaceAll('_360x360.jpeg', '')
+          .replaceAll('.jpg', '')
+          .replaceAll('.jpeg', '');
+
+      return filename.isNotEmpty ? filename : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   void setCountry(String? code) {
     selectedCountry = code;
+    markDirty();
     notifyListeners();
   }
 
   void setCurrency(String curr) {
     currencyCtrl.text = curr;
+    markDirty();
     notifyListeners();
   }
 
   void setStoreLang(String lang) {
     storeLang = lang;
+    markDirty();
     notifyListeners();
   }
 
   void setPhoneCode(String code) {
     phoneCode = code;
     _onPhoneChanged();
+    markDirty();
     notifyListeners();
   }
 
   void setWaCode(String code) {
     waCode = code;
+    markDirty();
     notifyListeners();
   }
 
   void setLatitude(double? lat) {
     latitude = lat;
+    markDirty();
     notifyListeners();
   }
 
   void setLongitude(double? lng) {
     longitude = lng;
+    markDirty();
+    notifyListeners();
+  }
+
+  void toggleAddressDescription(bool v) {
+    showAddressDescription = v;
+    markDirty();
     notifyListeners();
   }
 
   void toggleShipping(bool v) {
     shippingEnabled = v;
+    markDirty();
     notifyListeners();
   }
 
   void toggleWaSync(bool v) {
     waLinkedToPhone = v;
     if (v) _syncWa(force: true);
+    markDirty();
     notifyListeners();
   }
 
   void updateWorkingHours(WorkingHours newWh) {
     workingHours = newWh;
+    markDirty();
     notifyListeners();
   }
 
@@ -450,6 +642,10 @@ class SettingsViewModel extends BaseViewModel {
       setError(s.storeNameRequired);
       return false;
     }
+    if (storeNameCtrl.text.trim().length > 40) {
+      setError(s.storeNameTooLong);
+      return false;
+    }
     if (checkPaywall && !AccessManager.canWriteAdmin) {
       setError(s.noEditPermission);
       return false;
@@ -479,6 +675,7 @@ class SettingsViewModel extends BaseViewModel {
             'currency': currencyCtrl.text.trim(),
             'page_description': pageDescCtrl.text.trim(),
             'address': addressCtrl.text.trim(),
+            'address_description': addressDescCtrl.text.trim(),
             'address_country': selectedCountry,
             'phone': phoneFull,
             'whatsapp': waFull,
@@ -486,7 +683,8 @@ class SettingsViewModel extends BaseViewModel {
             'shipping': shippingEnabled,
             'shipping_price':
                 double.tryParse(shippingPriceCtrl.text.trim()) ?? 0.0,
-            'has_logo': logoEmoji,
+            'has_logo': logoUrl,
+            'show_name_with_logo': showNameWithLogo,
             'tiktok': tiktokCtrl.text.trim(),
             'instagram': instagramCtrl.text.trim(),
             'facebook': facebookCtrl.text.trim(),
@@ -498,17 +696,53 @@ class SettingsViewModel extends BaseViewModel {
             'longitude': longitude,
           };
 
+          // ═══════════════════════════════════════════════════════════════════
+          // FIRST SETUP: Slug über Cloud Function atomar reservieren
+          // ═══════════════════════════════════════════════════════════════════
           if (isFirstSetup) {
-            data['setup_complete'] = true;
+            // 1. Erst die Store-Daten speichern
+            final updateSuccess = await ApiService.updateStore(data);
+            if (!updateSuccess) {
+              setError(s.saveErrorMsg);
+              return false;
+            }
+
+            // 2. Dann Store finalisieren (Slug + Status via Cloud Function)
+            final finalizeResult = await ApiService.finalizeStoreSetup(
+              storeName: storeNameCtrl.text.trim(),
+            );
+
+            if (!finalizeResult.ok) {
+              // Fehler bei Slug-Reservierung
+              final errorMsg = finalizeResult.details ?? finalizeResult.error;
+              setError(errorMsg ?? s.saveErrorMsg);
+              return false;
+            }
+
+            // 3. Public URL aus dem Ergebnis holen und lokal speichern
+            final resultData = finalizeResult.data;
+            if (resultData != null) {
+              storeWebsiteCtrl.text = resultData['publicUrl']?.toString() ?? '';
+            }
+
+            await StoreConfigService.refresh();
+            return true;
           }
 
+          // Normales Speichern (nicht First Setup)
           final success = await ApiService.updateStore(data);
-          if (success) await StoreConfigService.refresh();
+          if (success) {
+            // ✅ Sofort lokalen Cache aktualisieren für instant UI-Update
+            await StoreConfigService.mergeNonEmpty(data);
+          }
           return success;
         }) ??
         false;
 
     _saving = false;
+    if (result) {
+      clearDirty(); // Reset dirty flag on successful save
+    }
     notifyListeners();
     return result;
   }
@@ -561,6 +795,7 @@ class SettingsViewModel extends BaseViewModel {
     currencyCtrl.dispose();
     pageDescCtrl.dispose();
     addressCtrl.dispose();
+    addressDescCtrl.dispose();
     storeWebsiteCtrl.dispose();
     phoneCtrl.dispose();
     waCtrl.dispose();

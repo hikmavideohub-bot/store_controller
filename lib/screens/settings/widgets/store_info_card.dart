@@ -57,8 +57,13 @@ class StoreInfoCard extends StatelessWidget {
             controller: vm.storeNameCtrl,
             label: s.storeNameLabel,
             icon: Icons.abc,
+            maxLength: 40,
             onChanged: (_) => vm.notifyListeners(), // Damit Header sich updated
           ),
+
+          // Toggle: Name neben Logo anzeigen (nur wenn Logo vorhanden)
+          _ShowNameWithLogoToggle(vm: vm),
+
           const SizedBox(height: 16),
 
           // Währung
@@ -331,6 +336,7 @@ class _AutoDirectionField extends StatelessWidget {
   final String? hint;
   final IconData icon;
   final int maxLines;
+  final int? maxLength;
   final ValueChanged<String>? onChanged;
 
   const _AutoDirectionField({
@@ -339,6 +345,7 @@ class _AutoDirectionField extends StatelessWidget {
     required this.icon,
     this.hint,
     this.maxLines = 1,
+    this.maxLength,
     this.onChanged,
   });
 
@@ -356,6 +363,7 @@ class _AutoDirectionField extends StatelessWidget {
           controller: controller,
           textDirection: dir,
           maxLines: maxLines,
+          maxLength: maxLength,
           onChanged: onChanged,
           decoration: InputDecoration(
             labelText: label,
@@ -417,6 +425,57 @@ class _StoreLangDropdown extends StatelessWidget {
                 ),
               )
               .toList(),
+        ),
+      ),
+    );
+  }
+}
+
+/// Toggle: Store-Name neben Logo anzeigen
+/// Wird nur angezeigt wenn ein Logo hochgeladen wurde
+class _ShowNameWithLogoToggle extends StatelessWidget {
+  final SettingsViewModel vm;
+  const _ShowNameWithLogoToggle({required this.vm});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasLogo = vm.logoUrl.isNotEmpty && vm.logoUrl.startsWith('http');
+    if (!hasLogo) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final s = AppLocalizations.of(context)!;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: colors.outline.withValues(alpha: 0.1),
+          ),
+        ),
+        child: SwitchListTile.adaptive(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          title: Text(
+            s.showNameWithLogoLabel,
+            style: const TextStyle(fontSize: 14),
+          ),
+          subtitle: Text(
+            s.showNameWithLogoHint,
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.hintColor,
+            ),
+          ),
+          secondary: Icon(
+            Icons.badge_outlined,
+            color: colors.primary,
+            size: 22,
+          ),
+          value: vm.showNameWithLogo,
+          onChanged: (v) => vm.setShowNameWithLogo(v),
         ),
       ),
     );

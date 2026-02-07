@@ -46,3 +46,17 @@ tmpclaude-*/
 android/tmpclaude-*/
 nul
 tatus
+
+# normalize all text to LF in repo
+* text=auto eol=lf
+
+# common file types
+*.dart text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.rules text eol=lf
+*.txt  text eol=lf
+*.gradle text eol=lf
+*.kt   text eol=lf

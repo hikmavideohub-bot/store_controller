@@ -182,6 +182,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       'plans': allowedPlans,
       'region': region,
       'syriaContactPhone': subscriptionConfig.syriaContactPhone,
+      'pricingMessageGlobal': subscriptionConfig.pricingMessageGlobal,
+      'pricingMessageSyria': subscriptionConfig.pricingMessageSyria,
       'userCurrencyCode': userCurrencyCode,
       'userCurrencySymbol': userCurrencySymbol,
       'fxRate': fxRate,
@@ -284,7 +286,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
         // Weiche: Syria vs Global (basierend auf regionKey)
         // -----------------------------------------------------------
         if (regionKey == 'syria') {
-          return PaymentScreenSyria(availablePlans: plans, basePlan: basePlan);
+          return PaymentScreenSyria(
+            availablePlans: plans,
+            basePlan: basePlan,
+            pricingMessage: snapshot.data!['pricingMessageSyria'] as String?,
+          );
         } else {
           // -----------------------------------------------------------
           // FX-Daten aus _fetchData (bereits mit Fallback-Logik)
@@ -302,6 +308,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             userCurrencyCode: userCurrencyCode,
             userCurrencySymbol: userCurrencySymbol,
             fxRate: fxRate,
+            pricingMessage: snapshot.data!['pricingMessageGlobal'] as String?,
           );
         }
       },

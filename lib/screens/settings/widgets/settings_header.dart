@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../../../core/access_manager.dart';
-import '../../../widgets/emoji_picker_sheet.dart';
+import '../../../widgets/store_logo_picker.dart';
 import '../settings_viewmodel.dart';
 
 class SettingsHeader extends StatelessWidget {
@@ -62,47 +62,13 @@ class SettingsHeader extends StatelessWidget {
   }
 
   Widget _buildLogoPicker(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return GestureDetector(
-      onTap: () => _pickEmoji(context),
-      child: Stack(
-        alignment: Alignment.bottomRight,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: colors.surface,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: colors.primary.withValues(alpha: 0.5),
-                width: 3,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(vm.logoEmoji, style: const TextStyle(fontSize: 40)),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: colors.primary,
-              shape: BoxShape.circle,
-              border: Border.all(color: colors.surface, width: 2),
-            ),
-            child: const Icon(Icons.edit, size: 14, color: Colors.white),
-          ),
-        ],
-      ),
+    return StoreLogoPicker(
+      logoUrl: vm.logoUrl,
+      storeName: vm.storeNameCtrl.text,
+      storeId: vm.storeId,
+      onLogoChanged: (url) => vm.setLogoUrl(url),
+      onLogoDeleted: () => vm.deleteLogo(),
+      size: 80,
     );
   }
 
@@ -179,23 +145,4 @@ class SettingsHeader extends StatelessWidget {
     );
   }
 
-  Future<void> _pickEmoji(BuildContext context) async {
-    final chosen = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: const EmojiPickerSheet(selected: null, scrollController: null),
-        );
-      },
-    );
-
-    if (chosen != null && chosen.trim().isNotEmpty) {
-      vm.setLogo(chosen.trim());
-    }
-  }
 }

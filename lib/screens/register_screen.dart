@@ -13,7 +13,6 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _storeNameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
@@ -24,16 +23,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscureConfirm = true;
   final bool _requireEmailVerify = false;
 
-  /// True wenn User bereits über Google eingeloggt ist (vom Login-Flow)
-  bool _isGoogleUserPending = false;
-  String? _pendingGoogleEmail;
-
   /// Ermittelt die Textrichtung basierend auf dem ersten Buchstaben
   TextDirection? _getTextDirection(String text) {
     final trimmed = text.trimLeft();
-    if (trimmed.isEmpty) return null; // Default verwenden
+    if (trimmed.isEmpty) return null;
     final firstChar = trimmed.codeUnitAt(0);
-    // Arabisch: U+0600–U+06FF, U+0750–U+077F, U+08A0–U+08FF
     final isArabic =
         (firstChar >= 0x0600 && firstChar <= 0x06FF) ||
         (firstChar >= 0x0750 && firstChar <= 0x077F) ||
@@ -42,29 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _checkPendingGoogleUser();
-  }
-
-  void _checkPendingGoogleUser() {
-    if (ApiService.isLoggedIn && !ApiService.hasStore) {
-      final pending = ApiService.pendingGoogleCredential;
-      if (pending != null || ApiService.isCurrentUserNew) {
-        setState(() {
-          _isGoogleUserPending = true;
-          _pendingGoogleEmail = pending?.email;
-        });
-        debugPrint(
-          '🟢 Register: Found pending Google user: $_pendingGoogleEmail',
-        );
-      }
-    }
-  }
-
-  @override
   void dispose() {
-    _storeNameCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmPassCtrl.dispose();
@@ -100,7 +72,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final s = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) return;
 
-    final storeName = _storeNameCtrl.text.trim();
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
 
@@ -109,7 +80,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       final result = await ApiService.registerFull(
         store: {
-          'store_name': storeName,
           'require_email_verify': _requireEmailVerify,
         },
         username: email,
@@ -140,63 +110,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    if (_isGoogleUserPending) {
-      await _completeGoogleRegistration();
-      return;
-    }
-
     setState(() => _googleBusy = true);
-    debugPrint('🟢 Register: Starting fresh Google sign-in...');
+    debugPrint('🟢 Register: Starting Google sign-in...');
 
     try {
-      final credResult = await ApiService.getGoogleCredentialOnly();
-
-      if (!mounted) return;
-
-      if (!credResult.ok) {
-        setState(() => _googleBusy = false);
-        if (credResult.error != 'cancelled') {
-          _toast(_errorToArabic(credResult.error, credResult.details));
-        }
-        return;
-      }
-
-      setState(() {
-        _isGoogleUserPending = true;
-        _pendingGoogleEmail = credResult.data?['email'] as String?;
-        _googleBusy = false;
-      });
-
-      debugPrint(
-        '🟢 Register: Google credential obtained, showing store name input',
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _googleBusy = false);
-      _toast(ApiService.mapFirebaseErrorToArabic(e));
-    }
-  }
-
-  Future<void> _completeGoogleRegistration() async {
-    final s = AppLocalizations.of(context)!;
-    final storeName = _storeNameCtrl.text.trim();
-
-    if (storeName.isEmpty) {
-      _toast(s.storeNameRequired);
-      return;
-    }
-
-    if (storeName.length < 3) {
-      _toast(s.storeNameTooShort);
-      return;
-    }
-
-    setState(() => _googleBusy = true);
-    debugPrint('🟢 Register: Completing Google registration for "$storeName"');
-
-    try {
+      // Direkt mit Google registrieren (ohne Store-Name - wird im Wizard abgefragt)
       final result = await ApiService.registerWithGoogle(
-        storeName: storeName,
+        storeName: '', // Leer - wird im Wizard ausgefüllt
         requireEmailVerify: _requireEmailVerify,
       );
 
@@ -204,7 +124,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!result.ok) {
         setState(() => _googleBusy = false);
-        _toast(_errorToArabic(result.error, result.details));
+        if (result.error != 'cancelled') {
+          _toast(_errorToArabic(result.error, result.details));
+        }
         return;
       }
 
@@ -221,6 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (isExisting) {
         context.go('/home');
       } else {
+        // Direkt zum Setup-Wizard (Store-Name wird dort abgefragt)
         context.go('/setup');
       }
     } catch (e) {
@@ -230,236 +153,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  Future<void> _cancelPendingGoogleRegistration() async {
-    debugPrint('🟢 Register: Cancelling pending registration');
-    await ApiService.cancelPendingGoogleRegistration();
-    if (mounted) {
-      setState(() {
-        _isGoogleUserPending = false;
-        _pendingGoogleEmail = null;
-      });
-    }
-  }
-
+  @override
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
-    if (_isGoogleUserPending) {
-      return _buildGoogleRegistrationUI(theme, isDark);
-    }
-
     return _buildFullRegistrationUI(theme, isDark);
-  }
-
-  Widget _buildGoogleRegistrationUI(ThemeData theme, bool isDark) {
-    final colors = theme.colorScheme;
-    final s = AppLocalizations.of(context)!;
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: _googleBusy
-              ? null
-              : () async {
-                  await _cancelPendingGoogleRegistration();
-                  if (mounted) context.go('/login');
-                },
-        ),
-        title: Text(s.registerTitle),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Icon(
-                    Icons.store_rounded,
-                    size: 64,
-                    color: colors.primary, // Teal
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    s.completeStoreCreation,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    s.enterStoreNamePrompt,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurface.withValues(alpha: 0.7),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Google Account Info
-                  if (_pendingGoogleEmail != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: colors.primaryContainer.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: colors.primary.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: colors.primary.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.check_circle,
-                              color: colors.primary,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  s.googleAccountLabel,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: colors.primary,
-                                  ),
-                                ),
-                                Text(
-                                  _pendingGoogleEmail!,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  textDirection: TextDirection.ltr,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Store Name Field - dynamische Textrichtung
-                  TextFormField(
-                    controller: _storeNameCtrl,
-                    enabled: !_googleBusy,
-                    textDirection: _getTextDirection(_storeNameCtrl.text),
-                    onChanged: (_) =>
-                        setState(() {}), // Rebuild für Richtungswechsel
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      labelText: s.storeNameLabel,
-                      hintText: s.storeNameHint,
-                      prefixIcon: const Icon(Icons.storefront_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Trial Info - Nutzt 'tertiary' (Gold) für Premium-Feeling
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: colors.tertiary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.card_giftcard,
-                          color: colors.tertiary,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            s.trialPeriodInfo,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colors.tertiary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  const SizedBox(height: 16),
-
-                  // Create Store Button
-                  ElevatedButton(
-                    onPressed: _googleBusy ? null : _completeGoogleRegistration,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primary, // Teal
-                      foregroundColor: colors.onPrimary, // White
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _googleBusy
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(
-                            s.createStoreButton,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  TextButton(
-                    onPressed: _googleBusy
-                        ? null
-                        : () async {
-                            await _cancelPendingGoogleRegistration();
-                            if (mounted) context.go('/login');
-                          },
-                    child: Text(
-                      s.cancelAndReturnToLogin,
-                      style: TextStyle(
-                        color: colors.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildFullRegistrationUI(ThemeData theme, bool isDark) {
@@ -554,32 +253,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
 
                     const SizedBox(height: 24),
-
-                    // Store Name - dynamische Textrichtung
-                    TextFormField(
-                      controller: _storeNameCtrl,
-                      enabled: !_busy && !_googleBusy,
-                      textDirection: _getTextDirection(_storeNameCtrl.text),
-                      onChanged: (_) =>
-                          setState(() {}), // Rebuild für Richtungswechsel
-                      decoration: InputDecoration(
-                        labelText: s.storeNameLabel,
-                        hintText: s.storeNameHint,
-                        prefixIcon: const Icon(Icons.storefront_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return s.storeNameRequired;
-                        }
-                        if (v.trim().length < 3) return s.storeNameTooShort;
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
 
                     // Email - dynamische Textrichtung
                     TextFormField(

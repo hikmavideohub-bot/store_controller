@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'api_service.dart';
+import 'store_config_service.dart';
 import '../core/access_manager.dart';
 
 class RatingPromptService {
@@ -63,7 +64,9 @@ class RatingPromptService {
           .doc(storeId)
           .set({
             'storeId': storeId,
-            'storeName': ApiService.storeName ?? 'Unknown',
+            'storeName': StoreConfigService.storeName.isNotEmpty
+                ? StoreConfigService.storeName
+                : 'Unknown',
             'launchCount': count,
             'firstLaunch': Timestamp.fromMillisecondsSinceEpoch(firstLaunch),
             'lastSeen': FieldValue.serverTimestamp(),

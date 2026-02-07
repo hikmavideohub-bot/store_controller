@@ -16,11 +16,13 @@ class PaymentScreenSyria extends StatefulWidget {
   final List<SubscriptionPlan> availablePlans;
   final SubscriptionPlan
   basePlan; // NEU: Referenz zum Monats-Plan für Fallbacks
+  final String? pricingMessage;
 
   const PaymentScreenSyria({
     super.key,
     required this.availablePlans,
     required this.basePlan,
+    this.pricingMessage,
   });
 
   @override
@@ -132,7 +134,7 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
 
     try {
       final storeId = ApiService.storeId ?? '';
-      final storeName = ApiService.storeName ?? '';
+      final storeName = StoreConfigService.storeName;
       final userPhone = (StoreConfigService.store?['phone'] as String?) ?? '';
 
       final calc = _currentPricing;
@@ -230,7 +232,7 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
               ),
               const SizedBox(height: 24),
               Text(
-                "Anfrage in Bearbeitung", // Fallback String
+                s.pendingRequestTitle,
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -240,7 +242,7 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
               ),
               const SizedBox(height: 16),
               Text(
-                "Sie haben bereits eine Anfrage gesendet. Bitte warten Sie, bis der Administrator diese bestätigt hat.",
+                s.pendingRequestMessage,
                 style: TextStyle(fontSize: 16, color: colors.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
@@ -288,7 +290,44 @@ class _PaymentScreenSyriaState extends State<PaymentScreenSyria> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          // Pricing Message (aus Firestore)
+          if (widget.pricingMessage != null &&
+              widget.pricingMessage!.trim().isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.secondaryContainer.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: colors.secondary.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.campaign_outlined,
+                    color: colors.secondary,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.pricingMessage!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colors.onSecondaryContainer,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           Text(
             s.step1ChoosePlan,

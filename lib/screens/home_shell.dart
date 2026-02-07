@@ -7,6 +7,7 @@ import 'package:store_controller/l10n/generated/app_localizations.dart';
 
 import '../services/store_config_service.dart';
 import '../services/api_service.dart';
+import '../services/update_service.dart';
 import '../a2hs/a2hs.dart';
 import 'home_screen.dart';
 import 'categories.dart';
@@ -51,6 +52,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         } else {
           _checkExpirationAndShowDialog();
         }
+      }
+
+      // Update-Check (nur Mobile, nicht Web)
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) {
+        final hasUpdate = await UpdateService.shouldShowUpdateDialog();
+        if (hasUpdate && mounted) _showUpdateDialog();
       }
 
       await Future.delayed(const Duration(seconds: 3));
@@ -153,6 +161,80 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             },
             child: Text(
               s.renewNowButton,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUpdateDialog() {
+    final colors = Theme.of(context).colorScheme;
+    final s = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        titlePadding: const EdgeInsets.only(top: 24),
+        title: Column(
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: colors.primaryContainer,
+              child: Icon(
+                Icons.system_update_rounded,
+                color: colors.primary,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              s.updateAvailableTitle,
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        content: Text(
+          s.updateAvailableMsg,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: colors.onSurface.withValues(alpha: 0.7),
+            fontSize: 15,
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(s.laterButton, style: TextStyle(color: colors.outline)),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.primary,
+              foregroundColor: colors.onPrimary,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+            onPressed: () {
+              Navigator.pop(ctx);
+              launchUrl(
+                Uri.parse(
+                  'https://play.google.com/store/apps/details?id=com.aldeebtech.storecontroller',
+                ),
+                mode: LaunchMode.externalApplication,
+              );
+            },
+            label: Text(
+              s.updateNowButton,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
             ),
           ),

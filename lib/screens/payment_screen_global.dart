@@ -21,12 +21,17 @@ class CurrencyOption {
   });
 }
 
+/// Währungen die von Stripe NICHT unterstützt werden
+/// Für diese Länder wird automatisch auf USD zurückgefallen
+const _stripeUnsupportedCurrencies = {'omr', 'syp', 'irr', 'iqd', 'lbp', 'yer'};
+
 class PaymentScreenGlobal extends StatefulWidget {
   final List<SubscriptionPlan> availablePlans;
   final SubscriptionPlan basePlan; // NEU: Referenz zum Monats-Plan
   final String userCurrencyCode; // z.B. "omr", "sar", "eur"
   final String userCurrencySymbol; // z.B. "ر.ع", "€"
   final double fxRate; // EUR → userCurrency (1.0 für EUR)
+  final String? pricingMessage;
 
   const PaymentScreenGlobal({
     super.key,
@@ -35,6 +40,7 @@ class PaymentScreenGlobal extends StatefulWidget {
     required this.userCurrencyCode,
     required this.userCurrencySymbol,
     required this.fxRate,
+    this.pricingMessage,
   });
 
   @override
@@ -106,8 +112,25 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
     // Basis-Optionen
     final options = <CurrencyOption>[];
 
-    // 1. Default Currency (wenn nicht EUR oder USD)
-    if (defaultCode != 'eur' && defaultCode != 'usd') {
+    // 1. Default Currency zuerst hinzufügen
+    if (defaultCode == 'eur') {
+      // EUR ist Default → EUR zuerst, dann USD
+      options.add(
+        const CurrencyOption(code: 'eur', symbol: '€', label: 'EUR (€)'),
+      );
+      options.add(
+        const CurrencyOption(code: 'usd', symbol: '\$', label: 'USD (\$)'),
+      );
+    } else if (defaultCode == 'usd') {
+      // USD ist Default → USD zuerst, dann EUR
+      options.add(
+        const CurrencyOption(code: 'usd', symbol: '\$', label: 'USD (\$)'),
+      );
+      options.add(
+        const CurrencyOption(code: 'eur', symbol: '€', label: 'EUR (€)'),
+      );
+    } else {
+      // Exotische Währung → Default zuerst, dann USD, dann EUR
       options.add(
         CurrencyOption(
           code: defaultCode,
@@ -115,44 +138,89 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
           label: '${defaultCode.toUpperCase()} ($defaultSymbol)',
         ),
       );
-    }
-
-    // 2. USD (wenn nicht default)
-    if (defaultCode != 'usd') {
       options.add(
         const CurrencyOption(code: 'usd', symbol: '\$', label: 'USD (\$)'),
       );
+      options.add(
+        const CurrencyOption(code: 'eur', symbol: '€', label: 'EUR (€)'),
+      );
     }
-
-    // 3. EUR (immer verfügbar)
-    options.add(
-      const CurrencyOption(code: 'eur', symbol: '€', label: 'EUR (€)'),
-    );
 
     _currencyOptions = options;
     _selectedCurrency = options.first; // Default auswählen
   }
 
-  /// Validiert FX-Rate und setzt Fallback wenn nötig
+  /// Validiert FX-Rate und Stripe-Unterstützung, setzt Fallback wenn nötig
   void _validateAndSetFxRate() {
     final bool fxValid =
         _effectiveFxRate > 0 &&
         !_effectiveFxRate.isNaN &&
         !_effectiveFxRate.isInfinite;
 
-    if (!fxValid && _effectiveCurrencyCode != 'eur') {
-      // Fallback auf EUR
-      _effectiveCurrencyCode = 'eur';
-      _effectiveCurrencySymbol = '€';
-      _effectiveFxRate = 1.0;
+    // Prüfen ob Stripe diese Währung unterstützt
+    final bool stripeSupported = !_stripeUnsupportedCurrencies.contains(
+      _effectiveCurrencyCode.toLowerCase(),
+    );
+
+    if ((!fxValid || !stripeSupported) &&
+        _effectiveCurrencyCode != 'eur' &&
+        _effectiveCurrencyCode != 'usd') {
+      // Fallback auf USD (bekannter in Golf-Region als EUR)
+      _effectiveCurrencyCode = 'usd';
+      _effectiveCurrencySymbol = '\$';
+      _effectiveFxRate = _getUsdFxRate();
       _usingFallbackCurrency = true;
-      debugPrint('[PaymentScreenGlobal] FX invalid → EUR fallback');
+      debugPrint(
+        '[PaymentScreenGlobal] ${!stripeSupported ? "Currency not supported by Stripe" : "FX invalid"} → USD fallback',
+      );
     }
+  }
+
+  /// Holt den USD-Wechselkurs (EUR → USD ist ca. 1.08-1.10)
+  double _getUsdFxRate() {
+    // Konservativer Schätzwert, wird beim Währungswechsel durch echten Kurs ersetzt
+    return 1.08;
   }
 
   /// Wird aufgerufen wenn User Währung im Dropdown ändert
   Future<void> _onCurrencyChanged(CurrencyOption newCurrency) async {
     if (newCurrency.code == _selectedCurrency.code) return;
+
+    // Prüfen ob Stripe diese Währung unterstützt
+    final bool stripeSupported = !_stripeUnsupportedCurrencies.contains(
+      newCurrency.code.toLowerCase(),
+    );
+
+    if (!stripeSupported) {
+      // Sofort auf USD zurückfallen, aber echten FX-Kurs laden
+      setState(() {
+        _loadingCurrency = true;
+        _selectedCurrency = newCurrency;
+      });
+
+      try {
+        final fxResult = await FxRateService().getFxRate('usd');
+        setState(() {
+          _effectiveCurrencyCode = 'usd';
+          _effectiveCurrencySymbol = '\$';
+          _effectiveFxRate = fxResult.isFallback ? 1.08 : fxResult.fxRate;
+          _usingFallbackCurrency = true;
+          _loadingCurrency = false;
+        });
+      } catch (e) {
+        setState(() {
+          _effectiveCurrencyCode = 'usd';
+          _effectiveCurrencySymbol = '\$';
+          _effectiveFxRate = 1.08; // Konservativer Fallback
+          _usingFallbackCurrency = true;
+          _loadingCurrency = false;
+        });
+      }
+      debugPrint(
+        '[PaymentScreenGlobal] ${newCurrency.code} not supported by Stripe → USD fallback',
+      );
+      return;
+    }
 
     setState(() {
       _loadingCurrency = true;
@@ -164,11 +232,11 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
       final fxResult = await FxRateService().getFxRate(newCurrency.code);
 
       if (fxResult.isFallback) {
-        // Fallback auf EUR
+        // Fallback auf USD
         setState(() {
-          _effectiveCurrencyCode = 'eur';
-          _effectiveCurrencySymbol = '€';
-          _effectiveFxRate = 1.0;
+          _effectiveCurrencyCode = 'usd';
+          _effectiveCurrencySymbol = '\$';
+          _effectiveFxRate = 1.08;
           _usingFallbackCurrency = true;
           _loadingCurrency = false;
         });
@@ -183,11 +251,11 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
       }
     } catch (e) {
       debugPrint('[PaymentScreenGlobal] Currency change error: $e');
-      // Fallback auf EUR
+      // Fallback auf USD
       setState(() {
-        _effectiveCurrencyCode = 'eur';
-        _effectiveCurrencySymbol = '€';
-        _effectiveFxRate = 1.0;
+        _effectiveCurrencyCode = 'usd';
+        _effectiveCurrencySymbol = '\$';
+        _effectiveFxRate = 1.08;
         _usingFallbackCurrency = true;
         _loadingCurrency = false;
       });
@@ -299,6 +367,43 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // Pricing Message (aus Firestore)
+                if (widget.pricingMessage != null &&
+                    widget.pricingMessage!.trim().isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.secondaryContainer.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: colors.secondary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.campaign_outlined,
+                          color: colors.secondary,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            widget.pricingMessage!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.onSecondaryContainer,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Currency Dropdown
                 if (_currencyOptions.length > 1) ...[

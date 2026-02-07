@@ -90,4 +90,20 @@ class CdnHelper {
   static bool isCdnUrl(String? url) {
     return url != null && url.startsWith(cdnBaseUrl);
   }
+
+  /// Generiert CDN-URL für Store-Logo
+  ///
+  /// [storeId]: Die ID des Stores
+  /// [filename]: Der Dateiname (z.B. "logo_170982312.jpg")
+  /// [size]: 360 für Thumbnail, 1600 für Full-Size, null für Original
+  static String buildStoreLogoUrl({
+    required String storeId,
+    required String filename,
+    int? size,
+  }) {
+    final sizedFilename = size != null
+        ? filename.replaceAll('.jpg', '_${size}x$size.jpeg')
+        : filename;
+    return '$cdnBaseUrl/stores/$storeId/logo/$sizedFilename';
+  }
 }

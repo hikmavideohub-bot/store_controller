@@ -6,11 +6,20 @@ import 'package:intl/intl.dart';
 class SubscriptionConfig {
   final List<SubscriptionPlan> plans;
   final String? syriaContactPhone;
+  final String? pricingMessageGlobal;
+  final String? pricingMessageSyria;
 
-  SubscriptionConfig({required this.plans, this.syriaContactPhone});
+  SubscriptionConfig({
+    required this.plans,
+    this.syriaContactPhone,
+    this.pricingMessageGlobal,
+    this.pricingMessageSyria,
+  });
 
   factory SubscriptionConfig.fromMap(Map<String, dynamic> data) {
     final syriaContactPhone = data['syria_contact_phone']?.toString();
+    final pricingMessageGlobal = data['pricing_message_global']?.toString();
+    final pricingMessageSyria = data['pricing_message_syria']?.toString();
     final plansMap = data['plans'] as Map<String, dynamic>? ?? {};
 
     final plans = plansMap.entries.map((entry) {
@@ -27,6 +36,8 @@ class SubscriptionConfig {
     return SubscriptionConfig(
       plans: plans,
       syriaContactPhone: syriaContactPhone,
+      pricingMessageGlobal: pricingMessageGlobal,
+      pricingMessageSyria: pricingMessageSyria,
     );
   }
 }

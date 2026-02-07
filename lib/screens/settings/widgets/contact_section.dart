@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../settings_viewmodel.dart';
 import 'location_picker_screen.dart';
+import 'social_links_card.dart';
 
 class ContactSection extends StatelessWidget {
   final SettingsViewModel vm;
@@ -13,49 +14,134 @@ class ContactSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // final theme = Theme.of(context);
     final s = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          s.contactAndAddressTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        const SizedBox(height: 16),
-
-        _PhoneRow(
-          label: s.phoneNumberLabel,
-          code: vm.phoneCode,
-          controller: vm.phoneCtrl,
-          onPickCode: (code) => vm.setPhoneCode(code),
-        ),
-        const SizedBox(height: 12),
-
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          value: vm.waLinkedToPhone,
-          onChanged: (val) => vm.toggleWaSync(val),
-          title: Text(s.whatsappSameAsPhone),
-        ),
-
-        if (!vm.waLinkedToPhone)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: _PhoneRow(
-              label: s.whatsappNumberLabel,
-              code: vm.waCode,
-              controller: vm.waCtrl,
-              onPickCode: (code) => vm.setWaCode(code),
+        // 1. Nummern
+        _ContactSubSection(
+          icon: Icons.phone_outlined,
+          title: s.phoneNumberLabel.replaceAll('*', '').trim(),
+          colors: colors,
+          theme: theme,
+          children: [
+            _PhoneRow(
+              label: s.phoneNumberLabel,
+              code: vm.phoneCode,
+              controller: vm.phoneCtrl,
+              onPickCode: (code) => vm.setPhoneCode(code),
             ),
-          ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: vm.waLinkedToPhone,
+              onChanged: (val) => vm.toggleWaSync(val),
+              title: Text(s.whatsappSameAsPhone),
+            ),
+            if (!vm.waLinkedToPhone)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: _PhoneRow(
+                  label: s.whatsappNumberLabel,
+                  code: vm.waCode,
+                  controller: vm.waCtrl,
+                  onPickCode: (code) => vm.setWaCode(code),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
 
-        const Divider(height: 32),
+        // 2. Adresse
+        _ContactSubSection(
+          icon: Icons.location_on_outlined,
+          title: s.addressLabel,
+          colors: colors,
+          theme: theme,
+          children: [
+            _AddressSelector(vm: vm),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: vm.showAddressDescription,
+              onChanged: (val) => vm.toggleAddressDescription(val),
+              title: Text(s.addressDescriptionToggle),
+            ),
+            if (vm.showAddressDescription)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TextField(
+                  controller: vm.addressDescCtrl,
+                  maxLines: 4,
+                  minLines: 2,
+                  maxLength: 500,
+                  decoration: InputDecoration(
+                    labelText: s.addressDescriptionLabel,
+                    hintText: s.addressDescriptionHint,
+                    border: const OutlineInputBorder(),
+                    alignLabelWithHint: true,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
 
-        // Adress-Bereich: Nur per Karte oder GPS befüllbar (keine Tastatureingabe)
-        _AddressSelector(vm: vm),
+        // 3. Social Media & Links
+        _ContactSubSection(
+          icon: Icons.share_outlined,
+          title: s.socialLinksTitle,
+          colors: colors,
+          theme: theme,
+          children: [
+            SocialLinksContent(vm: vm),
+          ],
+        ),
       ],
+    );
+  }
+}
+
+/// Klappbare Untersektion innerhalb des Contact-Bereichs
+class _ContactSubSection extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final ColorScheme colors;
+  final ThemeData theme;
+  final List<Widget> children;
+
+  const _ContactSubSection({
+    required this.icon,
+    required this.title,
+    required this.colors,
+    required this.theme,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colors.outline.withValues(alpha: 0.12),
+        ),
+      ),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          leading: Icon(icon, size: 20, color: colors.primary),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          ),
+          children: children,
+        ),
+      ),
     );
   }
 }
@@ -93,13 +179,6 @@ class _AddressSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Überschrift
-        Text(
-          s.addressLabel,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-
         // Adress-Container (klickbar, aber nicht editierbar)
         GestureDetector(
           onTap: vm.fetchingLocation ? null : () => _openMapPicker(context),

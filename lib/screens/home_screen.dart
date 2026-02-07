@@ -6,6 +6,7 @@ import '../widgets/premium_app_bar.dart';
 import '../widgets/app_drawer.dart';
 import '../viewmodels/home_viewmodel.dart';
 import '../models/product.dart';
+import '../services/store_config_service.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -93,31 +94,38 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   }
 
   Widget _buildHeader(BuildContext context, AppLocalizations s) {
-    final vm = context.watch<HomeViewModel>();
-    final displayName = vm.storeName ?? s.defaultStoreName;
+    // ✅ ValueListenableBuilder für sofortige Updates bei Store-Name-Änderungen
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: StoreConfigService.storeNotifier,
+      builder: (context, _, __) {
+        final displayName = StoreConfigService.storeName.isNotEmpty
+            ? StoreConfigService.storeName
+            : s.defaultStoreName;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          s.welcomeStoreName(displayName),
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          s.dashboardSubtitle,
-          style: TextStyle(
-            fontSize: 14,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
-        ),
-      ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              s.welcomeStoreName(displayName),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              s.dashboardSubtitle,
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

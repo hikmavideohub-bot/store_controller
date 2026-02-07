@@ -38,9 +38,11 @@ class HomeViewModel extends BaseViewModel {
   List<Product> get products => _products;
   String get customerMessage => _customerMessage; // Getter für UI
 
-  /// Store-Name wird jetzt über ValueNotifier verwaltet für sofortige Updates
-  String? get storeName =>
-      ApiService.storeNameNotifier.value ?? ApiService.storeName;
+  /// Store-Name - liest von der einzigen Quelle: StoreConfigService
+  String? get storeName {
+    final name = StoreConfigService.storeName;
+    return name.isNotEmpty ? name : null;
+  }
   String? get publicStoreUrl {
     final s = StoreConfigService.store;
     final url = (s?['public_store_url'] ?? '').toString().trim();
@@ -158,14 +160,12 @@ class HomeViewModel extends BaseViewModel {
 
   Future<void> _init() async {
     ApiService.productsNotifier.addListener(_onProductsChanged);
-    ApiService.storeNameNotifier.addListener(_onStoreNameChanged);
     await boot();
   }
 
   @override
   void dispose() {
     ApiService.productsNotifier.removeListener(_onProductsChanged);
-    ApiService.storeNameNotifier.removeListener(_onStoreNameChanged);
     super.dispose();
   }
 
@@ -175,11 +175,6 @@ class HomeViewModel extends BaseViewModel {
       _products = updated;
       notifyListeners();
     }
-  }
-
-  void _onStoreNameChanged() {
-    // Store-Name hat sich geändert → UI sofort aktualisieren
-    notifyListeners();
   }
 
   // ===========================================

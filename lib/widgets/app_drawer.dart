@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../services/api_service.dart';
+import '../services/helpful_info_service.dart';
 import '../app_theme_mode.dart';
 import '../core/access_manager.dart';
 import '../main.dart';
@@ -26,25 +28,67 @@ class AppDrawer extends StatelessWidget {
   // --- Logik-Methoden ---
 
   static String _storeName(AppLocalizations s) {
-    final store = StoreConfigService.store;
-    final name =
-        (store?['store_name'] ??
-                store?['storeName'] ??
-                store?['name'] ??
-                store?['store'] ??
-                '')
-            .toString()
-            .trim();
-
+    final name = StoreConfigService.storeName;
     if (name.isNotEmpty) return name;
     return s.drawerStoreFallback;
   }
 
-  String _storeLogo() {
+  String? _storeLogoUrl() {
     final s = StoreConfigService.store;
     final logo = (s?['has_logo'] ?? s?['hasLogo'] ?? '').toString().trim();
-    if (logo.isNotEmpty) return logo;
-    return '🏪';
+    if (logo.isNotEmpty && logo.startsWith('http')) return logo;
+    return null;
+  }
+
+  Widget _buildLogo(ColorScheme colors, String storeName) {
+    final logoUrl = _storeLogoUrl();
+
+    if (logoUrl != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: CachedNetworkImage(
+          imageUrl: logoUrl,
+          fit: BoxFit.cover,
+          width: 60,
+          height: 60,
+          placeholder: (_, __) => _buildInitials(colors, storeName),
+          errorWidget: (_, __, ___) => _buildInitials(colors, storeName),
+        ),
+      );
+    }
+    return _buildInitials(colors, storeName);
+  }
+
+  Widget _buildInitials(ColorScheme colors, String name) {
+    final displayName = name.isNotEmpty ? name : 'Store';
+
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              displayName,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: colors.primary,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   static String _storeId() {
@@ -376,6 +420,16 @@ class AppDrawer extends StatelessWidget {
 
                 _drawerItem(
                   context: context,
+                  icon: Icons.lightbulb_outline_rounded,
+                  title: s.drawerHelpfulInfo,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showHelpfulInfoSheet(context);
+                  },
+                ),
+
+                _drawerItem(
+                  context: context,
                   icon: Icons.info_outline_rounded,
                   title: s.drawerAbout,
                   onTap: () {
@@ -493,65 +547,69 @@ class AppDrawer extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // 1. Zeile: Text und Logo nebeneinander
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Text Bereich (Nimmt restlichen Platz ein)
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            _storeName(s),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: colors.onPrimary,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            headerSubtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: colors.onPrimary.withValues(alpha: 0.8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                // ValueListenableBuilder: reagiert sofort auf Store-Änderungen
+                ValueListenableBuilder<Map<String, dynamic>?>(
+                  valueListenable: StoreConfigService.storeNotifier,
+                  builder: (context, _, __) {
+                    final storeName = _storeName(s);
 
-                    const SizedBox(width: 16),
-
-                    // Logo Container (Squircle)
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: colors.surface,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
+                    // Im App Drawer: Store-Name IMMER neben Logo anzeigen
+                    // (show_name_with_logo ist nur für die öffentliche Webseite)
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Text Bereich (Nimmt restlichen Platz ein)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                storeName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: colors.onPrimary,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                headerSubtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: colors.onPrimary.withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          _storeLogo(),
-                          style: const TextStyle(fontSize: 30),
                         ),
-                      ),
-                    ),
-                  ],
+
+                        const SizedBox(width: 16),
+
+                        // Logo Container (Squircle)
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: _buildLogo(colors, storeName),
+                        ),
+                      ],
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 16),
@@ -726,6 +784,192 @@ class AppDrawer extends StatelessWidget {
         ),
         onTap: onTap,
       ),
+    );
+  }
+
+  // --- Helpful Info BottomSheet ---
+
+  void _showHelpfulInfoSheet(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final s = AppLocalizations.of(context)!;
+    final langCode = Localizations.localeOf(context).languageCode;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => FutureBuilder<List<String>>(
+          future: HelpfulInfoService().getInfo(langCode),
+          builder: (context, snapshot) {
+            return Column(
+              children: [
+                // Handle
+                Padding(
+                  padding: const EdgeInsets.only(top: 12, bottom: 8),
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colors.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                // Titel
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.lightbulb_outline_rounded,
+                        color: colors.primary,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        s.drawerHelpfulInfo,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: colors.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(height: 1, color: colors.outlineVariant),
+                // Inhalt
+                Expanded(
+                  child: _buildHelpfulInfoContent(
+                    snapshot,
+                    scrollController,
+                    colors,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpfulInfoContent(
+    AsyncSnapshot<List<String>> snapshot,
+    ScrollController scrollController,
+    ColorScheme colors,
+  ) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final items = snapshot.data ?? [];
+    if (items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Icon(
+            Icons.info_outline_rounded,
+            size: 48,
+            color: colors.outlineVariant,
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      controller: scrollController,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 48),
+      itemCount: items.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final text = items[index];
+        // Trenne Titel (vor dem ':') und Beschreibung (nach dem ':')
+        final colonIndex = text.indexOf(':');
+        final hasTitle = colonIndex > 0 && colonIndex < 60;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: colors.outlineVariant.withValues(alpha: 0.5),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    '${index + 1}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: colors.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: hasTitle
+                    ? RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '${text.substring(0, colonIndex)}:',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: colors.onSurface,
+                                height: 1.5,
+                              ),
+                            ),
+                            TextSpan(
+                              text: text.substring(colonIndex + 1),
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: colors.onSurfaceVariant,
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Text(
+                        text,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: colors.onSurfaceVariant,
+                          height: 1.5,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -107,8 +107,9 @@ service cloud.firestore {
       allow create: if isStoreOwner(storeId) || isMasterAdmin();
 
       // UPDATEN: Admin frei, Owner nur bestimmte Felder
+      // HINWEIS: store_slug wird NUR von Cloud Function (finalizeStoreSetup) gesetzt
       allow update: if isMasterAdmin()
-        || (isStoreOwner(storeId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['address_country', 'store_slug', 'store_name']));
+        || (isStoreOwner(storeId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['address_country', 'store_name']));
 
       // LÖSCHEN: Nur Admin
       allow delete: if isMasterAdmin();
@@ -132,13 +133,15 @@ service cloud.firestore {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // SLUGS
+    // SLUGS - Nur Cloud Functions (Admin SDK) dürfen schreiben!
+    // Client darf nur lesen für Slug-Verfügbarkeitsprüfung
     // ═══════════════════════════════════════════════════════════════════════════
 
     match /slugs/{slug} {
       allow read: if true;
-      allow create: if isAuthenticated();
-      allow update, delete: if isMasterAdmin();
+      // WICHTIG: Kein Client-Write erlaubt - nur Cloud Functions via Admin SDK
+      // Dies verhindert Race Conditions und Slug-Hijacking
+      allow create, update, delete: if false;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

@@ -11,7 +11,6 @@ import 'widgets/settings_header.dart';
 import 'widgets/store_info_card.dart';
 import 'widgets/contact_section.dart';
 import 'widgets/working_hours_card.dart';
-import 'widgets/social_links_card.dart';
 import 'widgets/security_section.dart';
 import 'widgets/appearance_card.dart';
 import 'widgets/shipping_card.dart';
@@ -19,7 +18,10 @@ import 'widgets/shipping_card.dart';
 class SettingsScreen extends StatefulWidget {
   final bool firstSetup;
 
-  const SettingsScreen({super.key, required this.firstSetup});
+  const SettingsScreen({
+    super.key,
+    required this.firstSetup,
+  });
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -42,9 +44,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return isArabic ? TextDirection.rtl : TextDirection.ltr;
   }
 
-  // Track expanded sections
+  // Track expanded sections (alle standardmäßig geschlossen)
   final Map<String, bool> _expandedSections = {
-    'storeInfo': true,
+    'storeInfo': false,
     'contact': false,
     'shipping': false,
     'hours': false,
@@ -55,7 +57,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => SettingsViewModel()..init(),
+      create: (_) => SettingsViewModel()..init(
+        isFirstSetup: widget.firstSetup,
+      ),
       child: Consumer<SettingsViewModel>(
         builder: (context, vm, child) {
           if (vm.busy && !vm.saving) {
@@ -81,13 +85,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final colors = Theme.of(context).colorScheme;
     final s = AppLocalizations.of(context)!;
 
-    return Scaffold(
+    return PopScope(
+      canPop: !vm.isDirty,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        // Show confirmation dialog
+        final shouldLeave = await _showUnsavedChangesDialog(context);
+        if (shouldLeave == true && context.mounted) {
+          context.pop();
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(s.profileTitle),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () async {
+            if (vm.isDirty) {
+              final shouldLeave = await _showUnsavedChangesDialog(context);
+              if (shouldLeave == true && context.mounted) {
+                context.pop();
+              }
+            } else {
+              context.pop();
+            }
+          },
         ),
         actions: [
           if (vm.saving)
@@ -132,8 +155,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: s.contactSectionSubtitle,
             children: [
               ContactSection(vm: vm),
-              const SizedBox(height: 16),
-              SocialLinksCard(vm: vm),
             ],
           ),
           const SizedBox(height: 12),
@@ -230,6 +251,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
+          ),
+        ],
+      ),
+    ),
+    );
+  }
+
+  Future<bool?> _showUnsavedChangesDialog(BuildContext context) {
+    final s = AppLocalizations.of(context)!;
+    final colors = Theme.of(context).colorScheme;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.unsavedChangesTitle),
+        content: Text(s.unsavedChangesMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.stayButton),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.error,
+              foregroundColor: colors.onError,
+            ),
+            child: Text(s.discardButton),
           ),
         ],
       ),
@@ -491,13 +540,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     iconColor: colors.secondary,
                     title: s.step2Title,
                     subtitle: s.step2Subtitle,
-                    child: Column(
-                      children: [
-                        ContactSection(vm: vm),
-                        const SizedBox(height: 24),
-                        SocialLinksCard(vm: vm),
-                      ],
-                    ),
+                    child: ContactSection(vm: vm),
                   ),
 
                   // STEP 3: Lieferung
@@ -544,6 +587,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           TextField(
                             controller: vm.shippingPriceCtrl,
                             keyboardType: TextInputType.number,
+                            textDirection: TextDirection.ltr, // Zahlen immer LTR
                             decoration: InputDecoration(
                               labelText: s.fixedDeliveryPriceLabel,
                               hintText: '0.00',
@@ -789,6 +833,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(s.validationEnterStoreName),
+            backgroundColor: colors.error,
+          ),
+        );
+        return;
+      }
+      if (vm.storeNameCtrl.text.trim().length > 40) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(s.storeNameTooLong),
             backgroundColor: colors.error,
           ),
         );

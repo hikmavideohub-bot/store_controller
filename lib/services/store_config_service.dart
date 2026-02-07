@@ -16,6 +16,28 @@ class StoreConfigService {
 
   static bool get isLoaded => storeNotifier.value != null;
 
+  /// ✅ Einzige Quelle für Store-Name - alle UI-Komponenten sollten hierauf hören
+  static String get storeName {
+    final s = storeNotifier.value;
+    return (s?['store_name'] ?? s?['storeName'] ?? '').toString().trim();
+  }
+
+  /// ✅ Store-Logo URL
+  static String? get logoUrl {
+    final s = storeNotifier.value;
+    final logo = (s?['has_logo'] ?? s?['hasLogo'] ?? '').toString().trim();
+    if (logo.isNotEmpty && logo.startsWith('http')) return logo;
+    return null;
+  }
+
+  /// ✅ Ob Store-Name neben Logo angezeigt werden soll (Standard: true)
+  static bool get showNameWithLogo {
+    final s = storeNotifier.value;
+    final value = s?['show_name_with_logo'];
+    if (value == null) return true; // Default: Name anzeigen
+    return value == true || value.toString().toLowerCase() == 'true';
+  }
+
   static void _setStore(Map<String, dynamic>? s) {
     // Wichtig: immer neue Map setzen, damit Listener sauber triggern
     storeNotifier.value = (s == null) ? null : Map<String, dynamic>.from(s);
@@ -39,7 +61,8 @@ class StoreConfigService {
       try {
         final decoded = json.decode(raw);
         if (decoded is Map) {
-          _setStore(Map<String, dynamic>.from(decoded));
+          final data = Map<String, dynamic>.from(decoded);
+          _setStore(data);
 
           // Optional: im Hintergrund aktualisieren (macht App "fresh", ohne Loader)
           if (backgroundRefreshIfCached) {
@@ -89,6 +112,7 @@ class StoreConfigService {
   }
 
   /// ✅ Cache schreiben (memory + disk) + reactive update
+  /// Alle UI-Komponenten mit ValueListenableBuilder werden sofort aktualisiert
   static Future<void> set(Map<String, dynamic> s) async {
     final copy = _sanitize(s) as Map<String, dynamic>;
     _setStore(copy);
@@ -102,7 +126,6 @@ class StoreConfigService {
     final current = Map<String, dynamic>.from(storeNotifier.value ?? {});
     patch.forEach((k, v) {
       if (v == null) return;
-      if (v is String && v.trim().isEmpty) return; // skip leere Strings
       current[k] = v;
     });
     await set(current);

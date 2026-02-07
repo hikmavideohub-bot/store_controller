@@ -21,10 +21,10 @@ const admin = require("firebase-admin");
 const axios = require("axios");
 
 // 1. GLOBALE EINSTELLUNGEN SETZEN
-// Setzt für ALLE v2 Funktionen die Region und das Limit
+// Niedrige globale Limits - individuelle Functions bekommen höhere Werte
 setGlobalOptions({
   region: "europe-west3",
-  maxInstances: 20, // Das ist jetzt sicher für deinen Shop
+  maxInstances: 1, // 3 Niedrig halten, um CPU-Quota nicht zu sprengen
 });
 
 admin.initializeApp();
@@ -279,46 +279,164 @@ const EMAIL_TEMPLATES = {
 // HELPER FUNCTIONS (Unverändert)
 // =============================================================================
 
-function generateArabicSlug(name) {
+/**
+ * Verbesserte arabische Slug-Generierung
+ * - Token-basiert (Wörter sauber trennen)
+ * - Dictionary nur auf ganze Wörter
+ * - Artikel "ال" nur am Wortanfang als Prefix
+ * - Diakritika + Tatweel komplett entfernen
+ * - Unicode normalisieren
+ * - Konsistente Transliteration
+ * - MaxLen & sauberes Kürzen
+ */
+function generateArabicSlug(name, maxLen = 60) {
   if (!name) return null;
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 1. UNICODE NORMALISIEREN & DIAKRITIKA ENTFERNEN
+  // ═══════════════════════════════════════════════════════════════════════════
+  let normalized = name.normalize('NFKD');
+
+  // Alle arabischen Diakritika entfernen (Harakat, Tanwin, Sukun, Shadda, Tatweel, etc.)
+  // Range: U+064B - U+0652 (Fatha, Damma, Kasra, Tanwin, Sukun, Shadda)
+  // Plus: U+0640 (Tatweel), U+0670 (Superscript Alef), andere Quranic marks
+  normalized = normalized.replace(/[\u064B-\u065F\u0640\u0670\u06D6-\u06ED]/g, '');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 2. HAMZA/ALEF VARIANTEN NORMALISIEREN
+  // ═══════════════════════════════════════════════════════════════════════════
+  // أ إ آ ٱ → ا
+  normalized = normalized.replace(/[أإآٱ]/g, 'ا');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 3. TOKENISIEREN (Wörter trennen)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Alle nicht-alphanumerischen Zeichen (inkl. arabisch) als Trenner
+  const tokens = normalized.split(/[\s\-_.,;:!?'"()\[\]{}\/\\]+/).filter(t => t.length > 0);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 4. DICTIONARY (nur ganze Wörter, mit Artikel-Varianten)
+  // ═══════════════════════════════════════════════════════════════════════════
   const dictionary = {
-      'متجر': 'matjar', 'محل': 'mahal', 'سوق': 'souq', 'مركز': 'markaz',
-      'محمد': 'muhammad', 'أحمد': 'ahmad', 'احمد': 'ahmad', 'علي': 'ali',
-      'عمر': 'omar', 'خالد': 'khaled', 'سعيد': 'saeed', 'يوسف': 'yusuf',
-      'عبدالله': 'abdullah', 'عبد الله': 'abdullah', 'نور': 'noor',
-      'الرياض': 'riyadh', 'جدة': 'jeddah', 'مكة': 'makkah', 'دبي': 'dubai',
-      'ال': 'al', 'و': 'wa', 'بو': 'bu', 'بن': 'bin'
-    };
-
-
-  const charMap = {
-    'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'a', 'ى': 'a', 'ئ': 'e', 'ؤ': 'o',
-    'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'j', 'ح': 'h', 'خ': 'kh',
-    'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z', 'س': 's', 'ش': 'sh',
-    'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a', 'غ': 'gh',
-    'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l',
-    'م': 'm', 'ن': 'n', 'ه': 'h', 'و': 'w', 'ي': 'y', 'ة': 'h',
-    'َ': 'a', 'ُ': 'u', 'ِ': 'i'
+    // Orte (mit und ohne Artikel)
+    'الرياض': 'riyadh', 'رياض': 'riyadh',
+    'جدة': 'jeddah', 'الجدة': 'jeddah',
+    'مكة': 'makkah', 'المكة': 'makkah',
+    'دبي': 'dubai', 'الدبي': 'dubai',
+    'دمشق': 'damascus', 'الدمشق': 'damascus',
+    'حلب': 'aleppo', 'الحلب': 'aleppo',
+    'بغداد': 'baghdad', 'البغداد': 'baghdad',
+    'القاهرة': 'cairo', 'قاهرة': 'cairo',
+    // Geschäftstypen
+    'متجر': 'store', 'المتجر': 'store',
+    'محل': 'shop', 'المحل': 'shop',
+    'سوق': 'souq', 'السوق': 'souq',
+    'مركز': 'center', 'المركز': 'center',
+    'بيت': 'bait', 'البيت': 'bait',
+    // Namen
+    'محمد': 'muhammad', 'احمد': 'ahmad', 'علي': 'ali',
+    'عمر': 'omar', 'خالد': 'khaled', 'سعيد': 'saeed',
+    'يوسف': 'yusuf', 'نور': 'noor', 'فاطمة': 'fatima',
+    'عبدالله': 'abdullah', 'عبدالرحمن': 'abdulrahman',
+    // Präpositionen/Verbinder (als eigene Wörter)
+    'بن': 'bin', 'ابن': 'ibn', 'بو': 'bu', 'ابو': 'abu', 'ام': 'um',
   };
 
-  let processedName = name;
+  // Stopwords: Diese Wörter werden entfernt wenn sie alleine stehen
+  const stopwords = new Set(['و', 'في', 'من', 'الى', 'على', 'عن', 'مع', 'هذا', 'هذه', 'ذلك', 'تلك']);
 
-  // 1. Dictionary Ersetzungen
-  Object.keys(dictionary).forEach(key => {
-     const regex = new RegExp(key, 'g');
-     processedName = processedName.replace(regex, ' ' + dictionary[key] + ' ');
-  });
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 5. TRANSLITERATIONS-MAP (konsistent)
+  // ═══════════════════════════════════════════════════════════════════════════
+  const charMap = {
+    // Alef-Varianten (bereits normalisiert, aber als Fallback)
+    'ا': 'a', 'أ': 'a', 'إ': 'a', 'آ': 'a', 'ٱ': 'a',
+    'ى': 'a',  // Alef Maksura
+    'ئ': 'y', 'ؤ': 'w',  // Hamza auf Träger
+    // Konsonanten
+    'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'j', 'ح': 'h', 'خ': 'kh',
+    'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z', 'س': 's', 'ش': 'sh',
+    'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z',
+    'ع': '',   // Ayn: oft stumm in Transliteration
+    'غ': 'gh',
+    'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l',
+    'م': 'm', 'ن': 'n', 'ه': 'h',
+    'و': 'w',  // Waw
+    'ي': 'y',  // Ya (y ist üblicher als i)
+    'ة': 'a',  // Ta Marbuta: am Wortende meist 'a' (z.B. مكة → makkah ist Ausnahme im Dict)
+  };
 
-  // 2. Zeichenweise Transliteration
-  processedName = processedName.split('').map(char => charMap[char] || char).join('');
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 6. TOKENS VERARBEITEN
+  // ═══════════════════════════════════════════════════════════════════════════
+  const processedTokens = tokens.map(token => {
+    // 6a. Stopwords überspringen
+    if (stopwords.has(token)) {
+      return null;
+    }
 
-  // 3. Cleanup: Alles außer a-z, 0-9 entfernen, Leerzeichen zu Bindestrichen
-  return processedName.toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '') // Sonderzeichen weg
-    .replace(/\s+/g, '-')         // Leerzeichen zu Bindestrich
-    .replace(/-+/g, '-')          // Doppelte Bindestriche weg (z.B. al--wasail -> al-wasail)
-    .replace(/^-|-$/g, '');       // Bindestriche am Anfang/Ende weg
+    // 6b. Dictionary-Lookup (exakte Übereinstimmung)
+    if (dictionary[token]) {
+      return dictionary[token];
+    }
+
+    // 6c. Artikel "ال" am Wortanfang behandeln
+    let hasArticle = false;
+    let core = token;
+    if (token.startsWith('ال') && token.length > 2) {
+      hasArticle = true;
+      core = token.substring(2);
+      // Nochmal Dictionary-Check ohne Artikel
+      if (dictionary[core]) {
+        return hasArticle ? 'al-' + dictionary[core] : dictionary[core];
+      }
+    }
+
+    // 6d. Zeichenweise Transliteration
+    let transliterated = '';
+    for (const char of core) {
+      if (charMap[char] !== undefined) {
+        transliterated += charMap[char];
+      } else if (/[a-z0-9]/i.test(char)) {
+        // Lateinische Buchstaben/Zahlen behalten
+        transliterated += char.toLowerCase();
+      }
+      // Alle anderen Zeichen werden ignoriert
+    }
+
+    // 6e. Artikel-Prefix hinzufügen wenn vorhanden
+    if (hasArticle && transliterated.length > 0) {
+      transliterated = 'al-' + transliterated;
+    }
+
+    return transliterated.length > 0 ? transliterated : null;
+  }).filter(t => t !== null);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 7. ZUSAMMENFÜGEN & CLEANUP
+  // ═══════════════════════════════════════════════════════════════════════════
+  let slug = processedTokens.join('-');
+
+  // Cleanup
+  slug = slug.toLowerCase()
+    .replace(/[^a-z0-9-]/g, '')  // Nur a-z, 0-9, - erlauben
+    .replace(/-+/g, '-')          // Mehrfache Bindestriche zusammenfassen
+    .replace(/^-|-$/g, '');       // Bindestriche am Anfang/Ende entfernen
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 8. LÄNGENBESCHRÄNKUNG (sauber am letzten Bindestrich kürzen)
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (slug.length > maxLen) {
+    slug = slug.substring(0, maxLen);
+    // Am letzten vollständigen Wort abschneiden
+    const lastDash = slug.lastIndexOf('-');
+    if (lastDash > maxLen * 0.5) {  // Nur wenn mindestens 50% erhalten bleibt
+      slug = slug.substring(0, lastDash);
+    }
+    slug = slug.replace(/-$/, '');  // Trailing dash entfernen
+  }
+
+  return slug || null;
 }
 
 const SUPPORTED_LANGS = ['ar', 'en', 'de', 'tr'];
@@ -352,36 +470,6 @@ async function resolveStoreLocale(storeId, privateData, cache) {
   return { lang, storeName, publicData, cache: c };
 }
 
-/**
- * Entfernt rekursiv nur 'undefined' (ohne Firestore-Typen kaputt zu machen).
- */
-function stripUndefined(value) {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-
-  // Firestore Special Types nicht anfassen
-  if (value instanceof admin.firestore.Timestamp) return value;
-  if (value instanceof admin.firestore.GeoPoint) return value;
-  if (value instanceof admin.firestore.DocumentReference) return value;
-
-  if (Array.isArray(value)) {
-    const arr = value
-      .map(stripUndefined)
-      .filter((v) => v !== undefined);
-    return arr;
-  }
-
-  if (typeof value === "object") {
-    const out = {};
-    for (const [k, v] of Object.entries(value)) {
-      const cleaned = stripUndefined(v);
-      if (cleaned !== undefined) out[k] = cleaned;
-    }
-    return out;
-  }
-
-  return value;
-}
 
 function getLocalizedPlanName(planId, lang) {
   const plans = EMAIL_TEMPLATES.planNames[lang] || EMAIL_TEMPLATES.planNames['ar'];
@@ -596,6 +684,7 @@ async function updateTrialAndExpiredStores() {
 exports.checkTrialExpiration = onSchedule(
   {
     region: REGION,
+    maxInstances: 1, // Cron-Job braucht nur 1 Instanz
     schedule: "0 3 * * *",
     timeZone: "UTC"
   },
@@ -604,15 +693,13 @@ exports.checkTrialExpiration = onSchedule(
 
 /**
  * Trigger: New Store Created (v2 Firestore)
- * Replaces: functions.firestore.document().onCreate
- */
-/**
- * Trigger: New Store Created (v2 Firestore)
- * Replaces: functions.firestore.document().onCreate
+ * GEÄNDERT: Erstellt KEINEN Slug mehr - Store bleibt als "draft"
+ * Slug wird erst bei finalizeStoreSetup erstellt
  */
 exports.onStoreCreated = onDocumentCreated(
   {
     region: REGION,
+    maxInstances: 2, // Firestore-Trigger - nur bei Registrierungen
     document: "stores_private/{storeId}"
   },
   async (event) => {
@@ -622,101 +709,25 @@ exports.onStoreCreated = onDocumentCreated(
 
     const publicStoreRef = db.collection("stores_public").doc(id);
 
-    // 1. Template-Daten laden [cite: 177]
-    const templateStoreDoc = await db.collection("_defaults").doc("sample_store").get();
-    const templateStoreData = templateStoreDoc.exists ? templateStoreDoc.data() : {};
-
-    // 2. Zeitberechnung [cite: 178]
+    // Zeitberechnung
     const now = new Date();
     const trialEndDate = new Date(now.getTime() + (14 * 24 * 60 * 60 * 1000));
 
-    // 3. ZENTRALE NAMEN & SLUG LOGIK (FIX)
-    // Wir legen den Namen hier EINMAL fest, damit Slug und DB-Eintrag garantiert identisch sind.
+    // Store Name
     const storeName = privateData.store_name || "Store";
-    let slug = privateData.store_slug;
-
-    if (!slug) {
-      // Nutze die existierende Helper-Funktion auf den oben definierten Namen
-      let baseSlug = generateArabicSlug(storeName); // [cite: 133, 179]
-
-      // Fallback: Wenn Transliteration leer ist ODER der Name nur "Store" war
-      if (!baseSlug || baseSlug.length < 2 || storeName === "Store") {
-        baseSlug = "store"; // [cite: 180]
-      }
-
-      // ID anhängen für Eindeutigkeit (die ersten 4 Zeichen)
-      slug = baseSlug + '-' + id.substring(0, 4); // [cite: 181]
-    }
-
-    // 4. Slug in Collection registrieren
-    // WICHTIG: Wir nutzen hier die Variable 'storeName' von oben
-    batch.set(db.collection("slugs").doc(slug), {
-      store_id: id,
-      store_name: storeName,
-      created_at: admin.firestore.FieldValue.serverTimestamp()
-    });
 
     try {
-      // 5. Produkte kopieren (Sample Data) [cite: 183]
-      // 5. Produkte kopieren (Sample Data) – OHNE BATCH
-      const defaultProductsSnapshot = await db
-        .collection("_defaults")
-        .doc("sample_store")
-        .collection("products")
-        .get();
-
-      console.log(`📦 Gefundene Produkte zum Kopieren: ${defaultProductsSnapshot.size}`);
-
-      // ✅ Chunked writes (stabiler) + Firestore-Typen bleiben erhalten
-      const docs = defaultProductsSnapshot.docs;
-      const CHUNK_SIZE = 25;
-
-      for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
-        const chunk = docs.slice(i, i + CHUNK_SIZE);
-
-        const results = await Promise.allSettled(
-          chunk.map((d) => {
-            const productData = d.data();
-            const cleanData = stripUndefined(productData);
-
-            const newProductRef = publicStoreRef.collection("products").doc();
-            return newProductRef.set({
-              ...cleanData,
-              id: newProductRef.id,
-              created_at: admin.firestore.FieldValue.serverTimestamp()
-            });
-          })
-        );
-
-        const failed = results
-          .map((r, idx) => ({ r, templateId: chunk[idx].id }))
-          .filter((x) => x.r.status === "rejected");
-
-        if (failed.length) {
-          console.error("❌ Fehler beim Kopieren einiger Sample-Produkte:", failed.map(f => ({
-            templateId: f.templateId,
-            error: String(f.r.reason)
-          })));
-          // Nicht abbrechen: wir wollen trotzdem den Store anlegen
-        }
-      }
-
-      console.log("✅ Sample-Produkte erfolgreich kopiert");
-
-
-      // 6. UPDATE PRIVATE [cite: 186]
-      // Wir setzen hier KEIN 'region' Feld, da 'address_country' das führende Feld ist.
+      // UPDATE PRIVATE - status = "draft" (kein Slug)
       batch.update(event.data.ref, {
+        "status": "draft",
         "access.status": "trial",
-        "access.stage": 0,          // Sicherstellen, dass Stage gesetzt ist
+        "access.stage": 0,
         "access.trial_start_at": now.toISOString(),
         "access.trial_end_at": trialEndDate.toISOString(),
         "access.daysRemaining": 14,
-        "store_slug": slug          // Den generierten Slug speichern
       });
 
-      // 7. UPDATE PUBLIC [cite: 187]
-      // Initiales Access-Mirror (nur erlaubte Felder)
+      // UPDATE PUBLIC - status = "draft" (nicht öffentlich sichtbar)
       const initialPublicAccess = {
         status: 'trial',
         stage: 0,
@@ -726,20 +737,18 @@ exports.onStoreCreated = onDocumentCreated(
       };
 
       batch.set(publicStoreRef, {
-        ...templateStoreData,
         store_name: storeName,
-        store_slug: slug,
-        public_store_url: `https://aldeebtech.de/s/${slug}`,
-        has_products: defaultProductsSnapshot.size > 0,
-        access: initialPublicAccess,  // Access sofort gespiegelt
+        status: 'draft',
+        has_products: false,
+        access: initialPublicAccess,
         created_at: admin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 
-      await batch.commit(); // [cite: 188]
-      console.log(`✅ Store ${id} erfolgreich initialisiert. Slug: ${slug}`);
+      await batch.commit();
+      console.log(`✅ Store ${id} als DRAFT initialisiert`);
 
     } catch (error) {
-      console.error("❌ Fehler bei der Initialisierung des Stores:", error); // [cite: 188]
+      console.error("❌ Fehler bei der Initialisierung des Stores:", error);
     }
   }
 );
@@ -755,6 +764,7 @@ exports.onStoreCreated = onDocumentCreated(
 exports.onStoreActivated = onDocumentUpdated(
   {
     region: REGION,
+    maxInstances: 2, // Firestore-Trigger - Aktivierungen
     document: "stores_private/{storeId}"
   },
   async (event) => {
@@ -911,6 +921,7 @@ exports.createStripeCheckoutSession = onCall(
 exports.stripeWebhook = onRequest(
   {
     region: REGION,
+    maxInstances: 2, // 15 High traffic - Payment webhooks kritisch
     secrets: [stripeWebhookSecret, stripeSecret]
   },
   async (req, res) => {
@@ -1021,6 +1032,7 @@ exports.stripeWebhook = onRequest(
 exports.getStoreBySlug = onRequest(
   {
     region: REGION,
+    maxInstances: 2, //10 Public API - Kundentraffic
     cors: true
   },
   async (req, res) => {
@@ -1055,6 +1067,7 @@ exports.getStoreBySlug = onRequest(
 exports.getProductsBySlug = onRequest(
   {
     region: REGION,
+    maxInstances: 2, // 10 Public API - Kundentraffic
     cors: true
   },
   async (req, res) => {
@@ -1250,6 +1263,7 @@ exports.verifyStorePayment = onCall(
 exports.cleanupExpiredAccounts = onSchedule(
   {
     region: REGION,
+    maxInstances: 1, // Cron-Job braucht nur 1 Instanz
     schedule: "0 4 * * *",
     timeZone: "UTC"
   },
@@ -1323,7 +1337,7 @@ exports.requestAccountDeletion = onCall(
  * CDN Image Proxy (v2 Request)
  */
 exports.cdnImageProxy = onRequest(
-  { region: "europe-west3" },
+  { region: "europe-west3", maxInstances: 2 }, //10 Bildauslieferung - hoher Traffic
   async (req, res) => {
     res.set("Access-Control-Allow-Origin", "*");
     if (req.method === "OPTIONS") return res.status(204).send("");
@@ -1483,6 +1497,7 @@ function extractPublicAccessFields(accessData) {
 exports.syncAccessToPublic = onDocumentUpdated(
   {
     region: REGION,
+    maxInstances: 2, // Firestore-Trigger - Access-Sync
     document: "stores_private/{storeId}"
   },
   async (event) => {
@@ -1761,6 +1776,7 @@ exports.reverseGeocode = onCall(
 exports.syncStoreNameToPublic = onDocumentUpdated(
   {
     region: REGION,
+    maxInstances: 2, // Firestore-Trigger - Name-Sync
     document: "stores_private/{storeId}"
   },
   async (event) => {
@@ -1816,6 +1832,7 @@ exports.syncStoreNameToPublic = onDocumentUpdated(
 exports.syncStoreNameToPrivate = onDocumentUpdated(
   {
     region: REGION,
+    maxInstances: 2, // Firestore-Trigger - Name-Sync
     document: "stores_public/{storeId}"
   },
   async (event) => {
@@ -1865,6 +1882,188 @@ exports.syncStoreNameToPrivate = onDocumentUpdated(
 );
 
 // =============================================================================
+// FINALIZE STORE SETUP - Slug atomar reservieren
+// =============================================================================
+
+/**
+ * SECURE: Finalisiert Store-Setup und reserviert Slug atomar
+ *
+ * Wird aufgerufen wenn User im Wizard "Abschließen" drückt.
+ * Macht in einer Transaction:
+ * 1. Prüft ob Slug frei ist
+ * 2. Erstellt slugs/{slug} Dokument
+ * 3. Updated stores_private mit slug + status = "active"
+ * 4. Updated stores_public mit slug + public_store_url + status = "active"
+ *
+ * Input: { storeName: string, desiredSlug?: string }
+ * Output: { success: true, slug: string, publicUrl: string } oder { success: false, error: string }
+ */
+exports.finalizeStoreSetup = onCall(
+  { region: REGION },
+  async (request) => {
+    // 1. Auth Check
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Login required.");
+    }
+
+    const uid = request.auth.uid;
+    const { storeName, desiredSlug } = request.data || {};
+
+    if (!storeName || storeName.trim().length === 0) {
+      throw new HttpsError("invalid-argument", "storeName is required.");
+    }
+    if (storeName.trim().length > 40) {
+      throw new HttpsError("invalid-argument", "storeName must not exceed 40 characters.");
+    }
+
+    console.log(`[finalizeStoreSetup] Starting for store ${uid}, name="${storeName}", desiredSlug="${desiredSlug || 'auto'}"`);
+
+    // 2. Prüfen ob Store bereits finalisiert ist
+    const privateRef = db.collection("stores_private").doc(uid);
+    const privateDoc = await privateRef.get();
+
+    if (!privateDoc.exists) {
+      throw new HttpsError("not-found", "Store not found.");
+    }
+
+    const privateData = privateDoc.data();
+    if (privateData.status === 'active' && privateData.store_slug) {
+      const existingSlug = privateData.store_slug;
+      console.log(`[finalizeStoreSetup] Store ${uid} already finalized with slug: ${existingSlug}`);
+
+      // IDEMPOTENT: Prüfen ob slugs/{slug} existiert, falls nicht → anlegen
+      const slugDocRef = db.collection("slugs").doc(existingSlug);
+      const slugDoc = await slugDocRef.get();
+      if (!slugDoc.exists) {
+        console.log(`[finalizeStoreSetup] REPAIR: slugs/${existingSlug} fehlt, wird angelegt...`);
+        await slugDocRef.set({
+          store_id: uid,
+          store_name: privateData.store_name || storeName,
+          created_at: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        console.log(`[finalizeStoreSetup] ✅ slugs/${existingSlug} repariert`);
+      }
+
+      return {
+        success: true,
+        slug: existingSlug,
+        publicUrl: `https://aldeebtech.de/s/${existingSlug}`,
+        message: "Store already finalized."
+      };
+    }
+
+    // 3. Slug generieren oder validieren
+    let finalSlug;
+    const MAX_SLUG_ATTEMPTS = 100;
+
+    if (desiredSlug && desiredSlug.trim().length > 0) {
+      // User hat einen Slug gewünscht - validieren
+      const cleanSlug = desiredSlug.trim().toLowerCase()
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      if (cleanSlug.length < 3) {
+        throw new HttpsError("invalid-argument", "Slug must be at least 3 characters.");
+      }
+      if (cleanSlug.length > 50) {
+        throw new HttpsError("invalid-argument", "Slug must be less than 50 characters.");
+      }
+
+      // Reservierte Slugs prüfen
+      const reserved = ['admin', 'api', 'login', 'register', 'store', 'stores', 'user', 'users', 'app', 'www', 'mail', 'support', 'help', 'dashboard', 'settings', 'payment', 'checkout'];
+      if (reserved.includes(cleanSlug)) {
+        throw new HttpsError("invalid-argument", "This slug is reserved.");
+      }
+
+      finalSlug = cleanSlug;
+    } else {
+      // Slug aus Store-Name generieren
+      let baseSlug = generateArabicSlug(storeName.trim());
+
+      if (!baseSlug || baseSlug.length < 2) {
+        baseSlug = "store";
+      }
+
+      // Verfügbaren Slug finden
+      for (let suffix = 1; suffix <= MAX_SLUG_ATTEMPTS; suffix++) {
+        const candidateSlug = suffix === 1 ? baseSlug : `${baseSlug}-${suffix}`;
+        const slugDoc = await db.collection("slugs").doc(candidateSlug).get();
+
+        if (!slugDoc.exists) {
+          finalSlug = candidateSlug;
+          break;
+        }
+      }
+
+      if (!finalSlug) {
+        // Fallback mit Timestamp
+        finalSlug = `${baseSlug.substring(0, 20)}-${Date.now()}`;
+      }
+    }
+
+    console.log(`[finalizeStoreSetup] Using slug: ${finalSlug}`);
+
+    // 4. ATOMARE TRANSACTION: Slug reservieren + Store updaten
+    const publicUrl = `https://aldeebtech.de/s/${finalSlug}`;
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // A. Prüfen ob Slug noch frei ist
+        const slugRef = db.collection("slugs").doc(finalSlug);
+        const slugDoc = await transaction.get(slugRef);
+
+        if (slugDoc.exists) {
+          throw new Error("SLUG_TAKEN");
+        }
+
+        // B. Slug-Dokument erstellen
+        transaction.set(slugRef, {
+          store_id: uid,
+          store_name: storeName.trim(),
+          created_at: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // C. stores_private updaten
+        transaction.update(privateRef, {
+          status: 'active',
+          store_slug: finalSlug,
+          setup_complete: true, // WICHTIG: Router prüft dieses Flag!
+          setup_completed_at: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // D. stores_public updaten
+        const publicRef = db.collection("stores_public").doc(uid);
+        transaction.update(publicRef, {
+          status: 'active',
+          store_slug: finalSlug,
+          public_store_url: publicUrl,
+          store_name: storeName.trim(),
+          setup_complete: true // WICHTIG: Router prüft dieses Flag!
+        });
+      });
+
+      console.log(`✅ [finalizeStoreSetup] Success for ${uid}: slug="${finalSlug}"`);
+
+      return {
+        success: true,
+        slug: finalSlug,
+        publicUrl: publicUrl
+      };
+
+    } catch (error) {
+      if (error.message === "SLUG_TAKEN") {
+        console.warn(`⚠️ [finalizeStoreSetup] Slug "${finalSlug}" was taken during transaction for ${uid}`);
+        throw new HttpsError("already-exists", "This slug was just taken. Please try again.");
+      }
+
+      console.error(`❌ [finalizeStoreSetup] Transaction failed for ${uid}:`, error);
+      throw new HttpsError("internal", "Failed to finalize store setup. Please try again.");
+    }
+  }
+);
+
+// =============================================================================
 // FX RATES - Wechselkurse für Stripe Fixed Local Currency
 // =============================================================================
 
@@ -1882,6 +2081,7 @@ exports.refreshFxRates = onSchedule(
     schedule: "0 4 * * *", // Täglich 04:00 UTC
     timeZone: "UTC",
     region: REGION,
+    maxInstances: 1, // Cron-Job braucht nur 1 Instanz
   },
   async () => {
     console.log("[refreshFxRates] Starting scheduled FX refresh...");

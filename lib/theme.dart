@@ -11,7 +11,7 @@ class AppTheme {
   // Hintergrund: "Slate" (Kühles, modernes Grau statt schmutziges Braun-Grau)
   // "Royal White": Rein, hell, mit einem luxuriösen, warmen Gold-Unterton.
   static const _bgLight = Color(
-    0xFFFFFEFA,
+    0xFFF6F3EA,
   ); // "Snow with Gold" - Fast Weiß, sehr edel.
   static const _bgDark = Color(
     0xFF14120E,

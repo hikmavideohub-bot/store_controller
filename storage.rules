@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Store-Bilder: stores/{storeId}/...
+    match /stores/{storeId}/{allPaths=**} {
+      // Lesen: Öffentlich
+      allow read: if true;
+
+      // Schreiben/Löschen: Store-Owner (via Firestore) ODER Admin
+      allow write: if request.auth != null
+                   && (
+                     // Option 1: Auth UID matches storeId directly
+                     request.auth.uid == storeId
+                     // Option 2: User owns this store (check Firestore)
+                     || firestore.exists(/databases/(default)/documents/stores/$(storeId))
+                        && firestore.get(/databases/(default)/documents/stores/$(storeId)).data.owner_uid == request.auth.uid
+                     // Option 3: Admin
+                     || request.auth.uid == "8GpNy3S2nQScfV5GHvxxxpMSXZx1"
+                   );
+    }
+
+    // Alles andere blockieren
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

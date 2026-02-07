@@ -48,6 +48,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _imageController,
       _descriptionController,
       _percentController,
+      _discountedPriceController,
       _bundleQtyController,
       _bundlePriceController,
       _bulkQtyController,
@@ -57,6 +58,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final FocusNode _priceFocusNode = FocusNode(),
       _weightFocusNode = FocusNode(),
       _categoryFocusNode = FocusNode();
+
+  // Bidirektionale Sync-Logik für Percent-Angebot
+  bool _syncing = false;
+  String _lastEdited = 'percent';
 
   /// Ermittelt die Textrichtung basierend auf dem ersten Buchstaben
   TextDirection? _getTextDirection(String text) {
@@ -101,6 +106,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _percentController = TextEditingController(
       text: (p != null && p.percent > 0) ? _formatNumToText(p.percent) : '',
     );
+    _discountedPriceController = TextEditingController();
     _bundleQtyController = TextEditingController(
       text: (p != null && p.bundleQty > 0) ? p.bundleQty.toString() : '',
     );
@@ -146,7 +152,101 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _weightFocusNode.addListener(() {
       if (!_weightFocusNode.hasFocus) _normalizeWeightText();
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAccessOnLoad());
+
+    // Bidirektionale Listener für Percent-Angebot
+    _percentController.addListener(_onPercentChanged);
+    _discountedPriceController.addListener(_onDiscountedChanged);
+    _priceController.addListener(_onRegularPriceChanged);
+
+    // Initial discounted price berechnen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initDiscountedPrice();
+      _checkAccessOnLoad();
+    });
+  }
+
+  void _initDiscountedPrice() {
+    final regular = _getRegularPriceValue();
+    final percent = _parseNum(_percentController.text);
+    if (regular != null && regular > 0 && percent > 0) {
+      final discounted = regular * (1 - percent / 100);
+      _discountedPriceController.text = _fmtMoney(discounted);
+    }
+  }
+
+  void _onPercentChanged() {
+    if (_syncing || _offerType != 'percent') return;
+    _lastEdited = 'percent';
+    _syncFromPercent();
+  }
+
+  void _onDiscountedChanged() {
+    if (_syncing || _offerType != 'percent') return;
+    _lastEdited = 'discounted';
+    _syncFromDiscounted();
+  }
+
+  void _onRegularPriceChanged() {
+    if (_syncing || _offerType != 'percent') return;
+    // Basierend auf lastEdited neu berechnen
+    if (_lastEdited == 'percent') {
+      _syncFromPercent();
+    } else {
+      _syncFromDiscounted();
+    }
+  }
+
+  void _syncFromPercent() {
+    final regular = _getRegularPriceValue();
+    if (regular == null || regular <= 0) return;
+
+    final percentText = _percentController.text;
+    var percent = _parseNum(percentText).clamp(0.0, 99.99);
+
+    final discounted = regular * (1 - percent / 100);
+
+    _syncing = true;
+    _discountedPriceController.text = _fmtMoney(discounted.clamp(0, regular));
+    _syncing = false;
+  }
+
+  void _syncFromDiscounted() {
+    final regular = _getRegularPriceValue();
+    if (regular == null || regular <= 0) return;
+
+    final discountedText = _discountedPriceController.text;
+    var discounted = _parseNum(discountedText).clamp(0.0, regular);
+
+    final percent = ((1 - discounted / regular) * 100).clamp(0.0, 99.99);
+
+    _syncing = true;
+    _percentController.text = _fmtPercent(percent);
+    _syncing = false;
+  }
+
+  double _parseNum(String s) {
+    if (s.isEmpty) return 0.0;
+    return double.tryParse(s.replaceAll(',', '.').trim()) ?? 0.0;
+  }
+
+  String _fmtMoney(double v) {
+    if (v == v.roundToDouble()) {
+      return v.toStringAsFixed(0).replaceAll('.', ',');
+    }
+    return v.toStringAsFixed(2).replaceAll('.', ',');
+  }
+
+  String _fmtPercent(double v) {
+    if (v == v.roundToDouble()) {
+      return v.toStringAsFixed(0);
+    }
+    return v.toStringAsFixed(1).replaceAll('.', ',');
+  }
+
+  double? _getRegularPriceValue() {
+    final s = _calculateRegularPrice();
+    if (s == '—') return null;
+    return _parseNum(s);
   }
 
   DateTime _parseDateSafe(String? s, DateTime fallback) {
@@ -179,6 +279,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   @override
   void dispose() {
+    _percentController.removeListener(_onPercentChanged);
+    _discountedPriceController.removeListener(_onDiscountedChanged);
+    _priceController.removeListener(_onRegularPriceChanged);
     for (var c in [
       _nameController,
       _priceController,
@@ -186,6 +289,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _imageController,
       _descriptionController,
       _percentController,
+      _discountedPriceController,
       _bundleQtyController,
       _bundlePriceController,
       _bulkQtyController,
@@ -453,7 +557,31 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Future<void> _submit() async {
     final s = AppLocalizations.of(context)!;
-    if (_isSaving || _formKey.currentState?.validate() != true) return;
+    if (_isSaving) return;
+
+    // Pflichtfelder prüfen und fehlende sammeln
+    final missing = <String>[];
+    if (_nameController.text.trim().isEmpty) missing.add(s.productNameLabel);
+    if (_priceController.text.trim().isEmpty) missing.add(s.priceLabel);
+    if (_categoryController.text.trim().isEmpty) missing.add(s.categoryLabel);
+    if (_sizeValueController.text.trim().isEmpty) missing.add(s.sizeLabel);
+
+    // Form-Validierung auslösen (zeigt rote Ränder bei leeren Feldern)
+    _formKey.currentState?.validate();
+
+    if (missing.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            s.fieldsMissing(missing.join(', ')),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     // 1. Produktlimit prüfen (nur bei neuem Produkt)
     final isNew = widget.productToEdit == null;
@@ -598,309 +726,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  String _getPluralPieces(int count, AppLocalizations s) {
-    if (count == 1) return s.pcs1;
-    if (count == 2) return s.pcs2;
-    if (count >= 3 && count <= 10) return s.pcs3to10(count.toString());
-    return s.pcsOver10(count.toString());
-  }
-
-  Widget _buildCustomerPreview() {
-    if (!_hasOffer) return const SizedBox.shrink();
-
-    final s = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        _nameController,
-        _sizeValueController,
-        _priceController,
-        _imageController,
-        _percentController,
-        _bundleQtyController,
-        _bundlePriceController,
-        _bulkQtyController,
-        _bulkPriceController,
-      ]),
-      builder: (context, _) {
-        const currency = "€";
-
-        final name = _nameController.text.trim();
-        final unitPrice = _parsePrice(_priceController.text);
-        final sizeValue = _parsePrice(_sizeValueController.text);
-        final imageUrl = (_previewImageUrl ?? _imageController.text).trim();
-
-        // ---------- Offer computation (aligned with web product.dart) ----------
-        String badgeText = "";
-        String overlayText = "";
-        String? detailText;
-        double? oldPrice;
-        double? newPrice;
-
-        if (_offerType == 'percent') {
-          final p = _parsePrice(_percentController.text).clamp(0, 100);
-          if (p > 0 && unitPrice > 0) {
-            badgeText = s.offerBadgePercent(p.toStringAsFixed(0));
-            oldPrice = unitPrice;
-            newPrice = unitPrice * (1 - p / 100);
-          }
-        } else if (_offerType == 'bundle') {
-          final qty = int.tryParse(_bundleQtyController.text) ?? 0;
-          final bPrice = _parsePrice(_bundlePriceController.text);
-
-          if (qty > 0 && bPrice > 0 && unitPrice > 0) {
-            // Pay-Get detection (same idea as in web product.dart)
-            const eps = 0.10;
-            final payQtyGuess = (bPrice / unitPrice).round();
-            final isPayGet =
-                payQtyGuess >= 1 &&
-                payQtyGuess < qty &&
-                (bPrice - payQtyGuess * unitPrice).abs() < eps;
-
-            overlayText = s.bundleOverlay(
-              currency,
-              _formatNumToText(bPrice),
-              _getPluralPieces(qty, s),
-            );
-
-            if (isPayGet) {
-              final freeQty = (qty - payQtyGuess).clamp(0, qty);
-              if (freeQty > 0) {
-                badgeText = s.freeQtyBadge(_getPluralPieces(freeQty, s));
-              }
-              detailText = s.bundleDetailPayOnly(
-                payQtyGuess.toString(),
-                _getPluralPieces(qty, s),
-              );
-            } else {
-              badgeText = _getPluralPieces(qty, s);
-              detailText = s.bundleDetail(
-                _formatNumToText(bPrice),
-                _getPluralPieces(qty, s),
-              );
-            }
-          }
-        } else if (_offerType == 'bulk') {
-          final qty = int.tryParse(_bulkQtyController.text) ?? 0;
-          final bPrice = _parsePrice(_bulkPriceController.text);
-
-          if (qty > 0) {
-            badgeText = s.bulkBadge;
-            overlayText = s.bulkOverlay(
-              qty.toString(),
-              _getPluralPieces(qty, s),
-            );
-
-            // Optional: show the "new" per-piece price like customers usually see it
-            if (bPrice > 0 && unitPrice > 0 && bPrice < unitPrice) {
-              oldPrice = unitPrice;
-              newPrice = bPrice;
-            }
-          }
-        }
-
-        if (badgeText.isEmpty &&
-            overlayText.isEmpty &&
-            detailText == null &&
-            oldPrice == null) {
-          return const SizedBox.shrink();
-        }
-
-        return Container(
-          margin: const EdgeInsets.only(top: 24),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: colors.outline.withValues(alpha: 0.10)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.remove_red_eye, size: 18, color: colors.primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    s.previewForCustomer,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: colors.primary,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Mini product card preview (customer-like)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colors.surfaceContainer,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: colors.outline.withValues(alpha: 0.08),
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        color: colors.surface,
-                        border: Border.all(
-                          color: colors.outline.withValues(alpha: 0.12),
-                        ),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: imageUrl.isEmpty
-                          ? Icon(
-                              Icons.image_outlined,
-                              color: colors.primary.withValues(alpha: 0.5),
-                            )
-                          : Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Icon(
-                                Icons.broken_image_outlined,
-                                color: theme.hintColor,
-                              ),
-                            ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name.isEmpty ? '—' : name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 4),
-                          if (sizeValue > 0)
-                            Text(
-                              '${_formatNumToText(sizeValue)} ${_getUnitLabel(_selectedUnit, s)}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: theme.hintColor,
-                              ),
-                            ),
-                          const SizedBox(height: 8),
-
-                          // Offer chips
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              if (badgeText.isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: colors.error,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    badgeText,
-                                    style: TextStyle(
-                                      color: colors.onError,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              if (overlayText.isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: colors.tertiary,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    overlayText,
-                                    style: TextStyle(
-                                      color: colors.onTertiary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-
-                          // Price line (for percent + optional bulk)
-                          if (oldPrice != null && newPrice != null) ...[
-                            const SizedBox(height: 10),
-                            Directionality(
-                              textDirection: TextDirection.ltr,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '${_formatNumToText(oldPrice)} $currency',
-                                    style: TextStyle(
-                                      decoration: TextDecoration.lineThrough,
-                                      color: theme.hintColor,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    '${_formatNumToText(newPrice)} $currency',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                      color: colors.error,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-
-                          if (detailText != null) ...[
-                            const SizedBox(height: 10),
-                            Text(
-                              detailText,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -922,11 +747,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
         (v == null || v.trim().isEmpty) ? s.requiredField : null;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: PremiumAnimatedAppBar(
         title: isEditing ? s.editProductTitle : s.addProductTitle,
         showBackButton: true,
       ),
       // --- STICKY PUBLISH BUTTON (Pillen-Form mit Icon) ---
+      // Bleibt immer sichtbar, auch wenn Tastatur geöffnet ist
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
@@ -987,6 +814,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     child: TextFormField(
                       controller: _priceController,
                       focusNode: _priceFocusNode,
+                      textDirection: TextDirection.ltr,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -1035,6 +863,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             validator: validateRequired,
                           )
                         : DropdownButtonFormField<String>(
+                            isExpanded: true,
                             // WICHTIG: Nutze 'value' statt 'initialValue' für Reaktivität
                             initialValue:
                                 _categories.contains(_selectedCategory)
@@ -1044,6 +873,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                               s.categoryLabel,
                               icon: Icons.grid_view,
                             ),
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? s.requiredField
+                                : null,
                             items: [
                               ..._categories.map(
                                 (c) =>
@@ -1097,6 +929,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               TextFormField(
                 controller: _sizeValueController,
                 focusNode: _weightFocusNode,
+                textDirection: TextDirection.ltr,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
@@ -1216,9 +1049,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
               // OFFER CONTAINER (Verbessert & Parallel)
               _buildOfferSection(theme, colors),
-
-              // KUNDENVORSCHAU
-              _buildCustomerPreview(),
 
               const SizedBox(height: 32),
 
@@ -1389,194 +1219,507 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
+  /// Berechnet den Normalpreis basierend auf Angebotstyp
+  String _calculateRegularPrice() {
+    final unitPrice = _parsePrice(_priceController.text);
+    if (unitPrice <= 0) return '—';
+
+    switch (_offerType) {
+      case 'percent':
+        // Normaler Preis = Stückpreis
+        return _formatNumToText(unitPrice);
+      case 'bundle':
+        // Normaler Preis = Stückpreis × Menge
+        final qty = int.tryParse(_bundleQtyController.text) ?? 0;
+        if (qty <= 0) return '—';
+        return _formatNumToText(unitPrice * qty);
+      case 'bulk':
+        // Normaler Preis = Stückpreis
+        return _formatNumToText(unitPrice);
+      default:
+        return '—';
+    }
+  }
+
   Widget _buildOfferSection(ThemeData theme, ColorScheme colors) {
     final s = AppLocalizations.of(context)!;
-    return Container(
+
+    InputDecoration tinyLabel({
+      required String labelText,
+      IconData? icon,
+      String? hintText,
+      Widget? suffixIcon,
+      bool readOnly = false,
+    }) {
+      return InputDecoration(
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(
+            labelText,
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              color: theme.hintColor,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        hintText: hintText,
+        hintStyle: TextStyle(
+          color: theme.hintColor.withValues(alpha: 0.55),
+          fontSize: 11,
+        ),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        filled: true,
+        fillColor: readOnly
+            ? colors.surfaceContainerHighest.withValues(alpha: 0.65)
+            : colors.surfaceContainerHighest.withValues(alpha: 0.45),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: colors.outline.withValues(alpha: 0.18)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: colors.primary, width: 1.6),
+        ),
+        prefixIcon: icon == null ? null : Icon(icon, color: theme.hintColor),
+        suffixIcon: suffixIcon,
+      );
+    }
+
+    Widget clearButton(TextEditingController ctrl) {
+      return ValueListenableBuilder<TextEditingValue>(
+        valueListenable: ctrl,
+        builder: (context, v, _) => v.text.isEmpty
+            ? const SizedBox.shrink()
+            : IconButton(
+                icon: const Icon(Icons.clear, size: 20),
+                onPressed: ctrl.clear,
+              ),
+      );
+    }
+
+    Widget infoChip(String label, String value, {Color? valueColor}) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: colors.primaryContainer.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$label: ',
+              style: TextStyle(fontSize: 11, color: theme.hintColor),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: valueColor ?? colors.onSurface,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
       decoration: BoxDecoration(
         color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _hasOffer
-              ? colors.tertiary.withValues(alpha: 0.5)
-              : colors.outline.withValues(alpha: 0.1),
+              ? colors.tertiary.withValues(alpha: 0.55)
+              : colors.outline.withValues(alpha: 0.12),
         ),
-        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: [
-          SwitchListTile.adaptive(
-            title: Text(
-              s.specialOfferAvailable,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: _hasOffer ? colors.tertiary : colors.onSurface,
-              ),
+          // ══════════════════════════════════════════════════════════════════
+          // HEADER: Zwei Switches parallel (hasOffer + offerActive)
+          // ══════════════════════════════════════════════════════════════════
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+            child: Row(
+              children: [
+                // Switch: hasOffer
+                Expanded(
+                  child: Row(
+                    children: [
+                      Switch.adaptive(
+                        value: _hasOffer,
+                        activeTrackColor: colors.tertiary,
+                        onChanged: (v) => setState(() {
+                          _hasOffer = v;
+                          if (v) {
+                            _offerActive = true;
+                            _initDiscountedPrice();
+                          }
+                        }),
+                      ),
+                      Expanded(
+                        child: Text(
+                          s.specialOfferAvailable,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: _hasOffer ? colors.tertiary : colors.onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Switch: offerActive (nur sichtbar wenn hasOffer)
+                if (_hasOffer)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 8),
+                      Container(
+                        height: 24,
+                        width: 1,
+                        color: colors.outline.withValues(alpha: 0.2),
+                      ),
+                      const SizedBox(width: 8),
+                      Switch.adaptive(
+                        value: _offerActive,
+                        activeTrackColor: Colors.green,
+                        onChanged: (v) => setState(() => _offerActive = v),
+                      ),
+                      Icon(
+                        _offerActive ? Icons.visibility : Icons.visibility_off,
+                        size: 18,
+                        color: _offerActive ? Colors.green : theme.hintColor,
+                      ),
+                    ],
+                  ),
+              ],
             ),
-            subtitle: Text(
-              s.specialOfferSubtitle,
-              style: TextStyle(fontSize: 12, color: theme.hintColor),
-            ),
-            value: _hasOffer,
-            activeTrackColor: colors.tertiary,
-            onChanged: (v) => setState(() {
-              _hasOffer = v;
-              if (v) {
-                _offerActive =
-                    true; // Dies ist die Lösung für das Datenbank-Problem
-              }
-            }),
           ),
 
           if (_hasOffer) ...[
-            const Divider(height: 1, indent: 16, endIndent: 16),
+            const Divider(height: 1, indent: 12, endIndent: 12),
+
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
               child: Column(
                 children: [
+                  // ════════════════════════════════════════════════════════════
+                  // ANGEBOTSTYP DROPDOWN
+                  // ════════════════════════════════════════════════════════════
                   DropdownButtonFormField<String>(
-                    initialValue: _offerType,
+                    value: _offerType,
                     items: [
-                      DropdownMenuItem(
-                        value: 'percent',
-                        child: Text(s.offerTypePercent),
-                      ),
-                      DropdownMenuItem(
-                        value: 'bundle',
-                        child: Text(s.offerTypeBundle),
-                      ),
-                      DropdownMenuItem(
-                        value: 'bulk',
-                        child: Text(s.offerTypeBulk),
-                      ),
+                      DropdownMenuItem(value: 'percent', child: Text(s.offerTypePercent)),
+                      DropdownMenuItem(value: 'bundle', child: Text(s.offerTypeBundle)),
+                      DropdownMenuItem(value: 'bulk', child: Text(s.offerTypeBulk)),
                     ],
-                    onChanged: (v) => setState(() => _offerType = v!),
-                    decoration: _premiumInputDecoration(
-                      s.offerTypeLabel,
+                    onChanged: (v) {
+                      setState(() => _offerType = v!);
+                      if (v == 'percent') _initDiscountedPrice();
+                    },
+                    decoration: tinyLabel(
+                      labelText: s.offerTypeLabel,
                       icon: Icons.local_offer_outlined,
                     ),
                   ),
-                  const SizedBox(height: 12),
 
-                  if (_offerType == 'percent')
+                  const SizedBox(height: 14),
+
+                  // ════════════════════════════════════════════════════════════
+                  // PERCENT OFFER
+                  // ════════════════════════════════════════════════════════════
+                  if (_offerType == 'percent') ...[
+                    ListenableBuilder(
+                      listenable: Listenable.merge([
+                        _priceController,
+                        _percentController,
+                        _discountedPriceController,
+                      ]),
+                      builder: (context, _) {
+                        final regular = _getRegularPriceValue();
+                        final regularDisplay = regular != null ? _fmtMoney(regular) : '—';
+
+                        return LayoutBuilder(
+                          builder: (context, c) {
+                            final narrow = c.maxWidth < 380;
+
+                            final regularField = TextFormField(
+                              readOnly: true,
+                              initialValue: regularDisplay,
+                              key: ValueKey('reg_$regularDisplay'),
+                              textDirection: TextDirection.ltr,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: theme.hintColor,
+                              ),
+                              decoration: tinyLabel(
+                                labelText: s.regularPriceLabel,
+                                icon: Icons.euro,
+                                readOnly: true,
+                              ),
+                            );
+
+                            final discountedField = TextFormField(
+                              controller: _discountedPriceController,
+                              textDirection: TextDirection.ltr,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [CommaDecimalFormatter()],
+                              decoration: tinyLabel(
+                                labelText: s.discountedPriceLabel,
+                                icon: Icons.sell_outlined,
+                                suffixIcon: clearButton(_discountedPriceController),
+                              ),
+                            );
+
+                            if (narrow) {
+                              return Column(
+                                children: [
+                                  regularField,
+                                  const SizedBox(height: 10),
+                                  discountedField,
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              children: [
+                                Expanded(child: regularField),
+                                const SizedBox(width: 12),
+                                Expanded(child: discountedField),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
                     TextFormField(
                       controller: _percentController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
+                      textDirection: TextDirection.ltr,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [CommaDecimalFormatter()],
-                      decoration: _premiumInputDecoration(
-                        s.percentageLabel,
-                        controller: _percentController,
+                      decoration: tinyLabel(
+                        labelText: s.percentageLabel,
+                        icon: Icons.percent,
+                        suffixIcon: clearButton(_percentController),
                       ),
                     ),
+                  ],
 
-                  if (_offerType == 'bundle')
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _bundleQtyController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            decoration: _premiumInputDecoration(
-                              s.quantityLabel,
+                  // ════════════════════════════════════════════════════════════
+                  // BUNDLE OFFER
+                  // ════════════════════════════════════════════════════════════
+                  if (_offerType == 'bundle') ...[
+                    ListenableBuilder(
+                      listenable: Listenable.merge([
+                        _priceController,
+                        _bundleQtyController,
+                        _bundlePriceController,
+                      ]),
+                      builder: (context, _) {
+                        final unitPrice = _parsePrice(_priceController.text);
+                        final qty = int.tryParse(_bundleQtyController.text) ?? 0;
+                        final bundleTotal = _parseNum(_bundlePriceController.text);
+                        final regularTotal = unitPrice * qty;
+
+                        // Berechnete Werte
+                        final effectiveUnitPrice = qty > 0 ? bundleTotal / qty : 0.0;
+                        final effectiveDiscount = (regularTotal > 0 && bundleTotal > 0)
+                            ? ((1 - bundleTotal / regularTotal) * 100).clamp(0.0, 100.0)
+                            : 0.0;
+
+                        return LayoutBuilder(
+                          builder: (context, c) {
+                            final narrow = c.maxWidth < 380;
+
+                            final qtyField = TextFormField(
                               controller: _bundleQtyController,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _bundlePriceController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            inputFormatters: [CommaDecimalFormatter()],
-                            decoration: _premiumInputDecoration(
-                              s.totalPriceLabel,
+                              textDirection: TextDirection.ltr,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              decoration: tinyLabel(
+                                labelText: s.quantityLabel,
+                                icon: Icons.confirmation_number_outlined,
+                                suffixIcon: clearButton(_bundleQtyController),
+                              ),
+                            );
+
+                            final priceField = TextFormField(
                               controller: _bundlePriceController,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                              textDirection: TextDirection.ltr,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [CommaDecimalFormatter()],
+                              decoration: tinyLabel(
+                                labelText: s.totalPriceLabel,
+                                icon: Icons.euro,
+                                hintText: regularTotal > 0 ? '(${s.regularPriceLabel}: ${_fmtMoney(regularTotal)})' : null,
+                                suffixIcon: clearButton(_bundlePriceController),
+                              ),
+                            );
 
-                  if (_offerType == 'bulk')
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _bulkQtyController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            decoration: _premiumInputDecoration(
-                              s.quantityStartLabel,
+                            final fields = narrow
+                                ? Column(children: [qtyField, const SizedBox(height: 10), priceField])
+                                : Row(children: [
+                                    Expanded(child: qtyField),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: priceField),
+                                  ]);
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                fields,
+                                if (qty > 0 && bundleTotal > 0) ...[
+                                  const SizedBox(height: 10),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      infoChip(s.effectiveUnitPriceLabel, _fmtMoney(effectiveUnitPrice)),
+                                      if (effectiveDiscount > 0)
+                                        infoChip(
+                                          s.effectiveDiscountLabel,
+                                          '${_fmtPercent(effectiveDiscount)}%',
+                                          valueColor: Colors.green.shade700,
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+
+                  // ════════════════════════════════════════════════════════════
+                  // BULK OFFER
+                  // ════════════════════════════════════════════════════════════
+                  if (_offerType == 'bulk') ...[
+                    ListenableBuilder(
+                      listenable: Listenable.merge([
+                        _priceController,
+                        _bulkQtyController,
+                        _bulkPriceController,
+                      ]),
+                      builder: (context, _) {
+                        final unitPrice = _parsePrice(_priceController.text);
+                        final bulkPrice = _parseNum(_bulkPriceController.text);
+
+                        final effectiveDiscount = (unitPrice > 0 && bulkPrice > 0)
+                            ? ((1 - bulkPrice / unitPrice) * 100).clamp(0.0, 100.0)
+                            : 0.0;
+
+                        return LayoutBuilder(
+                          builder: (context, c) {
+                            final narrow = c.maxWidth < 380;
+
+                            final qtyField = TextFormField(
                               controller: _bulkQtyController,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _bulkPriceController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            inputFormatters: [CommaDecimalFormatter()],
-                            decoration: _premiumInputDecoration(
-                              s.pricePerPieceLabel,
-                              controller: _bulkPriceController,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                              textDirection: TextDirection.ltr,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              decoration: tinyLabel(
+                                labelText: s.quantityStartLabel,
+                                icon: Icons.exposure_plus_1,
+                                suffixIcon: clearButton(_bulkQtyController),
+                              ),
+                            );
 
-                  const SizedBox(height: 16),
+                            final priceField = TextFormField(
+                              controller: _bulkPriceController,
+                              textDirection: TextDirection.ltr,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [CommaDecimalFormatter()],
+                              decoration: tinyLabel(
+                                labelText: s.pricePerPieceLabel,
+                                icon: Icons.euro,
+                                hintText: unitPrice > 0 ? '(${s.regularPriceLabel}: ${_fmtMoney(unitPrice)})' : null,
+                                suffixIcon: clearButton(_bulkPriceController),
+                              ),
+                            );
+
+                            final fields = narrow
+                                ? Column(children: [qtyField, const SizedBox(height: 10), priceField])
+                                : Row(children: [
+                                    Expanded(child: qtyField),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: priceField),
+                                  ]);
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                fields,
+                                if (effectiveDiscount > 0) ...[
+                                  const SizedBox(height: 10),
+                                  infoChip(
+                                    s.effectiveDiscountLabel,
+                                    '${_fmtPercent(effectiveDiscount)}%',
+                                    valueColor: Colors.green.shade700,
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+
+                  const SizedBox(height: 14),
+
+                  // ════════════════════════════════════════════════════════════
+                  // DATE RANGE PICKER
+                  // ════════════════════════════════════════════════════════════
                   InkWell(
                     onTap: () => _selectOfferRange(context),
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 16,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
                       decoration: BoxDecoration(
-                        color: colors.tertiary.withValues(alpha: 0.1),
-                        border: Border.all(
-                          color: colors.tertiary.withValues(alpha: 0.3),
-                        ),
+                        color: colors.tertiary.withValues(alpha: 0.10),
+                        border: Border.all(color: colors.tertiary.withValues(alpha: 0.28)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.date_range,
-                            color: colors.tertiary,
-                            size: 20,
-                          ),
+                          Icon(Icons.date_range, color: colors.tertiary, size: 20),
                           const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                s.offerDurationLabel,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: colors.tertiary,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  s.offerDurationLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 10, color: colors.tertiary),
                                 ),
-                              ),
-                              Text(
-                                "${_offerStartDate.day}/${_offerStartDate.month} - ${_offerEndDate.day}/${_offerEndDate.month}/${_offerEndDate.year}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: colors.onSurface,
+                                const SizedBox(height: 2),
+                                Text(
+                                  "${_offerStartDate.day}/${_offerStartDate.month} - ${_offerEndDate.day}/${_offerEndDate.month}/${_offerEndDate.year}",
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: colors.onSurface,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),

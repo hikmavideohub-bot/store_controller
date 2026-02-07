@@ -236,6 +236,7 @@ class _TimeButton extends StatelessWidget {
         ),
         child: Text(
           formattedTime,
+          textDirection: TextDirection.ltr, // Zeiten immer LTR
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
