@@ -11,7 +11,8 @@ import 'cache_store.dart';
 import 'store_config_service.dart';
 import '../storage/store_prefs.dart';
 import 'package:store_controller/core/access_manager.dart';
-
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 // ═══════════════════════════════════════════════════════════════════════════════
 // API SERVICE - Dual Collection Architecture
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -490,22 +491,71 @@ class ApiService {
   ]) async {
     _isProcessingAuth = true;
     bumpAuthTick();
+
     try {
-      if (_pendingGoogleCredential == null) {
-        final credResult = await getGoogleCredentialOnly(s);
-        if (!credResult.ok) {
-          return credResult;
+      UserCredential userCredential;
+
+      // =========================
+      // ✅ WEB: Firebase Auth Popup (kein People API, kein deprecated google_sign_in_web.signIn)
+      // =========================
+      if (kIsWeb) {
+        final provider = GoogleAuthProvider()
+          ..addScope('email')
+          ..addScope('profile');
+
+        try {
+          userCredential = await _auth.signInWithPopup(provider);
+        } catch (e) {
+          // Optional: klarere Meldung, wenn Popup blockiert ist
+          final code = (e is FirebaseAuthException) ? e.code : '';
+          if (code == 'popup-blocked' || code == 'popup_closed_by_user') {
+            return ApiResult.fail(
+              'google_failed',
+              details:
+              s?.errorGooglePopupBlocked ??
+                  'errorGooglePopupBlocked', // fallback-key (nur falls s null)
+            );
+          }
+          rethrow;
         }
+      } else {
+        // =========================
+        // ✅ MOBILE: dein bestehender Credential-Flow
+        // =========================
+        if (_pendingGoogleCredential == null) {
+          final credResult = await getGoogleCredentialOnly(s);
+          if (!credResult.ok) return credResult;
+        }
+
+        final pending = _pendingGoogleCredential!;
+        userCredential = await _auth.signInWithCredential(pending.credential);
       }
 
-      final pending = _pendingGoogleCredential!;
-      final userCredential = await _auth.signInWithCredential(
-        pending.credential,
-      );
-      final uid = userCredential.user!.uid;
+      final user = userCredential.user;
+      if (user == null) {
+        _pendingGoogleCredential = null;
+        await clearAuth();
+
+        return ApiResult.fail(
+          'google_failed',
+          details: s?.errorGoogleNoUser ?? 'errorGoogleNoUser',
+        );
+      }
+
+      final uid = user.uid;
       final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
       _isCurrentUserNew = isNewUser;
 
+      // Für Rückgabe-Daten: Web kommt aus Firebase user, Mobile ggf. aus pending (falls vorhanden)
+      final pendingEmail = _pendingGoogleCredential?.email;
+      final pendingName = _pendingGoogleCredential?.displayName;
+
+      final email = user.email ?? pendingEmail;
+      final displayName = user.displayName ?? pendingName;
+
+      // =========================
+      // Store-Existenz prüfen
+      // =========================
       final storeExists = await storeDocumentExists(uid);
 
       if (!storeExists) {
@@ -513,7 +563,7 @@ class ApiService {
 
         final errorMsg =
             s?.errorNoStoreFound ??
-            'عذراً، لا يوجد حساب مرتبط بهذا البريد الإلكتروني.';
+                'errorNoStoreFound';
 
         return ApiResult.fail(
           'no_store',
@@ -521,8 +571,8 @@ class ApiService {
           data: {
             'uid': uid,
             'isNewUser': isNewUser,
-            'email': pending.email,
-            'displayName': pending.displayName,
+            'email': email,
+            'displayName': displayName,
           },
         );
       }
@@ -533,6 +583,9 @@ class ApiService {
 
       await fetchStoreConfig();
 
+      // =========================
+      // Trial/Verification Check
+      // =========================
       final verifyStatus = await checkVerificationStatus(uid);
       if (verifyStatus == 'expired') {
         hasStore = false;
@@ -540,21 +593,25 @@ class ApiService {
 
         final errorMsg =
             s?.errorAccountExpired ??
-            'انتهت مهلة تفعيل الحساب. يرجى التسجيل من جديد.';
+                'errorAccountExpired';
 
         return ApiResult.fail('expired', details: errorMsg);
       }
 
+      // =========================
+      // OK
+      // =========================
       return ApiResult.ok({
         'storeId': uid,
         'token': uid,
         'isNewUser': false,
-        'email': pending.email,
-        'displayName': pending.displayName,
+        'email': email,
+        'displayName': displayName,
       });
     } catch (e) {
       _pendingGoogleCredential = null;
       await clearAuth();
+
       return ApiResult.fail(
         'google_failed',
         details: mapFirebaseErrorToArabic(e, s),
