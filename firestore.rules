@@ -203,6 +203,20 @@ service cloud.firestore {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // GLOBAL CATEGORY DICTIONARY (Cloud Functions only write via Admin SDK)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /global_categories/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /global_product_category_dictionary/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // CATCH-ALL (DENY)
     // ═══════════════════════════════════════════════════════════════════════════
 

@@ -1,0 +1,1794 @@
+{
+  "categories": [
+    {
+      "id": "backwaren",
+      "labels": {
+        "de": "Backwaren",
+        "en": "Bakery",
+        "ar": "مخبوزات",
+        "tr": "Fırın Ürünleri"
+      },
+      "aliases": [
+        "Backwaren",
+        "Bakery",
+        "مخبوزات",
+        "Fırın Ürünleri"
+      ]
+    },
+    {
+      "id": "fleisch_gefluegel_halal",
+      "labels": {
+        "de": "Fleisch & Geflügel (Halal)",
+        "en": "Meat & Poultry (Halal)",
+        "ar": "لحوم ودواجن",
+        "tr": "Et & Tavuk (Helal)"
+      },
+      "aliases": [
+        "Fleisch & Geflügel (Halal)",
+        "Meat & Poultry (Halal)",
+        "لحوم ودواجن (حلال)",
+        "Et & Tavuk (Helal)"
+      ]
+    },
+    {
+      "id": "geschenke_accessoires",
+      "labels": {
+        "de": "Geschenke & Accessoires",
+        "en": "Gifts & Accessories",
+        "ar": "هدايا وإكسسوارات",
+        "tr": "Hediye & Aksesuar"
+      },
+      "aliases": [
+        "Geschenke & Accessoires",
+        "Gifts & Accessories",
+        "هدايا وإكسسوارات",
+        "Hediye & Aksesuar"
+      ]
+    },
+    {
+      "id": "getraenke",
+      "labels": {
+        "de": "Getränke",
+        "en": "Beverages",
+        "ar": "مشروبات",
+        "tr": "İçecekler"
+      },
+      "aliases": [
+        "Getränke",
+        "Beverages",
+        "مشروبات",
+        "İçecekler"
+      ]
+    },
+    {
+      "id": "gewuerze_oele_sossen",
+      "labels": {
+        "de": "Gewürze, Öle & Soßen",
+        "en": "Spices, Oils & Sauces",
+        "ar": "بهارات وزيوت وصلصات",
+        "tr": "Baharat, Yağ & Sos"
+      },
+      "aliases": [
+        "Gewürze, Öle & Soßen",
+        "Spices, Oils & Sauces",
+        "بهارات وزيوت وصلصات",
+        "Baharat, Yağ & Sos"
+      ]
+    },
+    {
+      "id": "haushalt",
+      "labels": {
+        "de": "Haushalt",
+        "en": "Household",
+        "ar": "مستلزمات منزلية",
+        "tr": "Ev"
+      },
+      "aliases": [
+        "Haushalt",
+        "Household",
+        "مستلزمات منزلية",
+        "Ev"
+      ]
+    },
+    {
+      "id": "koerperpflege_baby",
+      "labels": {
+        "de": "Körperpflege & Baby",
+        "en": "Personal Care & Baby",
+        "ar": "عناية شخصية وأطفال",
+        "tr": "Kişisel Bakım & Bebek"
+      },
+      "aliases": [
+        "Körperpflege & Baby",
+        "Personal Care & Baby",
+        "عناية شخصية وأطفال",
+        "Kişisel Bakım & Bebek"
+      ]
+    },
+    {
+      "id": "lebensmittel_konserven",
+      "labels": {
+        "de": "Lebensmittel & Konserven",
+        "en": "Food & Canned Goods",
+        "ar": "أغذية ومعلبات",
+        "tr": "Gıda & Konserve"
+      },
+      "aliases": [
+        "Lebensmittel & Konserven",
+        "Food & Canned Goods",
+        "أغذية ومعلبات",
+        "Gıda & Konserve"
+      ]
+    },
+    {
+      "id": "milchprodukte_kaese_eier",
+      "labels": {
+        "de": "Milchprodukte, Käse & Eier",
+        "en": "Dairy, Cheese & Eggs",
+        "ar": "ألبان وأجبان وبيض",
+        "tr": "Süt Ürünleri, Peynir & Yumurta"
+      },
+      "aliases": [
+        "Milchprodukte, Käse & Eier",
+        "Dairy, Cheese & Eggs",
+        "ألبان وأجبان وبيض",
+        "Süt Ürünleri, Peynir & Yumurta"
+      ]
+    },
+    {
+      "id": "mosaik_geschenke",
+      "labels": {
+        "de": "Mosaik & Geschenke",
+        "en": "Mosaic & Gifts",
+        "ar": "موزاييك وهدايا",
+        "tr": "Mozaik & Hediye"
+      },
+      "aliases": [
+        "Mosaik & Geschenke",
+        "Mosaic & Gifts",
+        "موزاييك وهدايا",
+        "Mozaik & Hediye"
+      ]
+    },
+    {
+      "id": "obst_gemuese",
+      "labels": {
+        "de": "Obst & Gemüse",
+        "en": "Fruits & Vegetables",
+        "ar": "خضار وفواكه",
+        "tr": "Meyve & Sebze"
+      },
+      "aliases": [
+        "Obst & Gemüse",
+        "Fruits & Vegetables",
+        "خضار وفواكه",
+        "Meyve & Sebze"
+      ]
+    },
+    {
+      "id": "reinigung_papier",
+      "labels": {
+        "de": "Reinigung & Papier",
+        "en": "Cleaning & Paper",
+        "ar": "منظفات وورقيات",
+        "tr": "Temizlik & Kağıt"
+      },
+      "aliases": [
+        "Reinigung & Papier",
+        "Cleaning & Paper",
+        "منظفات وورقيات",
+        "Temizlik & Kağıt"
+      ]
+    },
+    {
+      "id": "reis_getreide_pasta",
+      "labels": {
+        "de": "Reis, Getreide & Pasta",
+        "en": "Rice, Grains & Pasta",
+        "ar": "رز وحبوب ",
+        "tr": "Pirinç, Tahıl & Makarna"
+      },
+      "aliases": [
+        "Reis, Getreide & Pasta",
+        "Rice, Grains & Pasta",
+        "رز وحبوب ",
+        "Pirinç, Tahıl & Makarna"
+      ]
+    },
+    {
+      "id": "sonstiges",
+      "labels": {
+        "de": "Sonstiges",
+        "en": "Other",
+        "ar": "أخرى",
+        "tr": "Diğer"
+      },
+      "aliases": [
+        "Sonstiges",
+        "Other",
+        "أخرى",
+        "Diğer"
+      ]
+    },
+    {
+      "id": "suessigkeiten_snacks",
+      "labels": {
+        "de": "Süßigkeiten & Snacks",
+        "en": "Sweets & Snacks",
+        "ar": "حلويات وتسالي",
+        "tr": "Tatlı & Atıştırmalık"
+      },
+      "aliases": [
+        "Süßigkeiten & Snacks",
+        "Sweets & Snacks",
+        "حلويات وتسالي",
+        "Tatlı & Atıştırmalık"
+      ]
+    },
+    {
+      "id": "tiefkuehl",
+      "labels": {
+        "de": "Tiefkühl",
+        "en": "Frozen",
+        "ar": "مجمّدات",
+        "tr": "Dondurulmuş"
+      },
+      "aliases": [
+        "Tiefkühl",
+        "Frozen",
+        "مجمّدات",
+        "Dondurulmuş"
+      ]
+    }
+  ],
+  "products": [
+    {
+      "name": "بيتزا جاهزة",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "خبز بدون غلوتين",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "خبز برجر",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "خبز بيتا",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "خبز توست",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "خبز رقاق",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "خبز شباتي",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "خبز عربي",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "خبز فرنسي",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "خبز هوت دوج",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "دانيش",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "فطائر حلوة",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "فطائر مالحة",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "كرواسون",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "كعك إنجليزي",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "مافن",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "معجنات مجمدة",
+      "categoryId": "backwaren"
+    },
+    {
+      "name": "برجر لحمة/دجاج",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "بسطرمة حلال",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "دجاج",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "ديك رومي",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "قلوب وكلى",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "كبدة",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "كفتة",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "لانشون حلال",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "لحم أرانب",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "لحم بقري",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "لحم عجل",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "لحم غنم",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "لحم مفروم مجمد",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "لحم نعام حلال",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "لحوم مدخنة حلال",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "مرتديلا حلال",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "نقانق حلال",
+      "categoryId": "fleisch_gefluegel_halal"
+    },
+    {
+      "name": "أحزمة",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "أصيص زهور",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "أوشحة",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "إطارات صور",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "باقات ورد طبيعي",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "تحف وزهور اصطناعية",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "حقائب يد",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "ديكورات طاولة",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "ساعات يد",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "سلات هدايا غذائية",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "شموع معطرة",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "شوكولاتة ملفوفة كهدايا",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "عطور منزلية",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "قبعات",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "قفازات",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "لوحات فنية ديكورية",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "مجوهرات",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "محافظ",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "نباتات زينة",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "نظارات شمسية",
+      "categoryId": "geschenke_accessoires"
+    },
+    {
+      "name": "حامض الليمون",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "حليب نباتي",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "زهورات",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "شاي",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "شراب",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "شراب شوكولاتة",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "عصائر طبيعية",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "عصائر مركزة",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "قهوة",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "كاكاو",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "ماء الزهر",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "ماء الورد",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "متة",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "مشروبات الطاقة",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "مشروبات تخسيس",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "مشروبات دافئة",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "مشروبات رياضية",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "مشروبات غازية",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "مشروبات غازية خالية من السكر",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "مياه غازية",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "مياه معدنية",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "مياه منكّهة",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "نسكافيه",
+      "categoryId": "getraenke"
+    },
+    {
+      "name": "أعشاب مجففة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "بابريكا",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "بصل بودرة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "بهارات مشكلة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "ثوم بودرة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "جوزة الطيب",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "خل",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "زبدة فول سوداني",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "زعتر",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "زنجبيل",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "زيت الذرة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "زيت جوز الهند",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "زيت دوار الشمس",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "زيت زيتون",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "زيت سمسم",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "زيت كانولا",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "زيت نباتي",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "سماق",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "سمن نباتي",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "شطة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "شمر",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "صلصة السلطة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "صلصة السمك",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "صلصة الصويا",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "صلصة المحار",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "صلصة باربيكيو",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "صلصة تاباسكو",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "صلصة ورسيسترشاير",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "طحينة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "فلفل أسود",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "قرفة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "قرنفل",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "كاتشاب",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "كاري بودرة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "كركم",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "كزبرة ناشفة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "كمون",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "كمون أسود",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "ليمون مملح",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "مايونيز",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "مخلل",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "مسطردة",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "معجون فلفل",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "ملح",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "هيل",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "يانسون",
+      "categoryId": "gewuerze_oele_sossen"
+    },
+    {
+      "name": "أجهزة كهربائية صغيرة",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "أدوات المائدة",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "أغطية فراش ووسائد",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "أواني خبز",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "أواني طبخ",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "إسفنج جلي",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "إسفنج وأدوات تنظيف الصحون",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "بطاريات",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "بطاطين",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "دبابيس غسيل",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "ساعات حائط",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "ستائر",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "سلات مهملات",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "سلال تخزين",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "شماعات ملابس",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "شموع",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "صحون، أطباق، أكواب",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "علاقات تعليق الملابس",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "علب حفظ الطعام",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "فوط صحية",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "مصائد حشرات",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "مصابيح إضاءة",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "مصفاة",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "مظلات",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "مفارش طاولة",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "مناشف مطبخ وحمام",
+      "categoryId": "haushalt"
+    },
+    {
+      "name": "أدوات العناية بالأطفال",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "أطعمة أطفال",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "بلسم",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "حفاضات أطفال",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "خيط أسنان",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "زجاجات رضاعة",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "سائل استحمام",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "شامبو",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "شامبو ولوشن أطفال",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "شفرة حلاقة وكريم حلاقة",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "صابون صلب",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "صبغات شعر",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "غسول الجسم",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "غسول الفم",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "فرش شعر أطفال",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "فرشاة ومعجون أسنان",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "كريم حفاضات",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "لوشن مرطب للجسم",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "مزيل عرق",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "مزيل مكياج",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "مستحضرات العناية بالبشرة",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "مستحضرات تسنين",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "مستحضرات للرضاعة",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "مستحضرات ما بعد الحلاقة",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "معقم اليدين",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "مكياج",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "مناديل أطفال مبللة",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "منتجات العناية بالشعر",
+      "categoryId": "koerperpflege_baby"
+    },
+    {
+      "name": "أرز معلب سريع التحضير",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "أنشوفة",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "السبانخ المعصرة معلب",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "الصلصات المعلبة",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "بازلاء و جزر معلب",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "تونة معلب",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "حمص مسلوق",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "حمص معلب",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "خضراوات مجففة",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "دبس بندورة",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "دبس تمر",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "دبس رمان",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "دبس فليفلة",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "ذرة حلوة معلب",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "زيتون",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "سردين معلب",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "شوربات جاهزة",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "فاصوليا بيضاء/حمراء معلبة",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "فطر",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "فول مدمس معلب",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "كبد مقلي",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "كشك",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "لحم معلب",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "مخللات",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "مرقة دجاج/لحم/خضار",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "معجون طماطم",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "مغربية",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "وجبات جاهزة معبأة",
+      "categoryId": "lebensmittel_konserven"
+    },
+    {
+      "name": "بيض",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة بارميزان",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة بري",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة بيضاء",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة جودة",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة روب",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة رومي",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة ريكفورد",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة شيدر",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة فيتا",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة قشقوان",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة كاميمبير",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة كريمي",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة مالحية",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة موتزاريلا",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "جبنة هالومي",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "حليب طازج",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "حليب طويل الأمد",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "حليب مجفف",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "حليب مكثف محلى",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "زبدة",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "سمن بلدي",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "قريشة",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "قشطة",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "لبن",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "لبن مخيض",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "لبنة",
+      "categoryId": "milchprodukte_kaese_eier"
+    },
+    {
+      "name": "صابون هدايا",
+      "categoryId": "mosaik_geschenke"
+    },
+    {
+      "name": "موزاييك",
+      "categoryId": "mosaik_geschenke"
+    },
+    {
+      "name": "نحاسيات",
+      "categoryId": "mosaik_geschenke"
+    },
+    {
+      "name": "هدايا بسيطة",
+      "categoryId": "mosaik_geschenke"
+    },
+    {
+      "name": "أفوكادو",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "أناناس",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "بابايا",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "باذنجان",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "بازلاء خضراء",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "بامية",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "برتقال",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "بروكلي",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "بصل",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "بطاطا حلوة",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "بطاطس",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "بطيخ",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "بقدونس",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "تفاح",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "تمر",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "تين",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "ثوم",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "جرجير",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "جريب فروت",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "جزر",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "جوافة",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "خس",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "خوخ",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "خيار",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "دراق",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "ذرة",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "رمان",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "زهرة",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "سبانخ",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "شمام",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "شمندر",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "طماطم",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "عنب",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "فاصوليا خضراء",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "فراولة",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "فلفل",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "قرع",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "كزبرة خضراء",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "كوسا",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "كيوي",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "ليمون",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "مانجو",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "مشمش",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "ملفوف",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "موز",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "نعناع",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "يوسفي",
+      "categoryId": "obst_gemuese"
+    },
+    {
+      "name": "أكياس التفريز",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "أكياس النفايات",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "أوراق لف الطعام",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "شامبو للسجاد",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "صابون سائل للأطباق",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "فوط صحون قماش",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "مبيض",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "معطر ومنعم الملابس",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "معقم الأسطح",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "ملمع الأثاث",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "مناديل مبللة",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "مناديل ورقية",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "مناشف ورقية",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "منظف الأرضيات",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "منظف البقع",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "منظف الحمامات",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "منظف الزجاج",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "منظف السجاد",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "منظف المطابخ",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "منظف الملابس",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "منظف غسالات الأطباق",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "ورق تواليت",
+      "categoryId": "reinigung_papier"
+    },
+    {
+      "name": "أرز أبيض طويل الحبة",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "أرز أسمر",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "أرز اسبيدو/أربوريو",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "أرز بري",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "أرز بسمتي",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "أرز مصري",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "برغل",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "حبوب الفطور",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "حمص يابس",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "دقيق",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "ذرة مجروشة",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "سميد",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "شعيرية",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "شعيرية أرز",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "شعيرية بيض",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "شوفان",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "فاصولياء حب",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "فريكة",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "فول يابس",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "قمح",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "كسكس",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "كينوا",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "معكرونة",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "معكرونة سمراء",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "معكرونة محشوة",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "نشا",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "نودلز سريعة التحضير",
+      "categoryId": "reis_getreide_pasta"
+    },
+    {
+      "name": "أجهزة قياس",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "أدوات زراعة",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "أدوات وخيوط حياكة",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "أعشاب للشواء",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "أغذية الحيوانات الأليفة",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "أغراض مكتبية بسيطة",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "أكياس ثلج",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "ألعاب ورق",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "تربة وسماد للنباتات",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "حقائب تبريد",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "سلال تسوق قابلة للطي",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "فحم للشواء",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "قفازات مطبخ",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "مآزر",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "مرايا",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "مستلزمات الحفلات",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "مستلزمات الشواء",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "مكعبات ثلج جاهزة",
+      "categoryId": "sonstiges"
+    },
+    {
+      "name": "آيس كريم",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "ألواح الحبوب والفواكه",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "برازق",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "بطاطس شيبس",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "بودينغ",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "جيلاتين حلال",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "حلاوة طحينية",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "حلويات جيلاتينية",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "حلويات شرقية",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "دونات",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "راحة",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "سكاكر",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "شوكولاتة",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "علكة",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "فشار",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "كاسترد",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "كرامب",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "كريمة كراميل",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "كعك",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "كعك مكسيكي",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "كيك جاهز",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "مصاصات",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "مقبلات",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "ملبن",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "مهلبية",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "ويفر",
+      "categoryId": "suessigkeiten_snacks"
+    },
+    {
+      "name": "أسماك ومأكولات بحرية مجمدة",
+      "categoryId": "tiefkuehl"
+    },
+    {
+      "name": "بطاطس مقلية مجمدة",
+      "categoryId": "tiefkuehl"
+    },
+    {
+      "name": "بيتزا مجمدة",
+      "categoryId": "tiefkuehl"
+    },
+    {
+      "name": "خضروات مجمدة",
+      "categoryId": "tiefkuehl"
+    },
+    {
+      "name": "دواجن مجمدة",
+      "categoryId": "tiefkuehl"
+    },
+    {
+      "name": "عجائن مجمدة",
+      "categoryId": "tiefkuehl"
+    },
+    {
+      "name": "فواكه مجمدة",
+      "categoryId": "tiefkuehl"
+    },
+    {
+      "name": "كنافة وعجائن حلويات مجمدة",
+      "categoryId": "tiefkuehl"
+    },
+    {
+      "name": "لحوم مجمدة",
+      "categoryId": "tiefkuehl"
+    },
+    {
+      "name": "لفائف ورق عنب وملفوف محشي مجمد",
+      "categoryId": "tiefkuehl"
+    },
+    {
+      "name": "وجبات جاهزة مجمدة",
+      "categoryId": "tiefkuehl"
+    }
+  ]
+}

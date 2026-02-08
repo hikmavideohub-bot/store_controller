@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +12,7 @@ import '../config.dart';
 import '../widgets/premium_app_bar.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
+import '../services/category_dictionary_service.dart';
 import '../core/access_manager.dart';
 import '../core/paywall_messages.dart';
 import '../storage/store_prefs.dart';
@@ -81,7 +84,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _productActive = true,
       _hasOffer = false,
       _offerActive = true,
-      _showNewCategoryField = false;
+      _showNewCategoryField = false,
+      _isLoadingRecommendation = false;
+  String? _recommendedCategory;
+  Timer? _nameDebounce;
   double _uploadProgress = 0.0;
   String _selectedUnit = 'kg', _offerType = 'percent', _uploadStatus = '';
   String? _selectedCategory, _previewImageUrl;
@@ -146,6 +152,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
 
     _loadCategories();
+    _nameController.addListener(_onNameChangedForRecommendation);
+
+    // In edit mode, trigger recommendation lookup immediately
+    if (p != null && p.name.isNotEmpty) {
+      final editName = p.name;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fetchRecommendation(editName);
+      });
+    }
+
     _priceFocusNode.addListener(() {
       if (!_priceFocusNode.hasFocus) _normalizePriceText();
     });
@@ -279,6 +295,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   @override
   void dispose() {
+    _nameDebounce?.cancel();
+    _nameController.removeListener(_onNameChangedForRecommendation);
     _percentController.removeListener(_onPercentChanged);
     _discountedPriceController.removeListener(_onDiscountedChanged);
     _priceController.removeListener(_onRegularPriceChanged);
@@ -500,6 +518,53 @@ class _AddProductScreenState extends State<AddProductScreen> {
       }
     }
     return false;
+  }
+
+  void _onNameChangedForRecommendation() {
+    _nameDebounce?.cancel();
+    final text = _nameController.text.trim();
+    if (text.length < 2) {
+      if (_recommendedCategory != null) {
+        setState(() => _recommendedCategory = null);
+      }
+      return;
+    }
+    _nameDebounce = Timer(const Duration(milliseconds: 500), () {
+      _fetchRecommendation(text);
+    });
+  }
+
+  Future<void> _fetchRecommendation(String name) async {
+    if (!mounted) return;
+    setState(() => _isLoadingRecommendation = true);
+    try {
+      final locale = Localizations.localeOf(context).languageCode;
+      final result =
+          await CategoryDictionaryService.instance.getBestRecommendation(name, locale);
+      if (mounted) {
+        setState(() {
+          _recommendedCategory = result?.label;
+          _isLoadingRecommendation = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingRecommendation = false);
+      }
+    }
+  }
+
+  void _applyRecommendedCategory() {
+    final rec = _recommendedCategory;
+    if (rec == null) return;
+    setState(() {
+      if (!_categories.contains(rec)) {
+        _categories = [..._categories, rec]..sort();
+      }
+      _selectedCategory = rec;
+      _categoryController.text = rec;
+      _showNewCategoryField = false;
+    });
   }
 
   void _loadCategories() async {
@@ -806,140 +871,186 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 validator: validateRequired,
               ),
               const SizedBox(height: 16),
+
+              // --- PREIS/GRÖßE (links) + KATEGORIE-EMPFEHLUNG/DROPDOWN (rechts) ---
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Linke Spalte: Preis → Size ──
                   Expanded(
-                    flex: 2, // Preis bekommt mehr Platz (Verhältnis 2 zu 1)
-                    child: TextFormField(
-                      controller: _priceController,
-                      focusNode: _priceFocusNode,
-                      textDirection: TextDirection.ltr,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [CommaDecimalFormatter()],
-                      // FIX: 'controller' weggelassen, damit das 'X' (Clear-Button) verschwindet
-                      decoration: _premiumInputDecoration(
-                        s.priceLabel,
-                        icon: Icons.euro,
-                      ),
-                      validator: validateRequired,
+                    flex: 2,
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _priceController,
+                          focusNode: _priceFocusNode,
+                          textDirection: TextDirection.ltr,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [CommaDecimalFormatter()],
+                          decoration: _premiumInputDecoration(
+                            s.priceLabel,
+                            icon: Icons.euro,
+                          ),
+                          validator: validateRequired,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _sizeValueController,
+                          focusNode: _weightFocusNode,
+                          textDirection: TextDirection.ltr,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [CommaDecimalFormatter()],
+                          decoration: _premiumInputDecoration(
+                            s.sizeLabel,
+                            controller: _sizeValueController,
+                          ).copyWith(
+                            prefixIcon: Icon(Icons.scale, size: 20, color: colors.primary), // kleiner
+                            prefixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 0), // optional
+                          ),
+                          validator: validateRequired,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // ── Rechte Spalte: Empfohlene Kategorie → Kategorie-Dropdown ──
                   Expanded(
                     flex: 3,
-                    child: _showNewCategoryField
-                        ? TextFormField(
-                            controller: _categoryController,
-                            focusNode: _categoryFocusNode,
-                            textDirection: _getTextDirection(
-                              _categoryController.text,
-                            ),
-                            onChanged: (_) =>
-                                setState(() {}), // Rebuild für Richtungswechsel
-                            decoration:
-                                _premiumInputDecoration(
-                                  s.newCategoryLabel,
-                                  icon: Icons.add_box,
-                                ).copyWith(
-                                  // DER "FLUCHT-KNOPF": Bringt den User zurück zum Dropdown
-                                  suffixIcon: IconButton(
-                                    icon: const Icon(
-                                      Icons.cancel,
-                                      color: Colors.redAccent,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _showNewCategoryField = false;
-                                        // Setze den Controller auf die vorher gewählte Kategorie zurück
-                                        _categoryController.text =
-                                            _selectedCategory ?? '';
-                                      });
-                                    },
-                                  ),
-                                ),
-                            validator: validateRequired,
-                          )
-                        : DropdownButtonFormField<String>(
-                            isExpanded: true,
-                            // WICHTIG: Nutze 'value' statt 'initialValue' für Reaktivität
-                            initialValue:
-                                _categories.contains(_selectedCategory)
-                                ? _selectedCategory
-                                : null,
-                            decoration: _premiumInputDecoration(
-                              s.categoryLabel,
-                              icon: Icons.grid_view,
-                            ),
-                            validator: (v) => (v == null || v.isEmpty)
-                                ? s.requiredField
-                                : null,
-                            items: [
-                              ..._categories.map(
-                                (c) =>
-                                    DropdownMenuItem(value: c, child: Text(c)),
+                    child: Column(
+                      children: [
+                        InkWell(
+                          onTap: _recommendedCategory != null && !_isLoadingRecommendation
+                              ? _applyRecommendedCategory
+                              : null,
+                          borderRadius: BorderRadius.circular(14),
+                          child: AbsorbPointer(
+                            child: TextFormField(
+                              readOnly: true,
+                              decoration: _premiumInputDecoration(
+                                s.recommendedCategoryLabel,
+                                icon: Icons.auto_awesome,
+                              ).copyWith(
+                                suffixIcon: _isLoadingRecommendation
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(12),
+                                        child: SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        ),
+                                      )
+                                    : _recommendedCategory != null
+                                        ? Icon(Icons.touch_app, size: 20, color: colors.primary)
+                                        : null,
                               ),
-                              DropdownMenuItem(
-                                value: 'new',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.add_circle_outline,
-                                      size: 20,
-                                      color: colors.primary,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      s.addNewCategory,
-                                      style: TextStyle(
-                                        color: colors.primary,
-                                        fontWeight: FontWeight.bold,
+                              controller: TextEditingController(
+                                text: _isLoadingRecommendation
+                                    ? ''
+                                    : (_recommendedCategory ?? '—'),
+                              ),
+                              style: TextStyle(
+                                color: _recommendedCategory != null
+                                    ? colors.onSurface
+                                    : colors.onSurface.withValues(alpha: 0.4),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _showNewCategoryField
+                            ? TextFormField(
+                                controller: _categoryController,
+                                focusNode: _categoryFocusNode,
+                                textDirection: _getTextDirection(
+                                  _categoryController.text,
+                                ),
+                                onChanged: (_) =>
+                                    setState(() {}),
+                                decoration:
+                                    _premiumInputDecoration(
+                                      s.newCategoryLabel,
+                                      icon: Icons.add_box,
+                                    ).copyWith(
+                                      suffixIcon: IconButton(
+                                        icon: const Icon(
+                                          Icons.cancel,
+                                          color: Colors.redAccent,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _showNewCategoryField = false;
+                                            _categoryController.text =
+                                                _selectedCategory ?? '';
+                                          });
+                                        },
                                       ),
                                     ),
-                                  ],
+                                validator: validateRequired,
+                              )
+                            : DropdownButtonFormField<String>(
+                                isExpanded: true,
+                                initialValue:
+                                    _categories.contains(_selectedCategory)
+                                    ? _selectedCategory
+                                    : null,
+                                decoration: _premiumInputDecoration(
+                                  s.categoryLabel,
+                                  icon: Icons.grid_view,
                                 ),
+                                validator: (v) => (v == null || v.isEmpty)
+                                    ? s.requiredField
+                                    : null,
+                                items: [
+                                  ..._categories.map(
+                                    (c) =>
+                                        DropdownMenuItem(value: c, child: Text(c)),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'new',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.add_circle_outline,
+                                          size: 20,
+                                          color: colors.primary,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          s.addNewCategory,
+                                          style: TextStyle(
+                                            color: colors.primary,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (v) {
+                                  if (v == 'new') {
+                                    setState(() {
+                                      _showNewCategoryField = true;
+                                      _categoryController.clear();
+                                    });
+                                    WidgetsBinding.instance.addPostFrameCallback(
+                                      (_) => _categoryFocusNode.requestFocus(),
+                                    );
+                                  } else if (v != null) {
+                                    setState(() {
+                                      _selectedCategory = v;
+                                      _categoryController.text = v;
+                                    });
+                                  }
+                                },
                               ),
-                            ],
-                            onChanged: (v) {
-                              if (v == 'new') {
-                                setState(() {
-                                  _showNewCategoryField = true;
-                                  _categoryController.clear();
-                                });
-                                // Focus wird erst im nächsten Frame gesetzt, wenn das Feld gerendert ist
-                                WidgetsBinding.instance.addPostFrameCallback(
-                                  (_) => _categoryFocusNode.requestFocus(),
-                                );
-                              } else if (v != null) {
-                                setState(() {
-                                  _selectedCategory = v;
-                                  _categoryController.text = v;
-                                });
-                              }
-                            },
-                          ),
+                      ],
+                    ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-
-              // --- GEWICHT + EINHEIT (Einheit unter dem Feld für mehr Platz) ---
-              TextFormField(
-                controller: _sizeValueController,
-                focusNode: _weightFocusNode,
-                textDirection: TextDirection.ltr,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: [CommaDecimalFormatter()],
-                decoration: _premiumInputDecoration(
-                  s.sizeLabel,
-                  icon: Icons.scale,
-                  controller: _sizeValueController,
-                ),
-                validator: validateRequired,
               ),
               const SizedBox(height: 12),
               SizedBox(

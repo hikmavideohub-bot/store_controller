@@ -22,10 +22,6 @@ const axios = require("axios");
 
 // 1. GLOBALE EINSTELLUNGEN SETZEN
 // Niedrige globale Limits - individuelle Functions bekommen höhere Werte
-setGlobalOptions({
-  region: "europe-west3",
-  maxInstances: 1, // 3 Niedrig halten, um CPU-Quota nicht zu sprengen
-});
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -37,10 +33,22 @@ const db = admin.firestore();
 const stripeSecret = defineSecret("STRIPE_SECRET");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const googleMapsApiKey = defineSecret("GOOGLE_MAPS_API_KEY");
+const seedSecret = defineSecret("SEED_SECRET");
+const seedData = require("./seed_data.json");
 
-const REGION = "europe-west3";
+
+const REGION_PRIMARY = "europe-west3"; // bleibt für App/Traffic
+  //  const REGION_BG = "europe-west1";    Background
+
 const GRACE_PERIODS = [7, 14];
 
+
+//firebase deploy --only "functions:syncAccessToPublic,functions:syncStoreNameToPublic,functions:syncStoreNameToPrivate,functions:learnProductCategory,functions:seedDictionary"
+//firebase deploy --only "functions:checkTrialExpiration,functions:cleanupExpiredAccounts,functions:refreshFxRates,functions:onStoreCreated,functions:onStoreActivated"
+//firebase deploy --only "functions:getStoreBySlug,functions:getProductsBySlug,functions:cdnImageProxy,functions:reverseGeocode"
+//firebase deploy --only "functions:stripeWebhook,functions:createStripeCheckoutSession,functions:verifyStorePayment,functions:confirmEmailVerification,functions:requestAccountDeletion,functions:finalizeStoreSetup,functions:resolveUserRegion,functions:syncStoreAccessToPublic"
+//firebase deploy --only "functions:createStripeCheckoutSession"
+//firebase deploy --only "functions:checkTrialExpiration,functions:cleanupExpiredAccounts,functions:refreshFxRates,functions:onStoreCreated,functions:onStoreActivated,functions:syncAccessToPublic,functions:syncStoreNameToPublic,functions:syncStoreNameToPrivate,functions:learnProductCategory,functions:seedDictionary"
 // =============================================================================
 // MULTILINGUAL EMAIL TEMPLATES (Unverändert)
 // =============================================================================
@@ -500,7 +508,7 @@ function formatDateForLang(date, lang) {
  * RESOLVE USER REGION V2 (API Address Country)
  * Replaces: functions.region().https.onCall
  **********/
-exports.resolveUserRegion = onCall({ region: REGION }, async (request) => {
+exports.resolveUserRegion = onCall({ region: REGION_PRIMARY }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }
@@ -683,7 +691,7 @@ async function updateTrialAndExpiredStores() {
  */
 exports.checkTrialExpiration = onSchedule(
   {
-    region: REGION,
+    region: REGION_PRIMARY,
     maxInstances: 1, // Cron-Job braucht nur 1 Instanz
     schedule: "0 3 * * *",
     timeZone: "UTC"
@@ -698,8 +706,8 @@ exports.checkTrialExpiration = onSchedule(
  */
 exports.onStoreCreated = onDocumentCreated(
   {
-    region: REGION,
-    maxInstances: 2, // Firestore-Trigger - nur bei Registrierungen
+    region: REGION_PRIMARY,
+    maxInstances: 1, // Firestore-Trigger - nur bei Registrierungen
     document: "stores_private/{storeId}"
   },
   async (event) => {
@@ -763,8 +771,8 @@ exports.onStoreCreated = onDocumentCreated(
  */
 exports.onStoreActivated = onDocumentUpdated(
   {
-    region: REGION,
-    maxInstances: 2, // Firestore-Trigger - Aktivierungen
+    region: REGION_PRIMARY,
+    maxInstances: 1, // Firestore-Trigger - Aktivierungen
     document: "stores_private/{storeId}"
   },
   async (event) => {
@@ -796,7 +804,7 @@ exports.onStoreActivated = onDocumentUpdated(
  */
 exports.createStripeCheckoutSession = onCall(
   {
-    region: REGION,
+    region: REGION_PRIMARY,
     secrets: [stripeSecret]
   },
   async (request) => {
@@ -920,8 +928,8 @@ exports.createStripeCheckoutSession = onCall(
  */
 exports.stripeWebhook = onRequest(
   {
-    region: REGION,
-    maxInstances: 2, // 15 High traffic - Payment webhooks kritisch
+    region: REGION_PRIMARY,
+    maxInstances: 1, // 15 High traffic - Payment webhooks kritisch
     secrets: [stripeWebhookSecret, stripeSecret]
   },
   async (req, res) => {
@@ -1031,8 +1039,8 @@ exports.stripeWebhook = onRequest(
  */
 exports.getStoreBySlug = onRequest(
   {
-    region: REGION,
-    maxInstances: 2, //10 Public API - Kundentraffic
+    region: REGION_PRIMARY,
+    maxInstances: 1, //10 Public API - Kundentraffic
     cors: true
   },
   async (req, res) => {
@@ -1066,8 +1074,8 @@ exports.getStoreBySlug = onRequest(
  */
 exports.getProductsBySlug = onRequest(
   {
-    region: REGION,
-    maxInstances: 2, // 10 Public API - Kundentraffic
+    region: REGION_PRIMARY,
+    maxInstances: 1, // 10 Public API - Kundentraffic
     cors: true
   },
   async (req, res) => {
@@ -1105,7 +1113,7 @@ exports.getProductsBySlug = onRequest(
  * FIX: Update stores_private
  */
 exports.confirmEmailVerification = onCall(
-  { region: REGION },
+  { region: REGION_PRIMARY },
   async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "Login required.");
     const uid = request.auth.uid;
@@ -1142,7 +1150,7 @@ exports.confirmEmailVerification = onCall(
  * FIX: Update stores_private & Security Logic Restored
  */
 exports.verifyStorePayment = onCall(
-  { region: REGION },
+  { region: REGION_PRIMARY },
   async (request) => {
     // 1. Auth Check
     if (!request.auth) {
@@ -1262,7 +1270,7 @@ exports.verifyStorePayment = onCall(
  */
 exports.cleanupExpiredAccounts = onSchedule(
   {
-    region: REGION,
+    region: REGION_PRIMARY,
     maxInstances: 1, // Cron-Job braucht nur 1 Instanz
     schedule: "0 4 * * *",
     timeZone: "UTC"
@@ -1320,7 +1328,7 @@ exports.cleanupExpiredAccounts = onSchedule(
 );
 
 exports.requestAccountDeletion = onCall(
-  { region: REGION },
+  { region: REGION_PRIMARY },
   async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "Login required.");
     const uid = request.auth.uid;
@@ -1496,8 +1504,8 @@ function extractPublicAccessFields(accessData) {
  */
 exports.syncAccessToPublic = onDocumentUpdated(
   {
-    region: REGION,
-    maxInstances: 2, // Firestore-Trigger - Access-Sync
+    region: REGION_PRIMARY,
+    maxInstances: 1, // Firestore-Trigger - Access-Sync
     document: "stores_private/{storeId}"
   },
   async (event) => {
@@ -1553,7 +1561,7 @@ exports.syncAccessToPublic = onDocumentUpdated(
  * ADMIN CALLABLE: Manuelles Sync/Repair
  */
 exports.syncStoreAccessToPublic = onCall(
-  { region: REGION },
+  { region: REGION_PRIMARY },
   async (request) => {
     // 1. Auth Check
     if (!request.auth) {
@@ -1634,7 +1642,7 @@ exports.syncStoreAccessToPublic = onCall(
  */
 exports.reverseGeocode = onCall(
   {
-    region: REGION,
+    region: REGION_PRIMARY,
     secrets: [googleMapsApiKey],
     cors: [
       "https://admin.aldeebtech.de",
@@ -1666,7 +1674,7 @@ exports.reverseGeocode = onCall(
     }
 
     // 2. Sprache (Standard: de)
-    const lang = language || 'de';
+    const lang = language || 'en';
 
     // 3. Google Geocoding API aufrufen
     const apiKey = googleMapsApiKey.value();
@@ -1775,8 +1783,8 @@ exports.reverseGeocode = onCall(
  */
 exports.syncStoreNameToPublic = onDocumentUpdated(
   {
-    region: REGION,
-    maxInstances: 2, // Firestore-Trigger - Name-Sync
+    region: REGION_PRIMARY,
+    maxInstances: 1, // Firestore-Trigger - Name-Sync
     document: "stores_private/{storeId}"
   },
   async (event) => {
@@ -1831,8 +1839,8 @@ exports.syncStoreNameToPublic = onDocumentUpdated(
  */
 exports.syncStoreNameToPrivate = onDocumentUpdated(
   {
-    region: REGION,
-    maxInstances: 2, // Firestore-Trigger - Name-Sync
+    region: REGION_PRIMARY,
+    maxInstances: 1, // Firestore-Trigger - Name-Sync
     document: "stores_public/{storeId}"
   },
   async (event) => {
@@ -1899,7 +1907,7 @@ exports.syncStoreNameToPrivate = onDocumentUpdated(
  * Output: { success: true, slug: string, publicUrl: string } oder { success: false, error: string }
  */
 exports.finalizeStoreSetup = onCall(
-  { region: REGION },
+  { region: REGION_PRIMARY },
   async (request) => {
     // 1. Auth Check
     if (!request.auth) {
@@ -2080,7 +2088,7 @@ exports.refreshFxRates = onSchedule(
   {
     schedule: "0 4 * * *", // Täglich 04:00 UTC
     timeZone: "UTC",
-    region: REGION,
+    region: REGION_PRIMARY,
     maxInstances: 1, // Cron-Job braucht nur 1 Instanz
   },
   async () => {
@@ -2124,3 +2132,267 @@ exports.refreshFxRates = onSchedule(
 // HINWEIS: getFxRate Callable wurde entfernt.
 // Client liest jetzt direkt aus /system/fx_rates (Firestore).
 // Das ist schneller und reduziert Cloud Function Aufrufe.
+
+// =============================================================================
+// CATEGORY RECOMMENDATION SYSTEM
+// =============================================================================
+
+/**
+ * normalizeText — Firestore-safe DocID from any language text
+ */
+function normalizeText(text) {
+  if (!text || typeof text !== 'string') return '';
+  return text.trim().toLowerCase()
+    .replace(/[/\\._~#[\]*]+/g, ' ')
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/**
+ * findCanonicalCategory — Direct match on doc ID, then alias search
+ */
+async function findCanonicalCategory(normalizedCategory) {
+  if (!normalizedCategory) return null;
+
+  // 1. Direct match on doc ID
+  const directDoc = await db.collection('global_categories').doc(normalizedCategory).get();
+  if (directDoc.exists) {
+    return { id: directDoc.id, labels: directDoc.data().labels };
+  }
+
+  // 2. Alias search via array-contains
+  const aliasSnap = await db.collection('global_categories')
+    .where('aliasesNormalized', 'array-contains', normalizedCategory)
+    .limit(1)
+    .get();
+
+  if (!aliasSnap.empty) {
+    const doc = aliasSnap.docs[0];
+    return { id: doc.id, labels: doc.data().labels };
+  }
+
+  return null;
+}
+
+/**
+ * addDictionaryVote — Transaction to update product→category mapping
+ */
+async function addDictionaryVote(normalizedName, displayName, newCatId) {
+  const ref = db.collection('global_product_category_dictionary').doc(normalizedName);
+  await db.runTransaction(async (t) => {
+    const doc = await t.get(ref);
+    const data = doc.exists ? doc.data() : {};
+    const counts = data.categoryCounts || {};
+    counts[newCatId] = (counts[newCatId] || 0) + 1;
+
+    let topId = newCatId, topCount = 0, totalCount = 0;
+    for (const [catId, cnt] of Object.entries(counts)) {
+      totalCount += cnt;
+      if (cnt > topCount) { topCount = cnt; topId = catId; }
+    }
+
+    t.set(ref, {
+      displayName,
+      normalizedName,
+      categoryCounts: counts,
+      topCategoryId: topId,
+      topCount,
+      totalCount,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+}
+
+/**
+ * learnProductCategory — onCreate trigger for products
+ * Learns product→category mapping from active products
+ */
+exports.learnProductCategory = onDocumentCreated(
+  {
+    document: 'stores_public/{storeId}/products/{productId}',
+    region: REGION_PRIMARY,
+    maxInstances: 1,
+  },
+  async (event) => {
+    try {
+      const data = event.data?.data();
+      if (!data) return;
+
+      // Skip inactive products (spam protection)
+      if (data.product_active !== true) return;
+
+      const rawName = data.name;
+      const rawCategory = data.category;
+      if (!rawName || !rawCategory) return;
+
+      const normalizedName = normalizeText(rawName);
+      const normalizedCategory = normalizeText(rawCategory);
+      if (!normalizedName || !normalizedCategory) return;
+
+      // Only learn if category is in our canonical whitelist
+      const canonical = await findCanonicalCategory(normalizedCategory);
+      if (!canonical) {
+        console.log(`[learnProductCategory] Category "${rawCategory}" not in whitelist, skipping`);
+        return;
+      }
+
+      await addDictionaryVote(normalizedName, rawName, canonical.id);
+      console.log(`[learnProductCategory] Learned: "${rawName}" → "${canonical.id}"`);
+    } catch (error) {
+      console.error('[learnProductCategory] Error:', error.message);
+    }
+  }
+);
+
+/**
+ * seedDictionary — HTTPS endpoint to seed initial categories + products
+ * POST only, token via x-seed-token header
+ */
+exports.seedDictionary = onRequest(
+  {
+    region: REGION_PRIMARY,
+    maxInstances: 1,
+    secrets: [seedSecret],
+    cors: false,
+  },
+  async (req, res) => {
+    // Only POST
+    if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
+
+    // Auth via secret header
+    const token =
+      req.get("x-seed-token") ??
+      (req.get("authorization")?.replace("Bearer ", "") ?? "");
+
+    if (!token || token !== seedSecret.value()) {
+      return res.status(403).send("Forbidden");
+    }
+
+    try {
+      const categories = Array.isArray(seedData.categories) ? seedData.categories : [];
+      const products = Array.isArray(seedData.products) ? seedData.products : [];
+
+      if (categories.length === 0) {
+        return res.status(400).json({ error: "seedData.categories is empty" });
+      }
+
+      const validCategoryIds = new Set(categories.map((c) => c.id));
+      const fallbackCategoryId = validCategoryIds.has("sonstiges")
+        ? "sonstiges"
+        : categories[0].id;
+
+      // ---- Seed categories (upsert / merge) ----
+      {
+        const batch = db.batch();
+        for (const c of categories) {
+          if (!c?.id || !c?.labels) continue;
+
+          const aliasesNormalized = (c.aliases ?? [])
+            .map((a) => normalizeText(String(a)))
+            .filter(Boolean);
+
+          batch.set(
+            db.collection("global_categories").doc(c.id),
+            {
+              normalizedName: c.id,
+              labels: c.labels,
+              aliasesNormalized,
+            },
+            { merge: true }
+          );
+        }
+        await batch.commit();
+      }
+
+      // ---- Prepare products (dedupe by normalized name) ----
+      const seen = new Set();
+      const rows = [];
+      for (const p of products) {
+        const displayName = String(p?.name ?? "").trim();
+        if (!displayName) continue;
+
+        const normalizedName = normalizeText(displayName);
+        if (!normalizedName || seen.has(normalizedName)) continue;
+        seen.add(normalizedName);
+
+        const categoryId = validCategoryIds.has(p?.categoryId)
+          ? p.categoryId
+          : fallbackCategoryId;
+
+        rows.push({ normalizedName, displayName, categoryId });
+      }
+
+      // ---- Seed products (ONLY create missing docs; don’t overwrite learned data) ----
+      let created = 0;
+      let skippedExisting = 0;
+
+      // read+write in chunks
+      const CHUNK = 300;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK);
+
+        const refs = chunk.map((r) =>
+          db.collection("global_product_category_dictionary").doc(r.normalizedName)
+        );
+
+        const snaps = await db.getAll(...refs);
+
+        const batch = db.batch();
+        for (let j = 0; j < chunk.length; j++) {
+          const row = chunk[j];
+          const snap = snaps[j];
+
+          if (snap.exists) {
+            skippedExisting++;
+            continue;
+          }
+
+          batch.set(refs[j], {
+            displayName: row.displayName,
+            normalizedName: row.normalizedName,
+            categoryCounts: { [row.categoryId]: 1 },
+            topCategoryId: row.categoryId,
+            topCount: 1,
+            totalCount: 1,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            seeded: true,
+          });
+
+          created++;
+        }
+
+        await batch.commit();
+      }
+
+      // optional: meta marker (nice to have)
+      await db.collection("global_dictionary_meta").doc("seed").set(
+        {
+          seededAt: admin.firestore.FieldValue.serverTimestamp(),
+          categories: categories.length,
+          productsCreated: created,
+          productsSkippedExisting: skippedExisting,
+        },
+        { merge: true }
+      );
+
+      return res.status(200).json({
+        success: true,
+        categories: categories.length,
+        productsTotalInSeed: rows.length,
+        productsCreated: created,
+        productsSkippedExisting: skippedExisting,
+      });
+    } catch (error) {
+      console.error("[seedDictionary] Error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+
+);
+
+exports.translateProductNamePublic =
+  require("./i18n_product_names").translateProductNamePublic;
+
