@@ -660,6 +660,7 @@ class SettingsViewModel extends BaseViewModel {
       adminAppLang = currentLocale;
     }
 
+
     final result =
         await runBusyAction<bool>(() async {
           final phoneFull = phoneCtrl.text.isNotEmpty
@@ -669,6 +670,25 @@ class SettingsViewModel extends BaseViewModel {
               ? '$waCode${waCtrl.text.trim()}'
               : '';
           if (waFull.isEmpty && phoneFull.isNotEmpty) waFull = phoneFull;
+
+          // --- FIX START: Werte bereinigen ---
+          // Sicherstellen, dass der Preis keine NaN ist
+          double finalShippingPrice = double.tryParse(shippingPriceCtrl.text.trim()) ?? 0.0;
+          if (finalShippingPrice.isNaN || finalShippingPrice.isInfinite) {
+            finalShippingPrice = 0.0;
+          }
+
+          // Sicherstellen, dass Koordinaten keine NaN sind (JSON mag kein NaN)
+          double? finalLat = latitude;
+          if (finalLat != null && (finalLat.isNaN || finalLat.isInfinite)) {
+            finalLat = null;
+          }
+
+          double? finalLng = longitude;
+          if (finalLng != null && (finalLng.isNaN || finalLng.isInfinite)) {
+            finalLng = null;
+          }
+          // --- FIX ENDE ---
 
           final data = {
             'store_name': storeNameCtrl.text.trim(),
@@ -681,8 +701,7 @@ class SettingsViewModel extends BaseViewModel {
             'whatsapp': waFull,
             'email_support': emailSupportCtrl.text.trim(),
             'shipping': shippingEnabled,
-            'shipping_price':
-                double.tryParse(shippingPriceCtrl.text.trim()) ?? 0.0,
+            'shipping_price': finalShippingPrice, // Hier die bereinigte Variable nutzen
             'has_logo': logoUrl,
             'show_name_with_logo': showNameWithLogo,
             'tiktok': tiktokCtrl.text.trim(),
@@ -690,10 +709,9 @@ class SettingsViewModel extends BaseViewModel {
             'facebook': facebookCtrl.text.trim(),
             'working_hours': workingHoursToJson(workingHours),
             'store_lang': storeLang,
-            'admin_app_lang':
-                adminAppLang, // Sprache für E-Mail-Benachrichtigungen
-            'latitude': latitude,
-            'longitude': longitude,
+            'admin_app_lang': adminAppLang,
+            'latitude': finalLat, // Hier die bereinigte Variable nutzen
+            'longitude': finalLng, // Hier die bereinigte Variable nutzen
           };
 
           // ═══════════════════════════════════════════════════════════════════

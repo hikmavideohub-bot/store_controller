@@ -94,9 +94,14 @@ class StoreConfigService {
   }
 
   /// Rekursiv alle Firestore-Timestamps in JSON-kompatible Strings umwandeln
+  /// FIX: Verhindert "NaN" Fehler beim JSON-Encoding
   static dynamic _sanitize(dynamic value) {
     if (value is Timestamp) {
       return value.toDate().toIso8601String();
+    }
+    if (value is double) {
+      if (value.isNaN || value.isInfinite) return 0.0;
+      return value;
     }
     if (value is Map) {
       return Map<String, dynamic>.fromEntries(
@@ -118,7 +123,11 @@ class StoreConfigService {
     _setStore(copy);
 
     final sp = await SharedPreferences.getInstance();
-    await sp.setString(_cacheKey, json.encode(copy));
+    try {
+      await sp.setString(_cacheKey, json.encode(copy));
+    } catch (e) {
+      debugPrint('❌ StoreConfigService.set JSON Error: $e');
+    }
   }
 
   /// ✅ Nach updateStore: sofort lokal updaten (ohne Netz) + reactive update

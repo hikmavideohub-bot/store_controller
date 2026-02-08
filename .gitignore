@@ -128,3 +128,7 @@ android/tmpclaude-*
 
 **/tmpclaude-*
 **/tmpclaude-*/
+
+# Windows reserved
+nul
+
