@@ -34,6 +34,8 @@ macos/Pods/
 tmpclaude-*/
 android/tmpclaude-*/
 nul
+node_modules/
+
 
 
 
