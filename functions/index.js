@@ -1345,7 +1345,7 @@ exports.requestAccountDeletion = onCall(
  * CDN Image Proxy (v2 Request)
  */
 exports.cdnImageProxy = onRequest(
-  { region: "europe-west3", maxInstances: 2 }, //10 Bildauslieferung - hoher Traffic
+  { region: "europe-west3", maxInstances: 2 },
   async (req, res) => {
     res.set("Access-Control-Allow-Origin", "*");
     if (req.method === "OPTIONS") return res.status(204).send("");
@@ -1360,17 +1360,32 @@ exports.cdnImageProxy = onRequest(
       const bucket = admin.storage().bucket(bucketName);
       const file = bucket.file(storagePath);
 
-      const [exists] = await file.exists();
-      if (!exists) return res.status(404).send("Image not found");
+      // ✅ RETRY: kurze Propagation abfangen
+      let exists = false;
+      for (let i = 0; i < 6; i++) {
+        const [e] = await file.exists();
+        exists = e;
+        if (exists) break;
+        await new Promise(r => setTimeout(r, 300)); // 0.3s * 6 = 1.8s max
+      }
+
+      if (!exists) {
+        // ✅ 404 NICHT CACHEN
+        res.set("Cache-Control", "no-store, max-age=0");
+        return res.status(404).send("Image not found");
+      }
 
       const [metadata] = await file.getMetadata();
+
+      // ✅ ok für Assets, aber wenn du oft überschreibst: lieber cache-bust per ?v=...
       res.set("Cache-Control", "public, max-age=31536000, s-maxage=31536000, immutable");
       res.set("Content-Type", metadata.contentType || "image/jpeg");
 
-      file.createReadStream().pipe(res);
+      return file.createReadStream().pipe(res);
     } catch (error) {
       console.error("CDN Error:", error);
-      res.status(500).send("Internal Server Error");
+      res.set("Cache-Control", "no-store, max-age=0");
+      return res.status(500).send("Internal Server Error");
     }
   }
 );

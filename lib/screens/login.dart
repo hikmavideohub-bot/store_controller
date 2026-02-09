@@ -4,6 +4,8 @@ import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../services/api_service.dart';
 import '../storage/store_prefs.dart';
 import '../main.dart' show SessionMessageHelper, MyApp;
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,6 +43,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _showPendingSessionMessage();
     });
   }
+
+
+
+
 
   void _showPendingSessionMessage() {
     final msg = SessionMessageHelper.consumeMessage();
@@ -211,12 +217,15 @@ class _LoginScreenState extends State<LoginScreen> {
     debugPrint('🟢 Login: Starting Google Sign-In...');
 
     try {
-      final result = await ApiService.signInWithGoogle();
-      debugPrint(
-        '🟢 Login: Got result - ok=${result.ok}, error=${result.error}',
-      );
+      final result = await ApiService.signInWithGoogle(s);
+      debugPrint('🟢 Login: Got result - ok=${result.ok}, error=${result.error}');
 
       if (!mounted) return;
+
+      // ✅ Web-Redirect gestartet -> Seite lädt neu, hier nur zurück
+      if (result.ok && result.data?['redirecting'] == true) {
+        return;
+      }
 
       if (!result.ok) {
         setState(() => _googleBusy = false);
@@ -252,7 +261,6 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final storeId = result.data?['storeId'] ?? '';
-
       if (storeId.isEmpty) {
         setState(() => _googleBusy = false);
         _toast(s.unexpectedError, isError: true);
@@ -263,14 +271,75 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
       setState(() => _googleBusy = false);
-
       context.go('/home');
     } catch (e) {
       if (!mounted) return;
       setState(() => _googleBusy = false);
-      _toast(ApiService.mapFirebaseErrorToArabic(e), isError: true);
+      _toast(ApiService.mapFirebaseErrorToArabic(e, s), isError: true);
     }
   }
+
+
+  Future<void> _handleLoginResult(
+      ApiResult<Map<String, dynamic>> result,
+      AppLocalizations s,
+      ) async {
+    if (!mounted) return;
+
+    if (!result.ok) {
+      setState(() => _googleBusy = false);
+
+      if (result.error == 'cancelled') return;
+
+      if (result.error == 'no_store') {
+        final isNewUser = result.data?['isNewUser'] == true;
+        final uid = result.data?['uid'] as String?;
+        final email = result.data?['email'] as String?;
+        final displayName = result.data?['displayName'] as String?;
+        _showNoStoreDialog(
+          isNewUser: isNewUser,
+          uid: uid,
+          email: email,
+          displayName: displayName,
+        );
+        return;
+      }
+
+      if (result.error == 'expired') {
+        _toast(result.details ?? s.sessionExpired, isError: true);
+        return;
+      }
+
+      if (result.error == 'permission-denied') {
+        _toast(result.details ?? s.loginNoPermission, isError: true);
+        return;
+      }
+
+      _toast(result.details ?? s.googleLoginFailed, isError: true);
+      return;
+    }
+
+    // ✅ Sonderfall: Web-Redirect gestartet (Seite lädt neu)
+    if (result.data?['redirecting'] == true) {
+      return;
+    }
+
+    final storeId = result.data?['storeId'] ?? '';
+
+    if (storeId.isEmpty) {
+      setState(() => _googleBusy = false);
+      _toast(s.unexpectedError, isError: true);
+      return;
+    }
+
+    await StorePrefs.setStoreId(storeId);
+
+    if (!mounted) return;
+    setState(() => _googleBusy = false);
+
+    context.go('/home');
+  }
+
 
   @override
   Widget build(BuildContext context) {

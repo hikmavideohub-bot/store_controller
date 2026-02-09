@@ -78,6 +78,16 @@ class SettingsViewModel extends BaseViewModel {
   bool _isDirty = false;
   bool get isDirty => _isDirty;
 
+  bool _logoUploadInProgress = false;
+  bool get logoUploadInProgress => _logoUploadInProgress;
+
+  void setLogoUploadInProgress(bool v) {
+    if (_logoUploadInProgress == v) return;
+    _logoUploadInProgress = v;
+    notifyListeners();
+  }
+
+
   void markDirty() {
     if (!_isDirty) {
       _isDirty = true;

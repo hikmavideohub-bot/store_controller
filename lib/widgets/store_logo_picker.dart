@@ -270,26 +270,34 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
       });
 
       await task;
+      // ✅ SOFORT Original anzeigen (nicht auf Resize warten)
+      final originalUrl = CdnHelper.buildStoreLogoUrl(
+        storeId: widget.storeId,
+        filename: '$uniqueName.jpg',
+      );
+      widget.onLogoChanged(originalUrl);
+      debugPrint('✅ onLogoChanged (original) called');
       debugPrint('✅ Logo upload complete: $uniqueName.jpg');
 
       if (!mounted) return;
 
       // Warte kurz auf Resize-Extension (360x360) - nur 5 Versuche
       final thumbRef = baseRef.child('${uniqueName}_360x360.jpeg');
-      final thumbExists = await _waitForResizedImage(thumbRef, maxAttempts: 5);
-      debugPrint('   Resized version exists: $thumbExists');
+// ✅ Thumbnail später nachziehen (nicht blocken)
+      () async {
+        final thumbRef = baseRef.child('${uniqueName}_360x360.jpeg');
+        final ok = await _waitForResizedImage(thumbRef, maxAttempts: 25);
+        debugPrint('   Resized version exists: $ok');
+        if (!ok) return;
 
-      final thumbFilename = thumbExists
-          ? '${uniqueName}_360x360.jpeg'
-          : '$uniqueName.jpg';
+        final thumbUrl = CdnHelper.buildStoreLogoUrl(
+          storeId: widget.storeId,
+          filename: '${uniqueName}_360x360.jpeg',
+        );
+        widget.onLogoChanged(thumbUrl);
+        debugPrint('✅ onLogoChanged (thumb) called');
+      }();
 
-      final cdnUrl = CdnHelper.buildStoreLogoUrl(
-        storeId: widget.storeId,
-        filename: thumbFilename,
-      );
-      debugPrint('✅ CDN URL generated: $cdnUrl');
-
-      widget.onLogoChanged(cdnUrl);
       debugPrint('✅ onLogoChanged called - REMEMBER TO SAVE!');
 
       if (mounted) {

@@ -7,7 +7,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
-
+import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:flutter/foundation.dart'; // kIsWeb
 // Services & Core
 import 'services/api_service.dart';
 import 'services/store_config_service.dart';
@@ -85,10 +86,14 @@ class SessionMessageHelper {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (kIsWeb) {
+    usePathUrlStrategy();
+  }
+
   await Hive.initFlutter();
   await Hive.openBox('cache');
 
-  // Register third-party licenses (ExchangeRate-API for FX rates)
   LicenseRegistry.addLicense(() async* {
     yield const LicenseEntryWithLineBreaks(
       ['ExchangeRate-API'],
@@ -105,13 +110,11 @@ currency conversion in subscription pricing.''',
     );
   });
 
-  // Prüfe Privacy Consent BEVOR Firebase initialisiert wird
   final hasPrivacyConsent = await PrivacyConsentPrefs.hasAccepted();
   final savedLocale = await LocalePrefs.load();
   final savedTheme = await ThemePrefs.load();
 
   if (!hasPrivacyConsent) {
-    // Zeige Consent-Dialog ohne Firebase
     runApp(
       PrivacyConsentApp(
         initialLocale: savedLocale,
@@ -122,7 +125,6 @@ currency conversion in subscription pricing.''',
     return;
   }
 
-  // Normale App-Initialisierung mit Firebase
   await _initializeApp(savedLocale, savedTheme);
 }
 

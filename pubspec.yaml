@@ -2,7 +2,7 @@ name: store_controller
 description: "Store Controller App"
 publish_to: "none"
 
-version: 1.0.1+7
+version: 1.0.1+8
 
 environment:
   sdk: ">=3.10.4 <4.0.0"
@@ -25,6 +25,8 @@ dependencies:
   google_sign_in: ^6.2.1     # Google Sign-in
 
   exif: ^2.0.1
+  flutter_web_plugins:
+    sdk: flutter
   flutter:
     sdk: flutter
 

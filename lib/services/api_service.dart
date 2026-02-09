@@ -11,8 +11,7 @@ import 'cache_store.dart';
 import 'store_config_service.dart';
 import '../storage/store_prefs.dart';
 import 'package:store_controller/core/access_manager.dart';
-import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // API SERVICE - Dual Collection Architecture
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -101,6 +100,7 @@ class ApiService {
   // ═══════════════════════════════════════════════════════════════════════════
   // ERROR HANDLING
   // ═══════════════════════════════════════════════════════════════════════════
+
 
   /// Mappt Firebase Fehler auf lokalisierte Nachrichten
   static String mapFirebaseErrorToArabic(dynamic error, [AppLocalizations? s]) {
@@ -501,24 +501,74 @@ class ApiService {
       if (kIsWeb) {
         final provider = GoogleAuthProvider()
           ..addScope('email')
-          ..addScope('profile');
+          ..addScope('profile')
+          ..setCustomParameters({'prompt': 'select_account'});
 
         try {
-          userCredential = await _auth.signInWithPopup(provider);
-        } catch (e) {
-          // Optional: klarere Meldung, wenn Popup blockiert ist
-          final code = (e is FirebaseAuthException) ? e.code : '';
-          if (code == 'popup-blocked' || code == 'popup_closed_by_user') {
+          final userCredential = await _auth.signInWithPopup(provider);
+
+          final uid = userCredential.user?.uid;
+          if (uid == null) {
             return ApiResult.fail(
               'google_failed',
-              details:
-              s?.errorGooglePopupBlocked ??
-                  'errorGooglePopupBlocked', // fallback-key (nur falls s null)
+              details: s?.googleLoginFailed ?? 'googleLoginFailed',
             );
           }
-          rethrow;
+
+          final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+
+          final storeExists = await storeDocumentExists(uid);
+          if (!storeExists) {
+            hasStore = false;
+            return ApiResult.fail(
+              'no_store',
+              details: s?.errorNoStoreFound ?? 'errorNoStoreFound',
+              data: {
+                'uid': uid,
+                'isNewUser': isNewUser,
+                'email': userCredential.user?.email,
+                'displayName': userCredential.user?.displayName,
+              },
+            );
+          }
+
+          hasStore = true;
+          await fetchStoreConfig();
+
+          final verifyStatus = await checkVerificationStatus(uid);
+          if (verifyStatus == 'expired') {
+            hasStore = false;
+            await clearAuth();
+            return ApiResult.fail(
+              'expired',
+              details: s?.errorAccountExpired ?? 'errorAccountExpired',
+            );
+          }
+
+          return ApiResult.ok({
+            'storeId': uid,
+            'token': uid,
+            'isNewUser': false,
+            'email': userCredential.user?.email,
+            'displayName': userCredential.user?.displayName,
+          });
+        } catch (e) {
+          if (e is FirebaseAuthException) {
+            // ignore: avoid_print
+            print('🔴 Google WEB popup failed: code=${e.code} message=${e.message}');
+          }
+
+          return ApiResult.fail(
+            'google_failed',
+            details: mapFirebaseErrorToArabic(e, s),
+            data: {
+              'firebaseCode': e is FirebaseAuthException ? e.code : null,
+              'firebaseMessage': e is FirebaseAuthException ? e.message : e.toString(),
+            },
+          );
         }
-      } else {
+      }
+      else {
         // =========================
         // ✅ MOBILE: dein bestehender Credential-Flow
         // =========================
@@ -621,6 +671,78 @@ class ApiService {
       bumpAuthTick();
     }
   }
+  static Future<ApiResult<Map<String, dynamic>>?> consumeGoogleRedirectResult([
+    AppLocalizations? s,
+  ]) async {
+    if (!kIsWeb) return null;
+
+    try {
+      // 1) Erst versuchen: Redirect-Result
+      final cred = await FirebaseAuth.instance.getRedirectResult();
+
+      // 2) Fallback: manchmal ist RedirectResult leer, aber User ist schon eingeloggt
+      final user = cred.user ?? FirebaseAuth.instance.currentUser;
+      if (user == null) return null;
+
+      final uid = user.uid;
+      final isNewUser = cred.user != null
+          ? (cred.additionalUserInfo?.isNewUser ?? false)
+          : false;
+
+      final email = user.email;
+      final displayName = user.displayName;
+
+      // ---- ab hier bleibt deine bestehende Logik gleich ----
+      final storeExists = await storeDocumentExists(uid);
+      if (!storeExists) {
+        hasStore = false;
+        return ApiResult.fail(
+          'no_store',
+          details: s?.errorNoStoreFound ?? 'errorNoStoreFound',
+          data: {
+            'uid': uid,
+            'isNewUser': isNewUser,
+            'email': email,
+            'displayName': displayName,
+          },
+        );
+      }
+
+      hasStore = true;
+      _pendingGoogleCredential = null;
+      _isCurrentUserNew = false;
+
+      await fetchStoreConfig();
+
+      final verifyStatus = await checkVerificationStatus(uid);
+      if (verifyStatus == 'expired') {
+        hasStore = false;
+        await clearAuth();
+        return ApiResult.fail(
+          'expired',
+          details: s?.errorAccountExpired ?? 'errorAccountExpired',
+        );
+      }
+
+      return ApiResult.ok({
+        'storeId': uid,
+        'token': uid,
+        'isNewUser': false,
+        'email': email,
+        'displayName': displayName,
+      });
+    } catch (e) {
+      // ignore: avoid_print
+      print('🔴 consumeRedirect failed: $e');
+
+      return ApiResult.fail(
+        'google_failed',
+        details: mapFirebaseErrorToArabic(e, s),
+      );
+    }
+  }
+
+
 
   // ═══════════════════════════════════════════════════════════════════════════
   // REGISTRATION - DUAL COLLECTION ARCHITECTURE
