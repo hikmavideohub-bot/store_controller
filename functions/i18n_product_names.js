@@ -111,13 +111,33 @@ async function deeplTranslate(text, sourceLang, targetLang, { context, glossaryI
   params.append("text", text);
   params.append("target_lang", String(targetLang).toUpperCase());
 
-  if (sourceLang && sourceLang !== "AUTO") params.append("source_lang", String(sourceLang).toUpperCase());
+  if (sourceLang && sourceLang !== "AUTO") {
+    params.append("source_lang", String(sourceLang).toUpperCase());
+  }
   if (context) params.append("context", context);
-  if (glossaryId && sourceLang && sourceLang !== "AUTO") params.append("glossary_id", glossaryId);
 
-  const json = await deeplRequest(params);
-  const out = json?.translations?.[0]?.text;
-  return typeof out === "string" && out.trim() ? out.trim() : null;
+  // nur wenn glossaryId wirklich da ist
+  if (glossaryId && sourceLang && sourceLang !== "AUTO") {
+    params.append("glossary_id", glossaryId);
+  }
+
+  try {
+    const json = await deeplRequest(params);
+    const out = json?.translations?.[0]?.text;
+    return typeof out === "string" && out.trim() ? out.trim() : null;
+  } catch (e) {
+    // Fallback: Glossary-ID falsch/gelöscht -> Retry ohne Glossary
+    const msg = String(e?.message || "");
+    if (params.has("glossary_id") && msg.includes("Glossary") && msg.includes("not found")) {
+      const params2 = new URLSearchParams(params.toString());
+      params2.delete("glossary_id");
+
+      const json2 = await deeplRequest(params2);
+      const out2 = json2?.translations?.[0]?.text;
+      return typeof out2 === "string" && out2.trim() ? out2.trim() : null;
+    }
+    throw e;
+  }
 }
 
 // ---------- Central dictionary ----------
