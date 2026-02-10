@@ -2,6 +2,12 @@
  * Firebase Cloud Functions - FINAL PROD VERSION (v2 Migration)
  * Location: functions/index.js
  */
+//firebase deploy --only "functions:syncAccessToPublic,functions:syncStoreNameToPublic,functions:syncStoreNameToPrivate,functions:learnProductCategory,functions:seedDictionary"
+//firebase deploy --only "functions:checkTrialExpiration,functions:cleanupExpiredAccounts,functions:refreshFxRates,functions:onStoreCreated,functions:onStoreActivated"
+//firebase deploy --only "functions:getStoreBySlug,functions:getProductsBySlug,functions:cdnImageProxy,functions:reverseGeocode"
+//firebase deploy --only "functions:stripeWebhook,functions:createStripeCheckoutSession,functions:verifyStorePayment,functions:confirmEmailVerification,functions:requestAccountDeletion,functions:finalizeStoreSetup,functions:resolveUserRegion,functions:syncStoreAccessToPublic"
+//firebase deploy --only "functions:syncStoresOnProductDictUpdate,functions:syncStoresOnCategoryDictUpdate"
+//firebase deploy --only "functions:checkTrialExpiration,functions:cleanupExpiredAccounts,functions:refreshFxRates,functions:onStoreCreated,functions:onStoreActivated,functions:syncAccessToPublic,functions:syncStoreNameToPublic,functions:syncStoreNameToPrivate,functions:learnProductCategory,functions:seedDictionary"
 
 require("dotenv").config();
 
@@ -10,7 +16,7 @@ require("dotenv").config();
 // =============================================================================
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 
 // --- WICHTIG: DIESE ZEILE HINZUFÜGEN ---
@@ -43,12 +49,6 @@ const REGION_PRIMARY = "europe-west3"; // bleibt für App/Traffic
 const GRACE_PERIODS = [7, 14];
 
 
-//firebase deploy --only "functions:syncAccessToPublic,functions:syncStoreNameToPublic,functions:syncStoreNameToPrivate,functions:learnProductCategory,functions:seedDictionary"
-//firebase deploy --only "functions:checkTrialExpiration,functions:cleanupExpiredAccounts,functions:refreshFxRates,functions:onStoreCreated,functions:onStoreActivated"
-//firebase deploy --only "functions:getStoreBySlug,functions:getProductsBySlug,functions:cdnImageProxy,functions:reverseGeocode"
-//firebase deploy --only "functions:stripeWebhook,functions:createStripeCheckoutSession,functions:verifyStorePayment,functions:confirmEmailVerification,functions:requestAccountDeletion,functions:finalizeStoreSetup,functions:resolveUserRegion,functions:syncStoreAccessToPublic"
-//firebase deploy --only "functions:createStripeCheckoutSession"
-//firebase deploy --only "functions:checkTrialExpiration,functions:cleanupExpiredAccounts,functions:refreshFxRates,functions:onStoreCreated,functions:onStoreActivated,functions:syncAccessToPublic,functions:syncStoreNameToPublic,functions:syncStoreNameToPrivate,functions:learnProductCategory,functions:seedDictionary"
 // =============================================================================
 // MULTILINGUAL EMAIL TEMPLATES (Unverändert)
 // =============================================================================
@@ -2188,6 +2188,18 @@ async function findCanonicalCategory(normalizedCategory) {
     return { id: doc.id, labels: doc.data().labels };
   }
 
+  // 3. Label scan — compare normalized label values across all languages
+  const allCats = await db.collection('global_categories').get();
+  for (const doc of allCats.docs) {
+    const labels = doc.data().labels;
+    if (!labels || typeof labels !== 'object') continue;
+    for (const val of Object.values(labels)) {
+      if (typeof val === 'string' && normalizeText(val) === normalizedCategory) {
+        return { id: doc.id, labels };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -2221,10 +2233,10 @@ async function addDictionaryVote(normalizedName, displayName, newCatId) {
 }
 
 /**
- * learnProductCategory — onCreate trigger for products
- * Learns product→category mapping from active products
+ * learnProductCategory — onWrite trigger for products
+ * Learns product→category mapping from active products (create + update)
  */
-exports.learnProductCategory = onDocumentCreated(
+exports.learnProductCategory = onDocumentWritten(
   {
     document: 'stores_public/{storeId}/products/{productId}',
     region: REGION_PRIMARY,
@@ -2232,7 +2244,10 @@ exports.learnProductCategory = onDocumentCreated(
   },
   async (event) => {
     try {
-      const data = event.data?.data();
+      const after = event.data?.after;
+      if (!after || !after.exists) return; // deleted
+
+      const data = after.data();
       if (!data) return;
 
       // Skip inactive products (spam protection)
@@ -2241,6 +2256,13 @@ exports.learnProductCategory = onDocumentCreated(
       const rawName = data.name;
       const rawCategory = data.category;
       if (!rawName || !rawCategory) return;
+
+      // On update: skip if name and category unchanged
+      const before = event.data?.before;
+      if (before && before.exists) {
+        const prev = before.data() || {};
+        if (prev.name === rawName && prev.category === rawCategory) return;
+      }
 
       const normalizedName = normalizeText(rawName);
       const normalizedCategory = normalizeText(rawCategory);
@@ -2410,4 +2432,9 @@ exports.seedDictionary = onRequest(
 
 exports.translateProductNamePublic =
   require("./i18n_product_names").translateProductNamePublic;
+exports.syncStoresOnProductDictUpdate =
+  require("./i18n_product_names").syncStoresOnProductDictUpdate;
+exports.syncStoresOnCategoryDictUpdate =
+  require("./i18n_product_names").syncStoresOnCategoryDictUpdate;
+
 

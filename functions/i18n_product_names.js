@@ -3,7 +3,7 @@
 const admin = require("firebase-admin");
 admin.initializeApp();
 
-const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { onDocumentWritten, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const crypto = require("crypto");
 
@@ -279,12 +279,13 @@ exports.translateProductNamePublic = onDocumentWritten(
 
     if (catText && !categoryAlreadyOk) {
       try {
-        const { translations } = await getOrCreateCentralTranslations("i18n_category_names", "category", catText);
+        const { key: catDictKey, translations } = await getOrCreateCentralTranslations("i18n_category_names", "category", catText);
         updates.category_i18n = { ...(data.category_i18n || {}), ...translations };
         updates.categoryTranslationHash = catHash;
         updates.categoryTranslatedAt = admin.firestore.FieldValue.serverTimestamp();
         updates.categoryTranslationVersion = 20;
         updates.categoryTranslationStatus = "ready";
+        updates.categoryTranslationKey = catDictKey;
       } catch (e) {
         updates.categoryTranslationStatus = e?.code === 456 ? "quota_exceeded" : "error";
         updates.categoryTranslationHash = catHash;
@@ -294,7 +295,7 @@ exports.translateProductNamePublic = onDocumentWritten(
 
     if (nameText && !nameAlreadyOk) {
       try {
-        const { translations } = await getOrCreateCentralTranslations(
+        const { key: nameDictKey, translations } = await getOrCreateCentralTranslations(
           "i18n_product_names",
           "product",
           nameText,
@@ -306,6 +307,7 @@ exports.translateProductNamePublic = onDocumentWritten(
         updates.nameTranslatedAt = admin.firestore.FieldValue.serverTimestamp();
         updates.nameTranslationVersion = 20;
         updates.nameTranslationStatus = "ready";
+        updates.nameTranslationKey = nameDictKey;
       } catch (e) {
         updates.nameTranslationStatus = e?.code === 456 ? "quota_exceeded" : "error";
         updates.nameTranslationHash = nameHash;
@@ -315,5 +317,90 @@ exports.translateProductNamePublic = onDocumentWritten(
 
     if (Object.keys(updates).length === 0) return;
     await after.ref.set(updates, { merge: true });
+  }
+);
+
+// ---------- Sync store products on dictionary change ----------
+
+function translationsEqual(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const ka = Object.keys(a).sort();
+  const kb = Object.keys(b).sort();
+  if (ka.length !== kb.length) return false;
+  return ka.every((k, i) => k === kb[i] && a[k] === b[k]);
+}
+
+async function syncStoreProducts(dictId, fieldPrefix, newTranslations) {
+  const keyField = `${fieldPrefix}TranslationKey`;
+  const i18nField = `${fieldPrefix}_i18n`;
+  const statusField = `${fieldPrefix}TranslationStatus`;
+  const atField = `${fieldPrefix}TranslatedAt`;
+  const versionField = `${fieldPrefix}TranslationVersion`;
+
+  let lastDoc = null;
+  const PAGE = 400;
+
+  for (;;) {
+    let q = db.collectionGroup("products")
+      .where(keyField, "==", dictId)
+      .orderBy(admin.firestore.FieldPath.documentId())
+      .limit(PAGE);
+
+    if (lastDoc) q = q.startAfter(lastDoc);
+
+    const snap = await q.get();
+    if (snap.empty) break;
+
+    const batch = db.batch();
+    let count = 0;
+
+    for (const doc of snap.docs) {
+      batch.set(doc.ref, {
+        [i18nField]: newTranslations,
+        [statusField]: "ready",
+        [atField]: admin.firestore.FieldValue.serverTimestamp(),
+        [versionField]: 1000,
+      }, { merge: true });
+      count++;
+    }
+
+    if (count > 0) await batch.commit();
+    if (snap.size < PAGE) break;
+    lastDoc = snap.docs[snap.docs.length - 1];
+  }
+}
+
+exports.syncStoresOnProductDictUpdate = onDocumentUpdated(
+  {
+    region: REGION_PRIMARY,
+    document: "i18n_product_names/{id}",
+  },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!after || after.status !== "ready") return;
+    if (!after.translations) return;
+    if (translationsEqual(before?.translations, after.translations)) return;
+
+    const dictId = event.params.id;
+    await syncStoreProducts(dictId, "name", after.translations);
+  }
+);
+
+exports.syncStoresOnCategoryDictUpdate = onDocumentUpdated(
+  {
+    region: REGION_PRIMARY,
+    document: "i18n_category_names/{id}",
+  },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!after || after.status !== "ready") return;
+    if (!after.translations) return;
+    if (translationsEqual(before?.translations, after.translations)) return;
+
+    const dictId = event.params.id;
+    await syncStoreProducts(dictId, "category", after.translations);
   }
 );
