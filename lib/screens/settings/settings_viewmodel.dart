@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../../viewmodels/base_viewmodel.dart';
 import '../../services/api_service.dart';
@@ -10,6 +12,7 @@ import '../../services/store_config_service.dart';
 import '../../services/geocoding_service.dart';
 import '../../storage/store_prefs.dart';
 import '../../core/access_manager.dart';
+import '../../utils/cdn_helper.dart';
 import '../../utils/working_hours.dart';
 
 class SettingsViewModel extends BaseViewModel {
@@ -96,6 +99,78 @@ class SettingsViewModel extends BaseViewModel {
     if (_logoUploadInProgress == v) return;
     _logoUploadInProgress = v;
     notifyListeners();
+  }
+
+  /// Polls CDN via HTTP HEAD for the resized logo (webp preferred, png fallback).
+  /// On success: updates logoUrl, persists has_logo to Firestore, updates cache.
+  /// On timeout (45s): falls back to original PNG URL.
+  Future<void> pollForResizedLogo(String baseName) async {
+    if (storeId.isEmpty) return;
+
+    final webpUrl = CdnHelper.buildResizedLogoCdnUrl(
+      storeId: storeId,
+      baseName: baseName,
+      ext: '.webp',
+    );
+    final pngUrl = CdnHelper.buildResizedLogoCdnUrl(
+      storeId: storeId,
+      baseName: baseName,
+      ext: '.png',
+    );
+    final originalUrl = CdnHelper.buildOriginalLogoCdnUrl(
+      storeId: storeId,
+      baseName: baseName,
+    );
+
+    String? foundUrl;
+
+    for (var attempt = 0; attempt < 15; attempt++) {
+      // Try webp first
+      if (await _cdnHeadOk(webpUrl)) {
+        foundUrl = webpUrl;
+        break;
+      }
+      // Then png
+      if (await _cdnHeadOk(pngUrl)) {
+        foundUrl = pngUrl;
+        break;
+      }
+
+      debugPrint(
+        'pollForResizedLogo: attempt ${attempt + 1}/15 — not ready, waiting 3s...',
+      );
+      await Future.delayed(const Duration(seconds: 3));
+    }
+
+    // Fallback to original PNG if resize not found
+    foundUrl ??= originalUrl;
+
+    debugPrint('pollForResizedLogo: using $foundUrl');
+
+    // Evict old cached image
+    if (logoUrl.isNotEmpty) {
+      CachedNetworkImage.evictFromCache(logoUrl);
+    }
+
+    logoUrl = foundUrl;
+    notifyListeners();
+
+    // Persist to Firestore + local cache
+    await StoreConfigService.mergeNonEmpty({'has_logo': foundUrl});
+    await ApiService.updateStore({'has_logo': foundUrl});
+    debugPrint('pollForResizedLogo: has_logo persisted');
+  }
+
+  /// HTTP HEAD check against CDN — returns true if status 200.
+  Future<bool> _cdnHeadOk(String url) async {
+    try {
+      final response = await http.head(Uri.parse(url)).timeout(
+        const Duration(seconds: 5),
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
 
@@ -402,13 +477,41 @@ class SettingsViewModel extends BaseViewModel {
         bucket: 'gs://aldeebtech-1ec64.firebasestorage.app',
       );
 
-      // Extrahiere Basisname aus URL (z.B. logo_17065678123)
+      // New logo flow: URL points to /logos/ path (written by Cloud Function)
+      if (oldLogoUrl.startsWith('https://cdn.aldeebtech.de/images/logos/')) {
+        final storagePath = Uri.decodeComponent(
+          oldLogoUrl.replaceFirst('https://cdn.aldeebtech.de/images/', ''),
+        );
+        final filename = _extractBaseFilename(oldLogoUrl);
+        if (filename == null) return;
+
+        // Determine prefix directory from the full storage path
+        final lastSlash = storagePath.lastIndexOf('/');
+        if (lastSlash == -1) return;
+        final dirPath = storagePath.substring(0, lastSlash);
+
+        // Delete webp + png variants of the old baseName
+        final variants = [
+          '$dirPath/${filename}_360x360.webp',
+          '$dirPath/${filename}_360x360.png',
+          '$dirPath/$filename.webp',
+          '$dirPath/$filename.png',
+        ];
+        for (final path in variants) {
+          try {
+            await storage.ref(path).delete();
+            debugPrint('Deleted logo: $path');
+          } catch (_) {}
+        }
+        return;
+      }
+
+      // Legacy logo flow (.jpg/.jpeg)
       final filename = _extractBaseFilename(oldLogoUrl);
       if (filename == null) return;
 
       final baseRef = storage.ref('stores/$storeId/logo');
 
-      // Alle Varianten löschen
       final filesToDelete = [
         '$filename.jpg',
         '$filename.jpeg',
@@ -420,9 +523,7 @@ class SettingsViewModel extends BaseViewModel {
         try {
           await baseRef.child(file).delete();
           debugPrint('Deleted logo: $file');
-        } catch (_) {
-          // Datei existiert möglicherweise nicht
-        }
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('Error deleting old logo: $e');
@@ -436,12 +537,16 @@ class SettingsViewModel extends BaseViewModel {
       if (pathSegments.isEmpty) return null;
 
       String filename = pathSegments.last;
-      // Entferne Suffixe und Extensions um den Basisnamen zu bekommen
+      // Remove dimension suffixes and extensions to get base name
       filename = filename
           .replaceAll('_1600x1600.jpeg', '')
           .replaceAll('_360x360.jpeg', '')
+          .replaceAll('_360x360.webp', '')
+          .replaceAll('_360x360.png', '')
           .replaceAll('.jpg', '')
-          .replaceAll('.jpeg', '');
+          .replaceAll('.jpeg', '')
+          .replaceAll('.webp', '')
+          .replaceAll('.png', '');
 
       return filename.isNotEmpty ? filename : null;
     } catch (_) {

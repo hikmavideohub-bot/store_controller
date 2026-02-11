@@ -4,7 +4,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
-import '../utils/cdn_helper.dart';
 
 /// Wiederverwendbares Widget für Store-Logo Upload
 ///
@@ -16,6 +15,7 @@ class StoreLogoPicker extends StatefulWidget {
   final String storeId;
   final Function(String newLogoUrl) onLogoChanged;
   final Function()? onLogoDeleted;
+  final Function(String baseName)? onLogoUploaded;
   final ValueChanged<bool>? onUploadStateChanged;
   final double size;
 
@@ -26,6 +26,7 @@ class StoreLogoPicker extends StatefulWidget {
     required this.storeId,
     required this.onLogoChanged,
     this.onLogoDeleted,
+    this.onLogoUploaded,
     this.onUploadStateChanged,
     this.size = 80,
   });
@@ -223,7 +224,8 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
     final s = AppLocalizations.of(context)!;
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
-      imageQuality: 85,
+      maxWidth: 1600,
+      maxHeight: 1600,
     );
     if (file == null) return;
 
@@ -232,12 +234,8 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
       return;
     }
 
-    // Debug: Check auth vs storeId
     final authUid = FirebaseAuth.instance.currentUser?.uid ?? 'NO_AUTH';
-    debugPrint('🔐 Logo Upload Debug:');
-    debugPrint('   storeId: ${widget.storeId}');
-    debugPrint('   auth.uid: $authUid');
-    debugPrint('   match: ${authUid == widget.storeId}');
+    debugPrint('Logo Upload: storeId=${widget.storeId}, auth=$authUid');
 
     setState(() {
       _uploading = true;
@@ -249,17 +247,16 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
       final storage = FirebaseStorage.instanceFor(
         bucket: 'gs://aldeebtech-1ec64.firebasestorage.app',
       );
-      final baseRef = storage.ref('stores/${widget.storeId}/logo');
-      debugPrint('   path: stores/${widget.storeId}/logo');
-
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final uniqueName = 'logo_$timestamp';
-      final imageRef = baseRef.child('$uniqueName.jpg');
+      final imageRef = storage.ref(
+        'stores/${widget.storeId}/logo/original/$uniqueName.png',
+      );
 
       final task = imageRef.putData(
         await file.readAsBytes(),
         SettableMetadata(
-          contentType: 'image/jpeg',
+          contentType: 'image/png',
           cacheControl: 'public, max-age=3600',
         ),
       );
@@ -273,42 +270,16 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
       });
 
       await task;
-      // ✅ SOFORT Original anzeigen (nicht auf Resize warten)
-      final originalUrl = CdnHelper.buildStoreLogoUrl(
-        storeId: widget.storeId,
-        filename: '$uniqueName.jpg',
-      );
-      widget.onLogoChanged(originalUrl);
-      debugPrint('✅ onLogoChanged (original) called');
-      debugPrint('✅ Logo upload complete: $uniqueName.jpg');
+      debugPrint('Logo upload complete: $uniqueName.png');
 
-      if (!mounted) return;
-
-      // Warte kurz auf Resize-Extension (360x360) - nur 5 Versuche
-      final thumbRef = baseRef.child('${uniqueName}_360x360.jpeg');
-// ✅ Thumbnail später nachziehen (nicht blocken)
-      () async {
-        final thumbRef = baseRef.child('${uniqueName}_360x360.jpeg');
-        final ok = await _waitForResizedImage(thumbRef, maxAttempts: 25);
-        debugPrint('   Resized version exists: $ok');
-        if (!ok) return;
-
-        final thumbUrl = CdnHelper.buildStoreLogoUrl(
-          storeId: widget.storeId,
-          filename: '${uniqueName}_360x360.jpeg',
-        );
-        widget.onLogoChanged(thumbUrl);
-        debugPrint('✅ onLogoChanged (thumb) called');
-      }();
-
-      debugPrint('✅ onLogoChanged called - REMEMBER TO SAVE!');
+      // Signal upload finished — viewmodel polls for resized variant
+      widget.onLogoUploaded?.call(uniqueName);
 
       if (mounted) {
         setState(() {
           _uploading = false;
         });
         widget.onUploadStateChanged?.call(false);
-        // Hinweis: Logo geändert, speichern nicht vergessen!
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(s.saveChangesButton),
@@ -329,22 +300,5 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
         );
       }
     }
-  }
-
-  Future<bool> _waitForResizedImage(
-    Reference ref, {
-    int maxAttempts = 15,
-  }) async {
-    var delayMs = 600;
-    for (var i = 0; i < maxAttempts; i++) {
-      try {
-        await ref.getDownloadURL();
-        return true;
-      } catch (_) {
-        await Future.delayed(Duration(milliseconds: delayMs));
-        delayMs = (delayMs * 1.3).round().clamp(600, 2500);
-      }
-    }
-    return false;
   }
 }

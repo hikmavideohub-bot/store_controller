@@ -34,8 +34,12 @@ class CdnHelper {
   ///
   /// Nützlich für Listenansichten, um Daten zu sparen.
   /// Wandelt "bild.jpg" oder "bild_1600x1600.jpeg" in "bild_360x360.jpeg" um.
+  /// Für Logo-URLs (aus /logos/ Pfad) wird die URL unverändert zurückgegeben.
   static String getThumbnailUrl(String url) {
     if (url.isEmpty) return '';
+
+    // Logo URLs from /logos/ path are already resized thumbnails
+    if (url.contains('/logos/')) return url;
 
     // Wenn es keine CDN URL ist, versuchen wir sie erst zu konvertieren
     String workUrl = url;
@@ -91,7 +95,7 @@ class CdnHelper {
     return url != null && url.startsWith(cdnBaseUrl);
   }
 
-  /// Generiert CDN-URL für Store-Logo
+  /// Generiert CDN-URL für Store-Logo (Original im /stores/ Pfad)
   ///
   /// [storeId]: Die ID des Stores
   /// [filename]: Der Dateiname (z.B. "logo_170982312.jpg")
@@ -101,9 +105,42 @@ class CdnHelper {
     required String filename,
     int? size,
   }) {
-    final sizedFilename = size != null
-        ? filename.replaceAll('.jpg', '_${size}x$size.jpeg')
-        : filename;
-    return '$cdnBaseUrl/stores/$storeId/logo/$sizedFilename';
+    if (size == null) {
+      return '$cdnBaseUrl/stores/$storeId/logo/$filename';
+    }
+    final dotIdx = filename.lastIndexOf('.');
+    if (dotIdx == -1) return '$cdnBaseUrl/stores/$storeId/logo/$filename';
+    final base = filename.substring(0, dotIdx);
+    final ext = filename.substring(dotIdx); // e.g. ".jpg", ".png"
+    // .jpg → .jpeg for resize extension compatibility, others stay as-is
+    final resizedExt = ext == '.jpg' ? '.jpeg' : ext;
+    return '$cdnBaseUrl/stores/$storeId/logo/${base}_${size}x$size$resizedExt';
   }
+
+  /// Baut CDN-URLs für resized Logo-Varianten im /logos/ Output-Pfad.
+  ///
+  /// Die Resize Extension schreibt von stores/... nach logos/stores/...
+  /// [storeId]: Store ID
+  /// [baseName]: z.B. "logo_1739000000" (ohne Extension)
+  /// [ext]: ".webp" oder ".png"
+  static String buildResizedLogoCdnUrl({
+    required String storeId,
+    required String baseName,
+    required String ext, // erwartet z.B. ".webp" oder ".png"
+  }) {
+    final safeExt = (ext == '.png') ? '.png' : '.webp';
+
+    // ✅ echter Output-Pfad (von dir verifiziert)
+    return '$cdnBaseUrl/stores/$storeId/logo/original/logos/${baseName}_360x360$safeExt';
+  }
+
+  /// Baut CDN-URL für das Original-Logo im /stores/ Pfad.
+  static String buildOriginalLogoCdnUrl({
+    required String storeId,
+    required String baseName,
+  }) {
+    // Original bleibt PNG (Transparenz)
+    return '$cdnBaseUrl/stores/$storeId/logo/original/$baseName.png';
+  }
+
 }
