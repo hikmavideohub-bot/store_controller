@@ -76,15 +76,8 @@ class StoreInfoCard extends StatelessWidget {
 
           if (!hideDescription) ...[
             const SizedBox(height: 16),
-            // Beschreibung
-            _AutoDirectionField(
-              controller: vm.pageDescCtrl,
-              label: s.storeDescLabel,
-              hint: s.storeDescHint,
-              icon: Icons.description_outlined,
-              maxLines: 3,
-              maxLength: 40,
-            ),
+            // Beschreibung (multilingual)
+            _PageDescMultiLangField(vm: vm),
             const SizedBox(height: 8),
             Text(
               s.storeDescHelper,
@@ -334,9 +327,7 @@ class _CurrencyDropdown extends StatelessWidget {
 class _AutoDirectionField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final String? hint;
   final IconData icon;
-  final int maxLines;
   final int? maxLength;
   final ValueChanged<String>? onChanged;
 
@@ -344,8 +335,6 @@ class _AutoDirectionField extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.icon,
-    this.hint,
-    this.maxLines = 1,
     this.maxLength,
     this.onChanged,
   });
@@ -363,18 +352,82 @@ class _AutoDirectionField extends StatelessWidget {
         return TextField(
           controller: controller,
           textDirection: dir,
-          maxLines: maxLines,
           maxLength: maxLength,
           onChanged: onChanged,
           decoration: InputDecoration(
             labelText: label,
-            hintText: hint,
             prefixIcon: Icon(icon),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            alignLabelWithHint: maxLines > 1,
           ),
         );
       },
+    );
+  }
+}
+
+class _PageDescMultiLangField extends StatefulWidget {
+  final SettingsViewModel vm;
+  const _PageDescMultiLangField({required this.vm});
+
+  @override
+  State<_PageDescMultiLangField> createState() =>
+      _PageDescMultiLangFieldState();
+}
+
+class _PageDescMultiLangFieldState extends State<_PageDescMultiLangField> {
+  String _selectedLang = 'de';
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context)!;
+    final labels = {
+      'ar': s.descLangAr,
+      'de': s.descLangDe,
+      'en': s.descLangEn,
+      'tr': s.descLangTr,
+    };
+    final ctrl = widget.vm.pageDescCtrlFor(_selectedLang);
+    final fieldLabel = switch (_selectedLang) {
+      'ar' => s.pageDescLabelAr,
+      'de' => s.pageDescLabelDe,
+      'en' => s.pageDescLabelEn,
+      'tr' => s.pageDescLabelTr,
+      _ => s.pageDescLabelDe,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<String>(
+            segments: labels.entries
+                .map((e) => ButtonSegment(value: e.key, label: Text(e.value)))
+                .toList(),
+            selected: {_selectedLang},
+            onSelectionChanged: (sel) =>
+                setState(() => _selectedLang = sel.first),
+            showSelectedIcon: false,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: ValueKey('pageDesc_$_selectedLang'),
+          controller: ctrl,
+          textDirection:
+              _selectedLang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
+          maxLines: 3,
+          maxLength: 40,
+          decoration: InputDecoration(
+            labelText: fieldLabel,
+            hintText: s.storeDescHint,
+            prefixIcon: const Icon(Icons.description_outlined),
+            border:
+                OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            alignLabelWithHint: true,
+          ),
+        ),
+      ],
     );
   }
 }

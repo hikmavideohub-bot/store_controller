@@ -19,7 +19,18 @@ class SettingsViewModel extends BaseViewModel {
 
   final storeNameCtrl = TextEditingController();
   final currencyCtrl = TextEditingController(text: '€');
-  final pageDescCtrl = TextEditingController();
+  final pageDescArCtrl = TextEditingController();
+  final pageDescDeCtrl = TextEditingController();
+  final pageDescEnCtrl = TextEditingController();
+  final pageDescTrCtrl = TextEditingController();
+
+  TextEditingController pageDescCtrlFor(String lang) => switch (lang) {
+    'ar' => pageDescArCtrl,
+    'de' => pageDescDeCtrl,
+    'en' => pageDescEnCtrl,
+    'tr' => pageDescTrCtrl,
+    _ => pageDescDeCtrl,
+  };
   final addressCtrl = TextEditingController();
   final addressDescCtrl = TextEditingController();
   final storeWebsiteCtrl = TextEditingController();
@@ -125,7 +136,10 @@ class SettingsViewModel extends BaseViewModel {
     final controllers = [
       storeNameCtrl,
       currencyCtrl,
-      pageDescCtrl,
+      pageDescArCtrl,
+      pageDescDeCtrl,
+      pageDescEnCtrl,
+      pageDescTrCtrl,
       addressCtrl,
       addressDescCtrl,
       storeWebsiteCtrl,
@@ -199,8 +213,22 @@ class SettingsViewModel extends BaseViewModel {
       storeNameCtrl.text = firestoreStoreName;
     }
     currencyCtrl.text = (s['currency'] ?? '€').toString();
-    pageDescCtrl.text = (s['page_description'] ?? s['pageDescription'] ?? '')
-        .toString();
+
+    // page_description: Map (new) or String (legacy fallback)
+    final rawDesc = s['page_description'] ?? s['pageDescription'] ?? '';
+    if (rawDesc is Map) {
+      pageDescArCtrl.text = (rawDesc['ar'] ?? '').toString();
+      pageDescDeCtrl.text = (rawDesc['de'] ?? '').toString();
+      pageDescEnCtrl.text = (rawDesc['en'] ?? '').toString();
+      pageDescTrCtrl.text = (rawDesc['tr'] ?? '').toString();
+    } else {
+      final legacy = rawDesc.toString();
+      pageDescArCtrl.text = legacy;
+      pageDescDeCtrl.text = legacy;
+      pageDescEnCtrl.text = legacy;
+      pageDescTrCtrl.text = legacy;
+    }
+
     addressCtrl.text = (s['address'] ?? '').toString();
     final rawAddrDesc = (s['address_description'] ?? '').toString();
     addressDescCtrl.text = rawAddrDesc;
@@ -253,19 +281,33 @@ class SettingsViewModel extends BaseViewModel {
       adminAppLang = rawAdminLang;
     }
 
-    _parsePhone((s['phone'] ?? '').toString(), (code, number) {
-      phoneCode = code;
-      phoneCtrl.text = number;
-    });
+    final savedPhoneCode = (s['phone_code'] ?? '').toString().trim();
+    final fullPhone = (s['phone'] ?? '').toString().trim();
+    if (savedPhoneCode.isNotEmpty && fullPhone.startsWith(savedPhoneCode)) {
+      phoneCode = savedPhoneCode;
+      phoneCtrl.text = fullPhone.substring(savedPhoneCode.length);
+    } else {
+      _parsePhone(fullPhone, (code, number) {
+        phoneCode = code;
+        phoneCtrl.text = number;
+      });
+    }
 
-    _parsePhone((s['whatsapp'] ?? '').toString(), (code, number) {
-      waCode = code;
-      waCtrl.text = number;
-    });
+    final savedWaCode = (s['wa_code'] ?? '').toString().trim();
+    final fullWa = (s['whatsapp'] ?? '').toString().trim();
+    if (savedWaCode.isNotEmpty && fullWa.startsWith(savedWaCode)) {
+      waCode = savedWaCode;
+      waCtrl.text = fullWa.substring(savedWaCode.length);
+    } else {
+      _parsePhone(fullWa, (code, number) {
+        waCode = code;
+        waCtrl.text = number;
+      });
+    }
 
-    final fullPhone = '$phoneCode${phoneCtrl.text.trim()}';
-    final fullWa = '$waCode${waCtrl.text.trim()}';
-    waLinkedToPhone = waCtrl.text.trim().isEmpty || (fullWa == fullPhone);
+    final composedPhone = '$phoneCode${phoneCtrl.text.trim()}';
+    final composedWa = '$waCode${waCtrl.text.trim()}';
+    waLinkedToPhone = waCtrl.text.trim().isEmpty || (composedWa == composedPhone);
 
     if (waCtrl.text.trim().isEmpty && phoneCtrl.text.trim().isNotEmpty) {
       waCode = phoneCode;
@@ -703,12 +745,19 @@ class SettingsViewModel extends BaseViewModel {
           final data = {
             'store_name': storeNameCtrl.text.trim(),
             'currency': currencyCtrl.text.trim(),
-            'page_description': pageDescCtrl.text.trim(),
+            'page_description': {
+              'ar': pageDescArCtrl.text.trim(),
+              'de': pageDescDeCtrl.text.trim(),
+              'en': pageDescEnCtrl.text.trim(),
+              'tr': pageDescTrCtrl.text.trim(),
+            },
             'address': addressCtrl.text.trim(),
             'address_description': addressDescCtrl.text.trim(),
             'address_country': selectedCountry,
             'phone': phoneFull,
+            'phone_code': phoneCode,
             'whatsapp': waFull,
+            'wa_code': waCode,
             'email_support': emailSupportCtrl.text.trim(),
             'shipping': shippingEnabled,
             'shipping_price': finalShippingPrice, // Hier die bereinigte Variable nutzen
@@ -821,7 +870,10 @@ class SettingsViewModel extends BaseViewModel {
     phoneCtrl.removeListener(_onPhoneChanged);
     storeNameCtrl.dispose();
     currencyCtrl.dispose();
-    pageDescCtrl.dispose();
+    pageDescArCtrl.dispose();
+    pageDescDeCtrl.dispose();
+    pageDescEnCtrl.dispose();
+    pageDescTrCtrl.dispose();
     addressCtrl.dispose();
     addressDescCtrl.dispose();
     storeWebsiteCtrl.dispose();

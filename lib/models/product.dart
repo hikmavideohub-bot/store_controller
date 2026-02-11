@@ -102,7 +102,13 @@ class Product {
       "size_unit": sizeUnit,
       "image": image,
       "thumb": thumb,
-      "description": descriptionMap,
+      'description': {
+        'ar': descriptionMap['ar'] ?? '',
+        'de': descriptionMap['de'] ?? '',
+        'en': descriptionMap['en'] ?? '',
+        'tr': descriptionMap['tr'] ?? '',
+      },
+
       "category": category,
       "product_active": productActive,
       "has_offer": hasOffer,
@@ -137,17 +143,23 @@ class Product {
   static String _descriptionFallback(dynamic raw) {
     if (raw == null) return '';
     if (raw is Map) {
-      // Return first non-empty value
-      for (final k in ['de', 'en', 'ar', 'tr']) {
-        final v = (raw[k] ?? '').toString().trim();
-        if (v.isNotEmpty) return v;
-      }
-      return '';
+      // ✅ Keine Fallback-Sprache mehr. Nur "de" als Preview (oder leer).
+      final v = (raw['de'] ?? '').toString().trim();
+      return v; // bleibt leer, wenn de leer ist
     }
     return raw.toString();
   }
 
+
   factory Product.fromMap(Map<String, dynamic> data) {
+    final rawDesc = data['description'];
+    final rawDescMap = data['descriptionMap'];
+
+    // ✅ Map bevorzugen, damit leere Strings leer bleiben
+    final rawForMap = (rawDesc is Map)
+        ? rawDesc
+        : (rawDescMap is Map ? rawDescMap : rawDesc);
+
     return Product(
       id: (data['id'] ?? '').toString(),
       name: (data['name'] ?? '').toString(),
@@ -156,9 +168,19 @@ class Product {
       sizeUnit: (data['size_unit'] ?? data['sizeunit'] ?? '').toString(),
       image: (data['image'] ?? '').toString(),
       thumb: (data['thumb'] ?? data['thrumb'] ?? '').toString(),
-      description: _descriptionFallback(data['description']),
-      descriptionMap: _parseDescriptionMap(data['description']),
-      autoTranslateUsed: _toBool(data['autoTranslateUsed']),
+
+      // ✅ hier rawForMap benutzen statt data['description']
+      description: _descriptionFallback(rawForMap),
+      descriptionMap: _parseDescriptionMap(rawForMap),
+
+      // optional: wenn du autoTranslateUsed in description_meta speicherst, dann so:
+      autoTranslateUsed: _toBool(
+        data['autoTranslateUsed'] ??
+            (data['description_meta'] is Map
+                ? (data['description_meta']['autoTranslateUsed'])
+                : null),
+      ),
+
       category: (data['category'] ?? '').toString(),
       productActive: _toBool(data['product_active'] ?? data['productActive']),
       hasOffer: _toBool(data['has_offer'] ?? data['hasOffer']),
@@ -179,6 +201,7 @@ class Product {
       ),
     );
   }
+
 
   @override
   String toString() {

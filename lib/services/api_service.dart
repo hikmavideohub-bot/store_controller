@@ -1100,13 +1100,35 @@ class ApiService {
     }
   }
 
-  static Future<bool> addProduct(Product product) async {
+  static Future<bool> addProduct(
+      Product product, {
+        bool? descAutoTranslateRequested,
+        String? sourceHint,
+      }) async {
     if (_storeId == null) return false;
+
     try {
-      final docRef = _storesPublic.doc(_storeId).collection('products').doc();
+      final colRef = _storesPublic.doc(_storeId).collection('products');
+
+      // ✅ WICHTIG: vorhandene ID nutzen (dein _draftProductId), sonst neue erzeugen
+      final docRef =
+      (product.id.trim().isNotEmpty) ? colRef.doc(product.id) : colRef.doc();
+
       final data = product.toJson();
+
+      // ✅ ID IMMER auf docRef.id setzen (falls product.id leer war)
       data['id'] = docRef.id;
+
+      // ✅ Flags schon beim Create mitspeichern (damit onCreate sie sieht)
+      if (descAutoTranslateRequested != null) {
+        data['descAutoTranslateRequested'] = descAutoTranslateRequested;
+      }
+      if (sourceHint != null && sourceHint.trim().isNotEmpty) {
+        data['sourceHint'] = sourceHint.trim();
+      }
+
       await docRef.set(data);
+
       if (_cachedProducts != null) {
         _updateProductsNotifier([Product.fromMap(data), ..._cachedProducts!]);
       }
@@ -1115,6 +1137,7 @@ class ApiService {
       return false;
     }
   }
+
 
   static Future<bool> updateProduct(Product product) async {
     if (_storeId == null) return false;

@@ -218,13 +218,16 @@ async function queuePending(productRefPath, inputText, sourceHint, status = "pen
 }
 
 // ==========================================================================
-// 1) onCreate — Normalize description only (no translation, no Azure)
+// 1) onCreate — Normalize ALWAYS, translate ONLY if descAutoTranslateRequested==true
 // ==========================================================================
 
 exports.translateProductDescription = onDocumentCreated(
   {
     document: "stores_public/{storeId}/products/{productId}",
     region: REGION_PRIMARY,
+    // IMPORTANT: needed because we may call Azure here
+    secrets: [AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_ENDPOINT, AZURE_TRANSLATOR_REGION],
+    timeoutSeconds: 120,
   },
   async (event) => {
     const snap = event.data;
@@ -234,35 +237,155 @@ exports.translateProductDescription = onDocumentCreated(
     const desc = data.description;
     const meta = data.description_meta || {};
 
-    // Normalize description to a 4-lang map
-    let normalized;
+    const requested = data.descAutoTranslateRequested === true;
+    const sourceHintDoc =
+      typeof data.sourceHint === "string" && SUPPORTED_LANGS.includes(data.sourceHint)
+        ? data.sourceHint
+        : null;
+
+    // ---- 1) Normalize to 4-lang map (always) ----
+    const normalized = { ar: "", de: "", en: "", tr: "" };
+
     if (typeof desc === "string") {
-      const text = desc.trim();
-      normalized = { ar: text, de: "", en: "", tr: "" };
-    } else if (desc && typeof desc === "object") {
-      normalized = {};
+      normalized.ar = desc.trim();
+    } else if (desc && typeof desc === "object" && !Array.isArray(desc)) {
       for (const lang of SUPPORTED_LANGS) {
         normalized[lang] = typeof desc[lang] === "string" ? desc[lang] : "";
       }
-    } else {
-      normalized = { ar: "", de: "", en: "", tr: "" };
     }
 
-    // Check if anything needs writing
     const descIsMap = desc && typeof desc === "object" && !Array.isArray(desc);
     const allKeysPresent = descIsMap && SUPPORTED_LANGS.every((l) => typeof desc[l] === "string");
     const needsNormalize = typeof desc === "string" || !allKeysPresent;
     const needsMeta = meta.autoTranslateUsed === undefined || meta.autoTranslateUsed === null;
 
-    if (!needsNormalize && !needsMeta) return;
+    const baseUpdates = {};
+    if (needsNormalize) baseUpdates.description = normalized;
+    if (needsMeta) baseUpdates.description_meta = { ...meta, autoTranslateUsed: false };
 
-    const updates = {};
-    if (needsNormalize) updates.description = normalized;
-    if (needsMeta) updates.description_meta = { ...meta, autoTranslateUsed: false };
+    if (Object.keys(baseUpdates).length) {
+      await snap.ref.set(baseUpdates, { merge: true });
+    }
 
-    await snap.ref.set(updates, { merge: true });
+    // If not requested -> done after normalization
+    if (!requested) return;
+
+    // Prevent double-run if already used
+    if (meta.autoTranslateUsed === true) return;
+
+    // ---- 2) Pick source text (full text stays in Firestore) ----
+    function pickSourceText(map, prefer) {
+      if (prefer && (map[prefer] || "").trim()) {
+        return { text: map[prefer].trim(), hint: prefer };
+      }
+      for (const l of SUPPORTED_LANGS) {
+        const v = (map[l] || "").trim();
+        if (v) return { text: v, hint: l };
+      }
+      return null;
+    }
+
+    const picked = pickSourceText(normalized, sourceHintDoc);
+    if (!picked) {
+      await snap.ref.set(
+        {
+          descTranslationStatus: "no_source",
+          descAutoTranslateRequested: admin.firestore.FieldValue.delete(),
+        },
+        { merge: true }
+      );
+      return;
+    }
+
+    // Azure should only see max 300 chars (UI also enforces it, but backend is final gate)
+    const inputTextForAuto = truncate(picked.text, MAX_DESC_LEN);
+
+    // ---- 3) Detect source lang ----
+    let sourceLang = picked.hint || "ar";
+    try {
+      const det = await azureDetect(inputTextForAuto);
+      if (det.language && SUPPORTED_LANGS.includes(det.language) && det.score >= 0.6) {
+        sourceLang = det.language;
+      }
+    } catch (_) {
+      // keep fallback
+    }
+
+    const targetLangs = SUPPORTED_LANGS.filter((l) => l !== sourceLang);
+    const chargedChars = inputTextForAuto.length * targetLangs.length;
+
+    // ---- 4) Budget reserve + one-shot lock (atomic) ----
+    const reserveResult = await reserveBudgetAndLock(chargedChars, snap.ref);
+
+    if (reserveResult === "ALREADY_USED") return;
+
+    if (reserveResult === "BUDGET_EXCEEDED") {
+      await queuePending(snap.ref.path, inputTextForAuto, picked.hint, "pending_quota");
+      await snap.ref.set(
+        { descAutoTranslateRequested: admin.firestore.FieldValue.delete() },
+        { merge: true }
+      );
+      return;
+    }
+
+    // ---- 5) Translate + write (fill ONLY empty target fields) ----
+    try {
+      const translations = await azureTranslate(inputTextForAuto, sourceLang, targetLangs);
+
+      const currentDesc = { ...normalized };
+
+      // NEVER overwrite non-empty values (manual text wins)
+      // SourceLang stays full manual text (not truncated) if already present
+      if (!(currentDesc[sourceLang] ?? "").trim()) {
+        currentDesc[sourceLang] = picked.text; // keep full original user text
+      }
+
+      for (const lang of targetLangs) {
+        if (!(currentDesc[lang] ?? "").trim() && translations[lang]) {
+          currentDesc[lang] = translations[lang];
+        }
+      }
+
+      for (const lang of SUPPORTED_LANGS) {
+        if (currentDesc[lang] === undefined) currentDesc[lang] = "";
+      }
+
+      const hash = sha1(inputTextForAuto);
+
+      await snap.ref.set(
+        {
+          description: currentDesc,
+          descTranslationStatus: "ready",
+          descAutoTranslateRequested: admin.firestore.FieldValue.delete(),
+          sourceHint: admin.firestore.FieldValue.delete(),
+          description_meta: {
+            autoTranslateUsed: true,
+            provider: "azure",
+            sourceLang,
+            autoSourceText: inputTextForAuto,
+            hash,
+            translatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      await queuePending(snap.ref.path, inputTextForAuto, picked.hint, "pending_retry");
+      await snap.ref.set(
+        {
+          descTranslationStatus: "pending_retry",
+          descAutoTranslateRequested: admin.firestore.FieldValue.delete(),
+          description_meta: {
+            autoTranslateUsed: true,
+            lastError: String(error?.message || error),
+          },
+        },
+        { merge: true }
+      );
+    }
   }
 );
+
 
 // ==========================================================================
 // 3) Callable — translateProductDescriptionOnce (user clicks button)
@@ -302,7 +425,11 @@ exports.translateProductDescriptionOnce = onCall(
 
     // b) Already used?
     if (meta.autoTranslateUsed === true) {
-      return { status: "already_used" };
+      const out =
+        data.description && typeof data.description === "object" && !Array.isArray(data.description)
+          ? data.description
+          : { ar: "", de: "", en: "", tr: "" };
+      return { status: "already_used", description: out, descTranslationStatus: data.descTranslationStatus || null };
     }
 
     // c) Extract input
@@ -380,7 +507,7 @@ exports.translateProductDescriptionOnce = onCall(
         },
       }, { merge: true });
 
-      return { status: "ready" };
+      return { status: "ready", description: currentDesc, descTranslationStatus: "ready" };
     } catch (error) {
       // h) Error / 429 → queue for retry
       await queuePending(productRef.path, inputTextForAuto, sourceHint, "pending_retry");

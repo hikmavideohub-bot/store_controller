@@ -30,19 +30,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final PageController _pageController = PageController();
   int _currentWizardStep = 0;
-
-  /// Ermittelt die Textrichtung basierend auf dem ersten Buchstaben
-  TextDirection? _getTextDirection(String text) {
-    final trimmed = text.trimLeft();
-    if (trimmed.isEmpty) return null; // Default verwenden
-    final firstChar = trimmed.codeUnitAt(0);
-    // Arabisch: U+0600–U+06FF, U+0750–U+077F, U+08A0–U+08FF
-    final isArabic =
-        (firstChar >= 0x0600 && firstChar <= 0x06FF) ||
-        (firstChar >= 0x0750 && firstChar <= 0x077F) ||
-        (firstChar >= 0x08A0 && firstChar <= 0x08FF);
-    return isArabic ? TextDirection.rtl : TextDirection.ltr;
-  }
+  String _selectedPageDescLang = 'de';
 
   // Track expanded sections (alle standardmäßig geschlossen)
   final Map<String, bool> _expandedSections = {
@@ -86,10 +74,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final s = AppLocalizations.of(context)!;
 
     return PopScope(
-      canPop: !vm.isDirty,
+      canPop: !vm.isDirty && !vm.logoUploadInProgress,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        // Show confirmation dialog
+        if (vm.logoUploadInProgress) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.logoUploadInProgressMsg)),
+          );
+          return;
+        }
         final shouldLeave = await _showUnsavedChangesDialog(context);
         if (shouldLeave == true && context.mounted) {
           context.pop();
@@ -102,6 +95,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () async {
+            if (vm.logoUploadInProgress) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(s.logoUploadInProgressMsg)),
+              );
+              return;
+            }
             if (vm.isDirty) {
               final shouldLeave = await _showUnsavedChangesDialog(context);
               if (shouldLeave == true && context.mounted) {
@@ -401,7 +400,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ];
     final totalSteps = stepTitles.length;
 
-    return GestureDetector(
+    return PopScope(
+      canPop: !vm.logoUploadInProgress,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (vm.logoUploadInProgress) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.logoUploadInProgressMsg)),
+          );
+        }
+      },
+      child: GestureDetector(
       onTap: _dismissKeyboard,
       child: Scaffold(
         appBar: AppBar(
@@ -512,17 +521,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           showCreatedDate: false,
                         ),
                         const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: SegmentedButton<String>(
+                            segments: [
+                              ButtonSegment(value: 'ar', label: Text(s.descLangAr)),
+                              ButtonSegment(value: 'de', label: Text(s.descLangDe)),
+                              ButtonSegment(value: 'en', label: Text(s.descLangEn)),
+                              ButtonSegment(value: 'tr', label: Text(s.descLangTr)),
+                            ],
+                            selected: {_selectedPageDescLang},
+                            onSelectionChanged: (sel) =>
+                                setState(() => _selectedPageDescLang = sel.first),
+                            showSelectedIcon: false,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         TextField(
-                          controller: vm.pageDescCtrl,
+                          key: ValueKey('wizPageDesc_$_selectedPageDescLang'),
+                          controller: vm.pageDescCtrlFor(_selectedPageDescLang),
                           maxLines: 3,
                           maxLength: 40,
-                          textDirection: _getTextDirection(
-                            vm.pageDescCtrl.text,
-                          ),
-                          onChanged: (_) =>
-                              setState(() {}), // Rebuild für Richtungswechsel
+                          textDirection: _selectedPageDescLang == 'ar'
+                              ? TextDirection.rtl
+                              : TextDirection.ltr,
                           decoration: InputDecoration(
-                            labelText: s.shortDescriptionLabel,
+                            labelText: switch (_selectedPageDescLang) {
+                              'ar' => s.pageDescLabelAr,
+                              'de' => s.pageDescLabelDe,
+                              'en' => s.pageDescLabelEn,
+                              'tr' => s.pageDescLabelTr,
+                              _ => s.pageDescLabelDe,
+                            },
                             hintText: '...',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -752,6 +782,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

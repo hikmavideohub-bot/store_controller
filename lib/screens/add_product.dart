@@ -8,7 +8,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config.dart';
 import '../widgets/premium_app_bar.dart';
@@ -91,8 +90,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _offerActive = true,
       _showNewCategoryField = false,
       _isLoadingRecommendation = false,
-      _autoTranslateUsed = false,
-      _isAutoTranslating = false;
+      _autoTranslateUsed = false;
   String _selectedDescLang = 'de';
   String? _recommendedCategory;
   Timer? _nameDebounce;
@@ -116,6 +114,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   void initState() {
     super.initState();
     final p = widget.productToEdit;
+    _draftProductId = p?.id ?? const Uuid().v4();
 
     final initialCat = p?.category.trim() ?? '';
     _nameController = TextEditingController(text: p?.name ?? '');
@@ -307,6 +306,40 @@ class _AddProductScreenState extends State<AddProductScreen> {
   String _formatDate(DateTime d) =>
       "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
 
+  Future<void> _waitForTranslationAndFill(String storeId, String productId) async {
+    final ref = FirebaseFirestore.instance
+        .collection('stores_public')
+        .doc(storeId)
+        .collection('products')
+        .doc(productId);
+
+    final snap = await ref.snapshots(includeMetadataChanges: false).firstWhere((s) {
+      final d = s.data();
+      if (d == null) return false;
+      final st = (d['descTranslationStatus'] ?? '').toString();
+      return st == 'ready' || st.startsWith('pending_');
+    });
+
+    final d = snap.data() ?? {};
+    final raw = d['description'];
+
+    if (raw is! Map) return;
+    final desc = Map<String, dynamic>.from(raw);
+
+    final ar = (desc['ar'] ?? '').toString();
+    final de = (desc['de'] ?? '').toString();
+    final en = (desc['en'] ?? '').toString();
+    final tr = (desc['tr'] ?? '').toString();
+
+    // ✅ nur leere Felder füllen (niemals User-Text überschreiben)
+    if (_descArController.text.trim().isEmpty && ar.trim().isNotEmpty) _descArController.text = ar;
+    if (_descDeController.text.trim().isEmpty && de.trim().isNotEmpty) _descDeController.text = de;
+    if (_descEnController.text.trim().isEmpty && en.trim().isNotEmpty) _descEnController.text = en;
+    if (_descTrController.text.trim().isEmpty && tr.trim().isNotEmpty) _descTrController.text = tr;
+
+    if (mounted) setState(() {});
+  }
+
   Future<void> _checkAccessOnLoad() async {
     if (!AccessManager.canWriteAdmin) {
       await showFabPaywallDialog(context);
@@ -346,6 +379,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _categoryFocusNode.dispose();
     super.dispose();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didInitDescLang) return;
+
+    final appLang = Localizations.localeOf(context).languageCode;
+    const supported = {'ar', 'de', 'en', 'tr'};
+    _primaryDescLang = supported.contains(appLang) ? appLang : 'de';
+
+    // initiale Anzeige-Sprache = App-Sprache
+    _selectedDescLang = _primaryDescLang;
+
+    _didInitDescLang = true;
+  }
+
 
   // CDN URLs werden über CdnHelper konstruiert (lib/utils/cdn_helper.dart)
 
@@ -447,7 +496,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     });
 
     try {
-      final productId = widget.productToEdit?.id ?? const Uuid().v4();
+      final productId = _draftProductId;
       final storage = FirebaseStorage.instanceFor(
         bucket: 'gs://aldeebtech-1ec64.firebasestorage.app',
       );
@@ -696,7 +745,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       }
 
       final p = Product(
-        id: widget.productToEdit?.id ?? '',
+        id: _draftProductId,
         name: _nameController.text.trim(),
         price: _parsePrice(_priceController.text),
         sizeValue: _parsePrice(_sizeValueController.text),
@@ -741,7 +790,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
       );
       final success = widget.productToEdit != null
           ? await ApiService.updateProduct(p)
-          : await ApiService.addProduct(p);
+          : await ApiService.addProduct(
+        p,
+        descAutoTranslateRequested: _autoTranslateOnCreate,
+        sourceHint: _primaryDescLang,
+      );
+
+
+
+
+      if (success && widget.productToEdit == null && _autoTranslateOnCreate) {
+        final storeId = ApiService.storeId;
+        if (storeId != null) {
+          await _waitForTranslationAndFill(storeId, _draftProductId);
+        }
+      }
 
       if (mounted && success) {
         // Bestätigungsnachricht anzeigen
@@ -759,6 +822,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) context.pop(p);
       }
+
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -1120,6 +1184,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
               // MODERNER BILD UPLOAD BEREICH
               _buildImageSection(theme, colors),
 
+              // Toggle nur beim Erstellen
+              if (widget.productToEdit == null) ...[
+                SwitchListTile.adaptive(
+                  value: _autoTranslateOnCreate,
+                  title: Text(s.autoTranslateOnCreateTitle),
+                  subtitle: _autoTranslateOnCreate
+                      ? Text(
+                    s.autoTranslateOnCreateHint,
+                    style: const TextStyle(fontSize: 12),
+                  )
+                      : null,
+                  onChanged: (v) => setState(() => _autoTranslateOnCreate = v),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 8),
+              ],
+
+
+
               const SizedBox(height: 24),
 
               // DESCRIPTION — Language Tabs
@@ -1196,8 +1279,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
     ColorScheme colors,
     List<String> descSuggestions,
   ) {
-    final langLabels = {'ar': s.descLangAr, 'de': s.descLangDe, 'en': s.descLangEn, 'tr': s.descLangTr};
+    final langLabels = {
+      'ar': s.descLangAr,
+      'de': s.descLangDe,
+      'en': s.descLangEn,
+      'tr': s.descLangTr,
+    };
+
+    final orderedLangs = <String>[
+      _primaryDescLang,
+      ...['ar', 'de', 'en', 'tr'].where((l) => l != _primaryDescLang),
+    ];
+
     final ctrl = _descControllerFor(_selectedDescLang);
+
+// Limit nur für Create + Toggle true + Source-Feld (Primary)
+    final limitAuto = widget.productToEdit == null &&
+        _autoTranslateOnCreate &&
+        _selectedDescLang == _primaryDescLang;
+
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1206,8 +1306,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         SizedBox(
           width: double.infinity,
           child: SegmentedButton<String>(
-            segments: langLabels.entries
-                .map((e) => ButtonSegment<String>(value: e.key, label: Text(e.value)))
+            segments: orderedLangs
+                .map((k) => ButtonSegment<String>(value: k, label: Text(langLabels[k]!)))
                 .toList(),
             selected: {_selectedDescLang},
             onSelectionChanged: (newSet) => setState(() => _selectedDescLang = newSet.first),
@@ -1225,7 +1325,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
           key: ValueKey('desc_$_selectedDescLang'),
           controller: ctrl,
           maxLines: 3,
-          maxLength: 300,
+          maxLength: limitAuto ? 300 : null,
+          inputFormatters: limitAuto ? [LengthLimitingTextInputFormatter(300)] : null,
           textDirection: _selectedDescLang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
           onChanged: (_) => setState(() {}),
           decoration: _premiumInputDecoration(
@@ -1264,21 +1365,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
           ),
         ),
 
-        // Auto-Translate button (only for existing products, hidden after use)
-        if (widget.productToEdit != null && !_autoTranslateUsed) ...[
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _isAutoTranslating ? null : _autoTranslate,
-              icon: _isAutoTranslating
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.translate, size: 18),
-              label: Text(_isAutoTranslating ? '...' : s.autoTranslateButton),
-            ),
-          ),
-        ],
-
         if (_autoTranslateUsed && widget.productToEdit != null) ...[
           const SizedBox(height: 8),
           Row(
@@ -1296,61 +1382,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  Future<void> _autoTranslate() async {
-    final p = widget.productToEdit;
-    if (p == null) return;
-    final storeId = ApiService.storeId;
-    if (storeId == null) return;
-
-    setState(() => _isAutoTranslating = true);
-    try {
-      final callable = FirebaseFunctions.instanceFor(region: 'europe-west3')
-          .httpsCallable('translateProductDescriptionOnce');
-      final result = await callable.call<Map<String, dynamic>>({
-        'storeId': storeId,
-        'productId': p.id,
-      });
-      final data = result.data;
-      final status = data['status'] as String? ?? '';
-
-      if (!mounted) return;
-      final s = AppLocalizations.of(context)!;
-
-      if (status == 'OK') {
-        // Refresh description fields from result
-        final desc = data['description'] as Map<String, dynamic>?;
-        if (desc != null) {
-          setState(() {
-            _descArController.text = (desc['ar'] ?? '').toString();
-            _descDeController.text = (desc['de'] ?? '').toString();
-            _descEnController.text = (desc['en'] ?? '').toString();
-            _descTrController.text = (desc['tr'] ?? '').toString();
-            _autoTranslateUsed = true;
-          });
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.autoTranslateSuccess), backgroundColor: Colors.green),
-        );
-      } else if (status == 'BUDGET_EXCEEDED') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.autoTranslateBudgetExceeded)),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.autoTranslateError)),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        final s = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.autoTranslateError)),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isAutoTranslating = false);
-    }
-  }
 
   Widget _buildImageSection(ThemeData theme, ColorScheme colors) {
     final s = AppLocalizations.of(context)!;

@@ -16,6 +16,7 @@ class StoreLogoPicker extends StatefulWidget {
   final String storeId;
   final Function(String newLogoUrl) onLogoChanged;
   final Function()? onLogoDeleted;
+  final ValueChanged<bool>? onUploadStateChanged;
   final double size;
 
   const StoreLogoPicker({
@@ -25,6 +26,7 @@ class StoreLogoPicker extends StatefulWidget {
     required this.storeId,
     required this.onLogoChanged,
     this.onLogoDeleted,
+    this.onUploadStateChanged,
     this.size = 80,
   });
 
@@ -241,6 +243,7 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
       _uploading = true;
       _uploadProgress = 0.0;
     });
+    widget.onUploadStateChanged?.call(true);
 
     try {
       final storage = FirebaseStorage.instanceFor(
@@ -304,6 +307,7 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
         setState(() {
           _uploading = false;
         });
+        widget.onUploadStateChanged?.call(false);
         // Hinweis: Logo geändert, speichern nicht vergessen!
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -319,6 +323,7 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
         setState(() {
           _uploading = false;
         });
+        widget.onUploadStateChanged?.call(false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(s.uploadError)),
         );

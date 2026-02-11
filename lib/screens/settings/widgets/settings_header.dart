@@ -68,6 +68,7 @@ class SettingsHeader extends StatelessWidget {
       storeId: vm.storeId,
       onLogoChanged: (url) => vm.setLogoUrl('$url?v=${DateTime.now().millisecondsSinceEpoch}'),
       onLogoDeleted: () => vm.deleteLogo(),
+      onUploadStateChanged: (uploading) => vm.setLogoUploadInProgress(uploading),
       size: 80,
     );
   }

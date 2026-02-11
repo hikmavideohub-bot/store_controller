@@ -41,7 +41,6 @@ class ProductsExportService {
             .collection('stores_public')
             .doc(storeId)
             .collection('products')
-            .orderBy('created_at', descending: true)
             .limit(batchSize);
 
         if (lastDoc != null) {
