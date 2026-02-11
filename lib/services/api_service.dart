@@ -1429,7 +1429,8 @@ class ApiService {
     final items = _cachedProducts ?? [];
     final snippets = <String>[];
     for (final p in items) {
-      final parts = p.description
+      final allText = p.descriptionMap.values.join('\n');
+      final parts = allText
           .trim()
           .split(RegExp(r'[\n•]+'))
           .map((s) => s.trim())

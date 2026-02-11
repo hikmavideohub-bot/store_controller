@@ -57,7 +57,7 @@ class StoreInfoCard extends StatelessWidget {
             controller: vm.storeNameCtrl,
             label: s.storeNameLabel,
             icon: Icons.abc,
-            maxLength: 40,
+            maxLength: 25,
             onChanged: (_) => vm.notifyListeners(), // Damit Header sich updated
           ),
 
@@ -83,6 +83,7 @@ class StoreInfoCard extends StatelessWidget {
               hint: s.storeDescHint,
               icon: Icons.description_outlined,
               maxLines: 3,
+              maxLength: 40,
             ),
             const SizedBox(height: 8),
             Text(

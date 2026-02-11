@@ -652,7 +652,7 @@ class SettingsViewModel extends BaseViewModel {
       setError(s.storeNameRequired);
       return false;
     }
-    if (storeNameCtrl.text.trim().length > 40) {
+    if (storeNameCtrl.text.trim().length > 25) {
       setError(s.storeNameTooLong);
       return false;
     }

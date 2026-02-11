@@ -1,0 +1,553 @@
+"use strict";
+
+const admin = require("firebase-admin");
+admin.initializeApp();
+
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
+const crypto = require("crypto");
+
+const db = admin.firestore();
+const REGION_PRIMARY = process.env.REGION_PRIMARY || "europe-west3";
+
+// Azure Translator secrets
+const AZURE_TRANSLATOR_KEY = defineSecret("AZURE_TRANSLATOR_KEY");
+const AZURE_TRANSLATOR_ENDPOINT = defineSecret("AZURE_TRANSLATOR_ENDPOINT");
+const AZURE_TRANSLATOR_REGION = defineSecret("AZURE_TRANSLATOR_REGION");
+
+// Constants
+const SUPPORTED_LANGS = ["ar", "de", "en", "tr"];
+const MAX_DESC_LEN = 300; // only for auto-translate, NOT for manual edits
+const MONTHLY_CHAR_LIMIT = 2_000_000;
+const BUDGET_REF_PATH = "system/desc_translation_budget";
+
+// ---------- Helpers ----------
+
+function currentMonthBerlin() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const y = parts.find((p) => p.type === "year").value;
+  const m = parts.find((p) => p.type === "month").value;
+  return `${y}-${m}`;
+}
+
+function truncate(text, maxLen) {
+  return text.length <= maxLen ? text : text.slice(0, maxLen);
+}
+
+function sha1(s) {
+  return crypto.createHash("sha1").update(String(s ?? ""), "utf8").digest("hex");
+}
+
+/**
+ * Extract input text and source hint from the description field.
+ * String  → inputText, no sourceHint
+ * Map     → first non-empty value from ar/de/en/tr, key as sourceHint
+ */
+function extractInput(description) {
+  if (typeof description === "string") {
+    const text = description.trim();
+    return text ? { inputText: text, sourceHint: null } : null;
+  }
+  if (description && typeof description === "object") {
+    for (const lang of SUPPORTED_LANGS) {
+      const val = description[lang];
+      if (typeof val === "string" && val.trim()) {
+        return { inputText: val.trim(), sourceHint: lang };
+      }
+    }
+  }
+  return null;
+}
+
+// ---------- Azure Translator ----------
+
+async function azureDetect(text) {
+  const endpoint = AZURE_TRANSLATOR_ENDPOINT.value();
+  const key = AZURE_TRANSLATOR_KEY.value();
+  const region = AZURE_TRANSLATOR_REGION.value();
+
+  const res = await fetch(`${endpoint}/detect?api-version=3.0`, {
+    method: "POST",
+    headers: {
+      "Ocp-Apim-Subscription-Key": key,
+      "Ocp-Apim-Subscription-Region": region,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify([{ Text: text }]),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Azure detect error ${res.status}: ${await res.text()}`);
+  }
+
+  const json = await res.json();
+  const detected = json?.[0];
+  return {
+    language: detected?.language ?? null,
+    score: detected?.score ?? 0,
+  };
+}
+
+async function azureTranslate(text, fromLang, targetLangs) {
+  const endpoint = AZURE_TRANSLATOR_ENDPOINT.value();
+  const key = AZURE_TRANSLATOR_KEY.value();
+  const region = AZURE_TRANSLATOR_REGION.value();
+
+  const toParams = targetLangs.map((l) => `to=${l}`).join("&");
+  const url = `${endpoint}/translate?api-version=3.0&from=${fromLang}&${toParams}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Ocp-Apim-Subscription-Key": key,
+      "Ocp-Apim-Subscription-Region": region,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify([{ Text: text }]),
+  });
+
+  if (res.status === 429) {
+    const err = new Error("Azure Translator rate limited (429)");
+    err.code = 429;
+    throw err;
+  }
+
+  if (!res.ok) {
+    throw new Error(`Azure translate error ${res.status}: ${await res.text()}`);
+  }
+
+  const json = await res.json();
+  const translations = {};
+  for (const t of json?.[0]?.translations ?? []) {
+    if (t.to && t.text) translations[t.to] = t.text;
+  }
+  return translations;
+}
+
+// ---------- Budget + Lock (atomic) ----------
+
+/**
+ * Atomically: check autoTranslateUsed lock, reserve char budget,
+ * and set the lock + processing status on the product doc.
+ *
+ * Returns "OK" | "BUDGET_EXCEEDED" | "ALREADY_USED"
+ *
+ * On BUDGET_EXCEEDED the product is flagged pending_quota + locked
+ * so double-clicks cannot queue twice.
+ */
+async function reserveBudgetAndLock(charCount, productRef) {
+  const budgetRef = db.doc(BUDGET_REF_PATH);
+  const month = currentMonthBerlin();
+
+  return db.runTransaction(async (t) => {
+    // ---- reads first ----
+    const budgetSnap = await t.get(budgetRef);
+    const prodSnap = await t.get(productRef);
+
+    const budgetData = budgetSnap.exists ? budgetSnap.data() : {};
+    const prodData = prodSnap.exists ? prodSnap.data() : {};
+    const meta = prodData.description_meta || {};
+
+    // Double-click / parallel-call protection
+    if (meta.autoTranslateUsed === true) return "ALREADY_USED";
+
+    // Budget check
+    let usedChars = budgetData.usedChars || 0;
+    const docMonth = budgetData.month || "";
+    const limit = budgetData.limit || MONTHLY_CHAR_LIMIT;
+    if (docMonth !== month) usedChars = 0;
+
+    if (usedChars + charCount > limit) {
+      // Lock flag + set status (prevents double-queuing)
+      t.set(productRef, {
+        descTranslationStatus: "pending_quota",
+        description_meta: { autoTranslateUsed: true },
+      }, { merge: true });
+      return "BUDGET_EXCEEDED";
+    }
+
+    // Reserve budget + lock + set processing status
+    t.set(budgetRef, { month, usedChars: usedChars + charCount, limit }, { merge: true });
+    t.set(productRef, {
+      descTranslationStatus: "processing",
+      description_meta: { autoTranslateUsed: true },
+    }, { merge: true });
+
+    return "OK";
+  });
+}
+
+/**
+ * Budget-only reservation for the scheduler (no lock check).
+ * Returns true if reserved, false if over limit.
+ */
+async function reserveBudget(charCount) {
+  const budgetRef = db.doc(BUDGET_REF_PATH);
+  const month = currentMonthBerlin();
+
+  return db.runTransaction(async (t) => {
+    const budgetSnap = await t.get(budgetRef);
+    const budgetData = budgetSnap.exists ? budgetSnap.data() : {};
+
+    let usedChars = budgetData.usedChars || 0;
+    const docMonth = budgetData.month || "";
+    const limit = budgetData.limit || MONTHLY_CHAR_LIMIT;
+    if (docMonth !== month) usedChars = 0;
+
+    if (usedChars + charCount > limit) return false;
+
+    t.set(budgetRef, { month, usedChars: usedChars + charCount, limit }, { merge: true });
+    return true;
+  });
+}
+
+async function queuePending(productRefPath, inputText, sourceHint, status = "pending_quota") {
+  await db.collection("pending_desc_translations").add({
+    productRef: productRefPath,
+    inputText,
+    sourceHint: sourceHint || null,
+    status,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+// ==========================================================================
+// 1) onCreate — Normalize description only (no translation, no Azure)
+// ==========================================================================
+
+exports.translateProductDescription = onDocumentCreated(
+  {
+    document: "stores_public/{storeId}/products/{productId}",
+    region: REGION_PRIMARY,
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap?.exists) return;
+
+    const data = snap.data() || {};
+    const desc = data.description;
+    const meta = data.description_meta || {};
+
+    // Normalize description to a 4-lang map
+    let normalized;
+    if (typeof desc === "string") {
+      const text = desc.trim();
+      normalized = { ar: text, de: "", en: "", tr: "" };
+    } else if (desc && typeof desc === "object") {
+      normalized = {};
+      for (const lang of SUPPORTED_LANGS) {
+        normalized[lang] = typeof desc[lang] === "string" ? desc[lang] : "";
+      }
+    } else {
+      normalized = { ar: "", de: "", en: "", tr: "" };
+    }
+
+    // Check if anything needs writing
+    const descIsMap = desc && typeof desc === "object" && !Array.isArray(desc);
+    const allKeysPresent = descIsMap && SUPPORTED_LANGS.every((l) => typeof desc[l] === "string");
+    const needsNormalize = typeof desc === "string" || !allKeysPresent;
+    const needsMeta = meta.autoTranslateUsed === undefined || meta.autoTranslateUsed === null;
+
+    if (!needsNormalize && !needsMeta) return;
+
+    const updates = {};
+    if (needsNormalize) updates.description = normalized;
+    if (needsMeta) updates.description_meta = { ...meta, autoTranslateUsed: false };
+
+    await snap.ref.set(updates, { merge: true });
+  }
+);
+
+// ==========================================================================
+// 3) Callable — translateProductDescriptionOnce (user clicks button)
+// ==========================================================================
+
+exports.translateProductDescriptionOnce = onCall(
+  {
+    region: REGION_PRIMARY,
+    secrets: [AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_ENDPOINT, AZURE_TRANSLATOR_REGION],
+  },
+  async (request) => {
+    // ---- Auth ----
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Login required.");
+    }
+    const uid = request.auth.uid;
+
+    const { storeId, productId } = request.data;
+    if (!storeId || !productId) {
+      throw new HttpsError("invalid-argument", "storeId and productId required.");
+    }
+
+    // Ownership: store doc id === auth uid
+    if (uid !== storeId) {
+      throw new HttpsError("permission-denied", "Not authorized for this store.");
+    }
+
+    // ---- Load product ----
+    const productRef = db.doc(`stores_public/${storeId}/products/${productId}`);
+    const prodSnap = await productRef.get();
+    if (!prodSnap.exists) {
+      throw new HttpsError("not-found", "Product not found.");
+    }
+
+    const data = prodSnap.data();
+    const meta = data.description_meta || {};
+
+    // b) Already used?
+    if (meta.autoTranslateUsed === true) {
+      return { status: "already_used" };
+    }
+
+    // c) Extract input
+    const input = extractInput(data.description);
+    if (!input || !input.inputText) {
+      throw new HttpsError("invalid-argument", "No description text to translate.");
+    }
+
+    const inputTextForAuto = truncate(input.inputText, MAX_DESC_LEN);
+    const sourceHint = input.sourceHint;
+
+    // d) Detect source language
+    let sourceLang;
+    const det = await azureDetect(inputTextForAuto);
+    if (det.language && SUPPORTED_LANGS.includes(det.language) && det.score >= 0.6) {
+      sourceLang = det.language;
+    } else {
+      sourceLang = sourceHint || "ar";
+    }
+
+    const targetLangs = SUPPORTED_LANGS.filter((l) => l !== sourceLang);
+    const chargedChars = inputTextForAuto.length * targetLangs.length;
+
+    // e) Atomic budget reservation + lock
+    const reserveResult = await reserveBudgetAndLock(chargedChars, productRef);
+
+    if (reserveResult === "ALREADY_USED") {
+      return { status: "already_used" };
+    }
+
+    if (reserveResult === "BUDGET_EXCEEDED") {
+      // Product already flagged pending_quota + locked in the transaction
+      await queuePending(productRef.path, inputTextForAuto, sourceHint, "pending_quota");
+      return { status: "queued" };
+    }
+
+    // f) Azure translate
+    try {
+      const translations = await azureTranslate(inputTextForAuto, sourceLang, targetLangs);
+
+      // g) Write — fill only empty keys, never overwrite non-empty
+      const currentDesc = data.description && typeof data.description === "object"
+        ? { ...data.description }
+        : {};
+
+      // Source lang: only write if currently empty
+      if (!(currentDesc[sourceLang] ?? "").trim()) {
+        currentDesc[sourceLang] = inputTextForAuto;
+      }
+
+      // Target langs: only fill empty
+      for (const lang of targetLangs) {
+        if (!(currentDesc[lang] ?? "").trim() && translations[lang]) {
+          currentDesc[lang] = translations[lang];
+        }
+      }
+
+      // Ensure all 4 keys exist
+      for (const lang of SUPPORTED_LANGS) {
+        if (currentDesc[lang] === undefined) currentDesc[lang] = "";
+      }
+
+      const hash = sha1(inputTextForAuto);
+
+      await productRef.set({
+        description: currentDesc,
+        descTranslationStatus: "ready",
+        description_meta: {
+          autoTranslateUsed: true,
+          provider: "azure",
+          sourceLang,
+          autoSourceText: inputTextForAuto,
+          hash,
+          translatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+      }, { merge: true });
+
+      return { status: "ready" };
+    } catch (error) {
+      // h) Error / 429 → queue for retry
+      await queuePending(productRef.path, inputTextForAuto, sourceHint, "pending_retry");
+      await productRef.set({
+        descTranslationStatus: "pending_retry",
+        description_meta: {
+          autoTranslateUsed: true,
+          lastError: error.message,
+        },
+      }, { merge: true });
+      console.error(`[translateProductDescriptionOnce] Error: ${productRef.path}`, error.message);
+      return { status: "queued" };
+    }
+  }
+);
+
+// ==========================================================================
+// 4) Scheduler — process pending_quota + pending_retry jobs
+// ==========================================================================
+
+exports.runPendingDescTranslations = onSchedule(
+  {
+    schedule: "0 0 1 * *",
+    region: REGION_PRIMARY,
+    secrets: [AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_ENDPOINT, AZURE_TRANSLATOR_REGION],
+    timeoutSeconds: 540,
+  },
+  async () => {
+    const month = currentMonthBerlin();
+
+    // 1. Reset budget if month rolled over
+    const budgetRef = db.doc(BUDGET_REF_PATH);
+    const budgetSnap = await budgetRef.get();
+    const budgetData = budgetSnap.exists ? budgetSnap.data() : {};
+
+    if (budgetData.month !== month) {
+      await budgetRef.set(
+        { month, usedChars: 0, limit: budgetData.limit || MONTHLY_CHAR_LIMIT },
+        { merge: true }
+      );
+      console.log(`[runPendingDescTranslations] Budget reset for ${month}`);
+    }
+
+    // 2. Process pending_quota + pending_retry jobs
+    const PENDING_STATUSES = ["pending_quota", "pending_retry"];
+    const PAGE = 50;
+    let processed = 0;
+    let budgetExhausted = false;
+
+    for (const status of PENDING_STATUSES) {
+      if (budgetExhausted) break;
+      let lastDoc = null;
+
+      for (;;) {
+        if (budgetExhausted) break;
+
+        let q = db
+          .collection("pending_desc_translations")
+          .where("status", "==", status)
+          .orderBy("createdAt")
+          .limit(PAGE);
+
+        if (lastDoc) q = q.startAfter(lastDoc);
+
+        const snap = await q.get();
+        if (snap.empty) break;
+
+        for (const doc of snap.docs) {
+          const job = doc.data();
+          const { productRef: refPath, inputText, sourceHint } = job;
+
+          if (!refPath || !inputText) {
+            await doc.ref.update({ status: "invalid" });
+            continue;
+          }
+
+          const productRef = db.doc(refPath);
+          const prodSnap = await productRef.get();
+
+          if (!prodSnap.exists) {
+            await doc.ref.update({ status: "invalid" });
+            continue;
+          }
+
+          const prodData = prodSnap.data();
+          const inputTextForAuto = truncate(inputText, MAX_DESC_LEN);
+
+          // Detect source language
+          let sourceLang;
+          try {
+            const det = await azureDetect(inputTextForAuto);
+            if (det.language && SUPPORTED_LANGS.includes(det.language) && det.score >= 0.6) {
+              sourceLang = det.language;
+            } else {
+              sourceLang = sourceHint || "ar";
+            }
+          } catch {
+            sourceLang = sourceHint || "ar";
+          }
+
+          const targetLangs = SUPPORTED_LANGS.filter((l) => l !== sourceLang);
+          const chargedChars = inputTextForAuto.length * targetLangs.length;
+
+          // Budget reservation (no lock check — already authorized by callable)
+          const budgetOk = await reserveBudget(chargedChars);
+          if (!budgetOk) {
+            budgetExhausted = true;
+            console.log(`[runPendingDescTranslations] Budget exhausted after ${processed} jobs`);
+            break;
+          }
+
+          try {
+            const translations = await azureTranslate(inputTextForAuto, sourceLang, targetLangs);
+
+            // Fill only empty keys
+            const currentDesc = prodData.description && typeof prodData.description === "object"
+              ? { ...prodData.description }
+              : {};
+
+            if (!(currentDesc[sourceLang] ?? "").trim()) {
+              currentDesc[sourceLang] = inputTextForAuto;
+            }
+
+            for (const lang of targetLangs) {
+              if (!(currentDesc[lang] ?? "").trim() && translations[lang]) {
+                currentDesc[lang] = translations[lang];
+              }
+            }
+
+            for (const lang of SUPPORTED_LANGS) {
+              if (currentDesc[lang] === undefined) currentDesc[lang] = "";
+            }
+
+            const hash = sha1(inputTextForAuto);
+
+            await productRef.set({
+              description: currentDesc,
+              descTranslationStatus: "ready",
+              description_meta: {
+                autoTranslateUsed: true,
+                provider: "azure",
+                sourceLang,
+                autoSourceText: inputTextForAuto,
+                hash,
+                translatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              },
+            }, { merge: true });
+
+            await doc.ref.update({
+              status: "done",
+              processedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            processed++;
+          } catch (error) {
+            console.error(
+              `[runPendingDescTranslations] Error processing ${refPath}:`,
+              error.message
+            );
+            await doc.ref.update({ lastError: error.message });
+          }
+        }
+
+        if (snap.size < PAGE) break;
+        lastDoc = snap.docs[snap.docs.length - 1];
+      }
+    }
+
+    console.log(`[runPendingDescTranslations] Finished. Processed: ${processed}`);
+  }
+);

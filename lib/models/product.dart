@@ -9,6 +9,8 @@ class Product {
   String image;
   String thumb;
   String description;
+  Map<String, String> descriptionMap;
+  bool autoTranslateUsed;
   String category;
   bool productActive;
 
@@ -33,6 +35,8 @@ class Product {
     required this.image,
     this.thumb = '',
     required this.description,
+    this.descriptionMap = const {'ar': '', 'de': '', 'en': '', 'tr': ''},
+    this.autoTranslateUsed = false,
     required this.category,
     required this.productActive,
     required this.hasOffer,
@@ -98,7 +102,7 @@ class Product {
       "size_unit": sizeUnit,
       "image": image,
       "thumb": thumb,
-      "description": description,
+      "description": descriptionMap,
       "category": category,
       "product_active": productActive,
       "has_offer": hasOffer,
@@ -114,6 +118,35 @@ class Product {
     };
   }
 
+  static Map<String, String> _parseDescriptionMap(dynamic raw) {
+    const empty = {'ar': '', 'de': '', 'en': '', 'tr': ''};
+    if (raw == null) return empty;
+    if (raw is Map) {
+      return {
+        'ar': (raw['ar'] ?? '').toString(),
+        'de': (raw['de'] ?? '').toString(),
+        'en': (raw['en'] ?? '').toString(),
+        'tr': (raw['tr'] ?? '').toString(),
+      };
+    }
+    // Legacy: plain string → put into all fields as fallback
+    final s = raw.toString();
+    return {'ar': s, 'de': s, 'en': s, 'tr': s};
+  }
+
+  static String _descriptionFallback(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is Map) {
+      // Return first non-empty value
+      for (final k in ['de', 'en', 'ar', 'tr']) {
+        final v = (raw[k] ?? '').toString().trim();
+        if (v.isNotEmpty) return v;
+      }
+      return '';
+    }
+    return raw.toString();
+  }
+
   factory Product.fromMap(Map<String, dynamic> data) {
     return Product(
       id: (data['id'] ?? '').toString(),
@@ -123,7 +156,9 @@ class Product {
       sizeUnit: (data['size_unit'] ?? data['sizeunit'] ?? '').toString(),
       image: (data['image'] ?? '').toString(),
       thumb: (data['thumb'] ?? data['thrumb'] ?? '').toString(),
-      description: (data['description'] ?? '').toString(),
+      description: _descriptionFallback(data['description']),
+      descriptionMap: _parseDescriptionMap(data['description']),
+      autoTranslateUsed: _toBool(data['autoTranslateUsed']),
       category: (data['category'] ?? '').toString(),
       productActive: _toBool(data['product_active'] ?? data['productActive']),
       hasOffer: _toBool(data['has_offer'] ?? data['hasOffer']),
@@ -159,6 +194,8 @@ class Product {
     String? image,
     String? thumb,
     String? description,
+    Map<String, String>? descriptionMap,
+    bool? autoTranslateUsed,
     String? category,
     bool? productActive,
     bool? hasOffer,
@@ -181,6 +218,8 @@ class Product {
       image: image ?? this.image,
       thumb: thumb ?? this.thumb,
       description: description ?? this.description,
+      descriptionMap: descriptionMap ?? this.descriptionMap,
+      autoTranslateUsed: autoTranslateUsed ?? this.autoTranslateUsed,
       category: category ?? this.category,
       productActive: productActive ?? this.productActive,
       hasOffer: hasOffer ?? this.hasOffer,

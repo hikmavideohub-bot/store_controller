@@ -8,6 +8,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config.dart';
 import '../widgets/premium_app_bar.dart';
 import '../models/product.dart';
@@ -49,7 +51,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _priceController,
       _sizeValueController,
       _imageController,
-      _descriptionController,
+      _descArController,
+      _descDeController,
+      _descEnController,
+      _descTrController,
       _percentController,
       _discountedPriceController,
       _bundleQtyController,
@@ -85,7 +90,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _hasOffer = false,
       _offerActive = true,
       _showNewCategoryField = false,
-      _isLoadingRecommendation = false;
+      _isLoadingRecommendation = false,
+      _autoTranslateUsed = false,
+      _isAutoTranslating = false;
+  String _selectedDescLang = 'de';
   String? _recommendedCategory;
   Timer? _nameDebounce;
   double _uploadProgress = 0.0;
@@ -94,6 +102,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
   List<String> _categories = [];
   final List<String> _unitOptions = ['l', 'ml', 'g', 'kg', 'pcs'];
   late DateTime _offerStartDate, _offerEndDate;
+
+  late final String _draftProductId;
+
+  bool _autoTranslateOnCreate = false;
+
+// App-Sprache als “Source-Lang” fürs Auto-Translate
+  String _primaryDescLang = 'de';
+  bool _didInitDescLang = false;
+
 
   @override
   void initState() {
@@ -108,7 +125,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
     _imageController = TextEditingController(text: p?.image ?? '');
     _thumbController = TextEditingController(text: p?.thumb ?? '');
-    _descriptionController = TextEditingController(text: p?.description ?? '');
+    _descArController = TextEditingController(text: p?.descriptionMap['ar'] ?? '');
+    _descDeController = TextEditingController(text: p?.descriptionMap['de'] ?? '');
+    _descEnController = TextEditingController(text: p?.descriptionMap['en'] ?? '');
+    _descTrController = TextEditingController(text: p?.descriptionMap['tr'] ?? '');
+    _autoTranslateUsed = p?.autoTranslateUsed ?? false;
     _percentController = TextEditingController(
       text: (p != null && p.percent > 0) ? _formatNumToText(p.percent) : '',
     );
@@ -305,7 +326,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _priceController,
       _sizeValueController,
       _imageController,
-      _descriptionController,
+      _descArController,
+      _descDeController,
+      _descEnController,
+      _descTrController,
       _percentController,
       _discountedPriceController,
       _bundleQtyController,
@@ -679,7 +703,19 @@ class _AddProductScreenState extends State<AddProductScreen> {
         sizeUnit: _selectedUnit,
         image: _imageController.text.trim(),
         thumb: _thumbController.text.trim(),
-        description: _descriptionController.text.trim(),
+        description: _descDeController.text.trim().isNotEmpty
+            ? _descDeController.text.trim()
+            : _descEnController.text.trim().isNotEmpty
+                ? _descEnController.text.trim()
+                : _descArController.text.trim().isNotEmpty
+                    ? _descArController.text.trim()
+                    : _descTrController.text.trim(),
+        descriptionMap: {
+          'ar': _descArController.text.trim(),
+          'de': _descDeController.text.trim(),
+          'en': _descEnController.text.trim(),
+          'tr': _descTrController.text.trim(),
+        },
         category: _categoryController.text.trim(),
         productActive: _productActive,
         hasOffer: _hasOffer,
@@ -1085,49 +1121,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
               _buildImageSection(theme, colors),
 
               const SizedBox(height: 24),
-              TextFormField(
-                controller: _descriptionController,
-                maxLines: 3,
-                textDirection: _getTextDirection(_descriptionController.text),
-                onChanged: (_) =>
-                    setState(() {}), // Rebuild für Richtungswechsel
-                decoration: _premiumInputDecoration(
-                  s.descriptionLabel,
-                  icon: Icons.description,
-                  controller: _descriptionController,
-                ),
-              ),
 
-              // Beschreibungsvorschläge
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 40,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: descSuggestions.length,
-                  separatorBuilder: (ctx, i) => const SizedBox(width: 8),
-                  itemBuilder: (ctx, i) {
-                    return ActionChip(
-                      label: Text(
-                        descSuggestions[i],
-                        style: TextStyle(fontSize: 12, color: colors.onSurface),
-                      ),
-                      backgroundColor: colors.surfaceContainer,
-                      side: BorderSide.none,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      onPressed: () {
-                        final text = _descriptionController.text;
-                        final toAdd = descSuggestions[i];
-                        _descriptionController.text = text.isEmpty
-                            ? toAdd
-                            : '$text\n$toAdd';
-                      },
-                    );
-                  },
-                ),
-              ),
+              // DESCRIPTION — Language Tabs
+              _buildDescriptionSection(s, colors, descSuggestions),
 
               const SizedBox(height: 24),
 
@@ -1169,6 +1165,191 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ),
       ),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Description section with language tabs
+  // ---------------------------------------------------------------------------
+
+  TextEditingController _descControllerFor(String lang) {
+    switch (lang) {
+      case 'ar': return _descArController;
+      case 'de': return _descDeController;
+      case 'en': return _descEnController;
+      case 'tr': return _descTrController;
+      default:   return _descDeController;
+    }
+  }
+
+  String _descHint(AppLocalizations s, String lang) {
+    switch (lang) {
+      case 'ar': return s.descriptionHintAr;
+      case 'de': return s.descriptionHintDe;
+      case 'en': return s.descriptionHintEn;
+      case 'tr': return s.descriptionHintTr;
+      default:   return s.descriptionLabel;
+    }
+  }
+
+  Widget _buildDescriptionSection(
+    AppLocalizations s,
+    ColorScheme colors,
+    List<String> descSuggestions,
+  ) {
+    final langLabels = {'ar': s.descLangAr, 'de': s.descLangDe, 'en': s.descLangEn, 'tr': s.descLangTr};
+    final ctrl = _descControllerFor(_selectedDescLang);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Language selector
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<String>(
+            segments: langLabels.entries
+                .map((e) => ButtonSegment<String>(value: e.key, label: Text(e.value)))
+                .toList(),
+            selected: {_selectedDescLang},
+            onSelectionChanged: (newSet) => setState(() => _selectedDescLang = newSet.first),
+            showSelectedIcon: false,
+            style: SegmentedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Description field for selected language
+        TextFormField(
+          key: ValueKey('desc_$_selectedDescLang'),
+          controller: ctrl,
+          maxLines: 3,
+          maxLength: 300,
+          textDirection: _selectedDescLang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
+          onChanged: (_) => setState(() {}),
+          decoration: _premiumInputDecoration(
+            _descHint(s, _selectedDescLang),
+            icon: Icons.description,
+            controller: ctrl,
+          ),
+        ),
+
+        // Suggestion chips
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 40,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: descSuggestions.length,
+            separatorBuilder: (ctx, i) => const SizedBox(width: 8),
+            itemBuilder: (ctx, i) {
+              return ActionChip(
+                label: Text(
+                  descSuggestions[i],
+                  style: TextStyle(fontSize: 12, color: colors.onSurface),
+                ),
+                backgroundColor: colors.surfaceContainer,
+                side: BorderSide.none,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                onPressed: () {
+                  final text = ctrl.text;
+                  final toAdd = descSuggestions[i];
+                  ctrl.text = text.isEmpty ? toAdd : '$text\n$toAdd';
+                },
+              );
+            },
+          ),
+        ),
+
+        // Auto-Translate button (only for existing products, hidden after use)
+        if (widget.productToEdit != null && !_autoTranslateUsed) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _isAutoTranslating ? null : _autoTranslate,
+              icon: _isAutoTranslating
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.translate, size: 18),
+              label: Text(_isAutoTranslating ? '...' : s.autoTranslateButton),
+            ),
+          ),
+        ],
+
+        if (_autoTranslateUsed && widget.productToEdit != null) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.check_circle, size: 16, color: colors.primary),
+              const SizedBox(width: 6),
+              Text(
+                s.autoTranslateUsed,
+                style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _autoTranslate() async {
+    final p = widget.productToEdit;
+    if (p == null) return;
+    final storeId = ApiService.storeId;
+    if (storeId == null) return;
+
+    setState(() => _isAutoTranslating = true);
+    try {
+      final callable = FirebaseFunctions.instanceFor(region: 'europe-west3')
+          .httpsCallable('translateProductDescriptionOnce');
+      final result = await callable.call<Map<String, dynamic>>({
+        'storeId': storeId,
+        'productId': p.id,
+      });
+      final data = result.data;
+      final status = data['status'] as String? ?? '';
+
+      if (!mounted) return;
+      final s = AppLocalizations.of(context)!;
+
+      if (status == 'OK') {
+        // Refresh description fields from result
+        final desc = data['description'] as Map<String, dynamic>?;
+        if (desc != null) {
+          setState(() {
+            _descArController.text = (desc['ar'] ?? '').toString();
+            _descDeController.text = (desc['de'] ?? '').toString();
+            _descEnController.text = (desc['en'] ?? '').toString();
+            _descTrController.text = (desc['tr'] ?? '').toString();
+            _autoTranslateUsed = true;
+          });
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.autoTranslateSuccess), backgroundColor: Colors.green),
+        );
+      } else if (status == 'BUDGET_EXCEEDED') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.autoTranslateBudgetExceeded)),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.autoTranslateError)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        final s = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.autoTranslateError)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isAutoTranslating = false);
+    }
   }
 
   Widget _buildImageSection(ThemeData theme, ColorScheme colors) {

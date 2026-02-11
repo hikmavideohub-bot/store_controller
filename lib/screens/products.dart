@@ -10,6 +10,7 @@ import '../widgets/app_drawer.dart';
 import '../storage/store_prefs.dart';
 import '../core/access_manager.dart';
 import '../core/paywall_messages.dart';
+import '../services/products_export_service.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -1298,6 +1299,20 @@ class _ProductsScreenState extends State<ProductsScreen> {
         },
         onFiltersPressed: () => _openFiltersSheet(categories),
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_rounded),
+            tooltip: s.xlsExportButton,
+            onPressed: () {
+              final sid = ApiService.storeId;
+              if (sid == null) return;
+              ProductsExportService.instance.exportStoreProductsToXlsx(
+                context: context,
+                storeId: sid,
+              );
+            },
+          ),
+        ],
       ),
       drawer: AppDrawer(
         currentRoute: '/products',

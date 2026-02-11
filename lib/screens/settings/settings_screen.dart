@@ -515,6 +515,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         TextField(
                           controller: vm.pageDescCtrl,
                           maxLines: 3,
+                          maxLength: 40,
                           textDirection: _getTextDirection(
                             vm.pageDescCtrl.text,
                           ),

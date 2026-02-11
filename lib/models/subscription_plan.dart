@@ -6,8 +6,8 @@ import 'package:intl/intl.dart';
 class SubscriptionConfig {
   final List<SubscriptionPlan> plans;
   final String? syriaContactPhone;
-  final String? pricingMessageGlobal;
-  final String? pricingMessageSyria;
+  final Map<String, String>? pricingMessageGlobal;
+  final Map<String, String>? pricingMessageSyria;
 
   SubscriptionConfig({
     required this.plans,
@@ -16,10 +16,28 @@ class SubscriptionConfig {
     this.pricingMessageSyria,
   });
 
+  /// Parses a pricing message field that may be either a plain string (legacy)
+  /// or a map keyed by language code.
+  static Map<String, String>? _parsePricingMessage(dynamic value) {
+    if (value == null) return null;
+    if (value is Map) {
+      final map = <String, String>{};
+      for (final entry in value.entries) {
+        map[entry.key.toString()] = entry.value.toString();
+      }
+      return map.isEmpty ? null : map;
+    }
+    // Legacy: plain string → treat as Arabic
+    final s = value.toString();
+    return s.isEmpty ? null : {'ar': s};
+  }
+
   factory SubscriptionConfig.fromMap(Map<String, dynamic> data) {
     final syriaContactPhone = data['syria_contact_phone']?.toString();
-    final pricingMessageGlobal = data['pricing_message_global']?.toString();
-    final pricingMessageSyria = data['pricing_message_syria']?.toString();
+    final pricingMessageGlobal =
+        _parsePricingMessage(data['pricing_message_global']);
+    final pricingMessageSyria =
+        _parsePricingMessage(data['pricing_message_syria']);
     final plansMap = data['plans'] as Map<String, dynamic>? ?? {};
 
     final plans = plansMap.entries.map((entry) {

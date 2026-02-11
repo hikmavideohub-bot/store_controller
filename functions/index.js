@@ -8,7 +8,7 @@
 //firebase deploy --only "functions:stripeWebhook,functions:createStripeCheckoutSession,functions:verifyStorePayment,functions:confirmEmailVerification,functions:requestAccountDeletion,functions:finalizeStoreSetup,functions:resolveUserRegion,functions:syncStoreAccessToPublic"
 //firebase deploy --only "functions:syncStoresOnProductDictUpdate,functions:syncStoresOnCategoryDictUpdate"
 //firebase deploy --only "functions:checkTrialExpiration,functions:cleanupExpiredAccounts,functions:refreshFxRates,functions:onStoreCreated,functions:onStoreActivated,functions:syncAccessToPublic,functions:syncStoreNameToPublic,functions:syncStoreNameToPrivate,functions:learnProductCategory,functions:seedDictionary"
-
+//firebase deploy --only "functions:translateProductDescription,runPendingDescTranslations"
 require("dotenv").config();
 
 // =============================================================================
@@ -2437,4 +2437,9 @@ exports.syncStoresOnProductDictUpdate =
 exports.syncStoresOnCategoryDictUpdate =
   require("./i18n_product_names").syncStoresOnCategoryDictUpdate;
 
-
+exports.translateProductDescription =
+  require("./i18n_product_descriptions").translateProductDescription;
+exports.translateProductDescriptionOnce =
+  require("./i18n_product_descriptions").translateProductDescriptionOnce;
+exports.runPendingDescTranslations =
+  require("./i18n_product_descriptions").runPendingDescTranslations;

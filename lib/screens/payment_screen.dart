@@ -283,13 +283,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
         final String regionKey = region == 'SY' ? 'syria' : 'global';
 
         // -----------------------------------------------------------
+        // Resolve pricing message for current locale
+        // -----------------------------------------------------------
+        final lang = Localizations.localeOf(context).languageCode;
+
+        String? resolve(Map<String, String>? map) {
+          if (map == null || map.isEmpty) return null;
+          return map[lang] ?? map['ar'] ?? map.values.first;
+        }
+
+        // -----------------------------------------------------------
         // Weiche: Syria vs Global (basierend auf regionKey)
         // -----------------------------------------------------------
         if (regionKey == 'syria') {
           return PaymentScreenSyria(
             availablePlans: plans,
             basePlan: basePlan,
-            pricingMessage: snapshot.data!['pricingMessageSyria'] as String?,
+            pricingMessage: resolve(
+              snapshot.data!['pricingMessageSyria'] as Map<String, String>?,
+            ),
           );
         } else {
           // -----------------------------------------------------------
@@ -308,7 +320,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
             userCurrencyCode: userCurrencyCode,
             userCurrencySymbol: userCurrencySymbol,
             fxRate: fxRate,
-            pricingMessage: snapshot.data!['pricingMessageGlobal'] as String?,
+            pricingMessage: resolve(
+              snapshot.data!['pricingMessageGlobal'] as Map<String, String>?,
+            ),
           );
         }
       },
