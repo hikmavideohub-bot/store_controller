@@ -106,10 +106,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
     if (p.offerType == 'bundle') {
       final cur = _currency();
       return s.bundleOfferLabel(
-        _sizeFmt.format(p.bundleQty),
-        _moneyFmt.format(p.bundlePrice),
         cur,
+        _moneyFmt.format(p.bundlePrice),
+        _sizeFmt.format(p.bundleQty),
       );
+    }
+    if (p.offerType == 'bulk') {
+      return s.offerTypeBulk;
     }
     return s.offerLabel;
   }
