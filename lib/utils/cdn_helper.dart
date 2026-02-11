@@ -4,8 +4,9 @@
 ///
 /// Funktionsweise:
 /// Baut URLs, die auf https://cdn.aldeebtech.de/images/... zeigen.
-/// Die Cloud Function dahinter streamt dann den Inhalt exakt von diesem Pfad
-/// aus dem Firebase Storage Bucket.
+/// Der CDN-Proxy erwartet den Storage-Pfad als ein URL-encoded Segment,
+/// d.h. Slashes werden als %2F kodiert:
+///   https://cdn.aldeebtech.de/images/stores%2Fabc%2Fproducts%2F123%2Fimg.jpg
 class CdnHelper {
   /// CDN Base URL
   static const String cdnBaseUrl = 'https://cdn.aldeebtech.de/images';
@@ -15,31 +16,50 @@ class CdnHelper {
     r'https://firebasestorage\.googleapis\.com/v0/b/[^/]+/o/(.+)\?alt=media',
   );
 
-  /// Hauptmethode: Baut die URL für ein neues Bild
-  ///
-  /// [storeId]: Die ID des Stores
-  /// [productId]: Die ID des Produkts
-  /// [filename]: Der Dateiname (z.B. "img_170982312.jpg")
+  // ---------------------------------------------------------------------------
+  // Zentrale Encoding-Funktion
+  // ---------------------------------------------------------------------------
+
+  /// Baut eine CDN-URL aus einem Firebase Storage Pfad.
+  /// Der Pfad wird mit Uri.encodeComponent kodiert (%2F statt /).
+  static String cdnUrlForStoragePath(String storagePath) {
+    final encoded = Uri.encodeComponent(storagePath);
+    return '$cdnBaseUrl/$encoded';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Produkt-Bilder
+  // ---------------------------------------------------------------------------
+
+  /// Baut die URL für ein Produktbild.
   static String buildUrl({
     required String storeId,
     required String productId,
     required String filename,
   }) {
-    // WICHTIG: Hier fügen wir explizit die Ordnerstruktur hinzu.
-    // Die Cloud Function erwartet genau den Pfad, der im Bucket existiert.
-    return '$cdnBaseUrl/stores/$storeId/products/$productId/$filename';
+    return cdnUrlForStoragePath(
+      'stores/$storeId/products/$productId/$filename',
+    );
   }
 
-  /// Hilfsmethode: Erzeugt aus einer beliebigen URL die Thumbnail-Version
+  // ---------------------------------------------------------------------------
+  // Thumbnails
+  // ---------------------------------------------------------------------------
+
+  /// Erzeugt aus einer beliebigen URL die Thumbnail-Version.
   ///
-  /// Nützlich für Listenansichten, um Daten zu sparen.
   /// Wandelt "bild.jpg" oder "bild_1600x1600.jpeg" in "bild_360x360.jpeg" um.
-  /// Für Logo-URLs (aus /logos/ Pfad) wird die URL unverändert zurückgegeben.
+  /// Für Logo-URLs (mit /logos/ im Pfad) wird die URL unverändert zurückgegeben,
+  /// da sie bereits die resized Variante darstellen.
   static String getThumbnailUrl(String url) {
     if (url.isEmpty) return '';
 
-    // Logo URLs from /logos/ path are already resized thumbnails
-    if (url.contains('/logos/')) return url;
+    // Logo URLs mit /logos/ im Pfad sind bereits resized — unverändert zurückgeben
+    // Prüfe sowohl unencoded (/logos/) als auch encoded (%2Flogos%2F)
+    if (url.contains('/logos/') ||
+        url.toLowerCase().contains('%2flogos%2f')) {
+      return url;
+    }
 
     // Wenn es keine CDN URL ist, versuchen wir sie erst zu konvertieren
     String workUrl = url;
@@ -53,7 +73,6 @@ class CdnHelper {
 
     String basePath = workUrl.substring(0, lastDot);
     // Falls schon eine Dimension im Namen ist (z.B. _1600x1600), diese entfernen
-    // Regex sucht nach "_ZAHLxZAHL" am Ende
     basePath = basePath.replaceAll(RegExp(r'_\d+x\d+$'), '');
 
     // Thumbnail-Suffix anhängen
@@ -61,10 +80,14 @@ class CdnHelper {
     return '${basePath}_360x360.jpeg';
   }
 
-  /// Konvertiert eine alte Firebase Storage URL zu einer CDN URL
+  // ---------------------------------------------------------------------------
+  // Konvertierung
+  // ---------------------------------------------------------------------------
+
+  /// Konvertiert eine alte Firebase Storage URL zu einer CDN URL.
   ///
-  /// Beispiel Input: .../o/stores%2F123%2Fproducts%2F456%2Fimage.jpg?...
-  /// Beispiel Output: .../images/stores/123/products/456/image.jpg
+  /// Beispiel Input:  .../o/stores%2F123%2Fproducts%2F456%2Fimage.jpg?...
+  /// Beispiel Output: .../images/stores%2F123%2Fproducts%2F456%2Fimage.jpg
   static String convertToCdn(String? url) {
     if (url == null || url.isEmpty) return '';
 
@@ -76,12 +99,10 @@ class CdnHelper {
     if (match != null) {
       try {
         // Der Pfad ist URL-Encoded (stores%2F123...), wir müssen ihn decodieren
-        String fullPath = Uri.decodeComponent(match.group(1)!);
-
-        // fullPath ist jetzt z.B.: "stores/123/products/456/image.jpg"
-        return '$cdnBaseUrl/$fullPath';
+        final fullPath = Uri.decodeComponent(match.group(1)!);
+        // Und dann korrekt für den CDN-Proxy wieder encoden
+        return cdnUrlForStoragePath(fullPath);
       } catch (e) {
-        // Falls Parsing fehlschlägt, Original zurückgeben
         return url;
       }
     }
@@ -95,52 +116,76 @@ class CdnHelper {
     return url != null && url.startsWith(cdnBaseUrl);
   }
 
-  /// Generiert CDN-URL für Store-Logo (Original im /stores/ Pfad)
-  ///
-  /// [storeId]: Die ID des Stores
-  /// [filename]: Der Dateiname (z.B. "logo_170982312.jpg")
-  /// [size]: 360 für Thumbnail, 1600 für Full-Size, null für Original
+  /// Prüft, ob eine URL auf ein resized Logo zeigt (encoded oder unencoded).
+  static bool isResizedLogoUrl(String? url) {
+    if (url == null) return false;
+    return url.contains('/logos/') ||
+        url.toLowerCase().contains('%2flogos%2f');
+  }
+
+  /// Extrahiert den Storage-Pfad aus einer CDN-URL (decoded).
+  /// Gibt null zurück wenn keine CDN-URL.
+  static String? extractStoragePath(String url) {
+    if (!url.startsWith(cdnBaseUrl)) return null;
+    final encoded = url.substring(cdnBaseUrl.length + 1); // +1 für "/"
+    try {
+      return Uri.decodeComponent(encoded);
+    } catch (_) {
+      return encoded;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Store-Logo (Legacy — alt, vor dem /original/ Flow)
+  // ---------------------------------------------------------------------------
+
+  /// Generiert CDN-URL für Store-Logo (Legacy-Pfad ohne /original/).
   static String buildStoreLogoUrl({
     required String storeId,
     required String filename,
     int? size,
   }) {
     if (size == null) {
-      return '$cdnBaseUrl/stores/$storeId/logo/$filename';
+      return cdnUrlForStoragePath('stores/$storeId/logo/$filename');
     }
     final dotIdx = filename.lastIndexOf('.');
-    if (dotIdx == -1) return '$cdnBaseUrl/stores/$storeId/logo/$filename';
+    if (dotIdx == -1) {
+      return cdnUrlForStoragePath('stores/$storeId/logo/$filename');
+    }
     final base = filename.substring(0, dotIdx);
-    final ext = filename.substring(dotIdx); // e.g. ".jpg", ".png"
-    // .jpg → .jpeg for resize extension compatibility, others stay as-is
+    final ext = filename.substring(dotIdx);
     final resizedExt = ext == '.jpg' ? '.jpeg' : ext;
-    return '$cdnBaseUrl/stores/$storeId/logo/${base}_${size}x$size$resizedExt';
+    return cdnUrlForStoragePath(
+      'stores/$storeId/logo/${base}_${size}x$size$resizedExt',
+    );
   }
 
-  /// Baut CDN-URLs für resized Logo-Varianten im /logos/ Output-Pfad.
+  // ---------------------------------------------------------------------------
+  // Store-Logo (Neuer Flow — /original/ + Resize Extension)
+  // ---------------------------------------------------------------------------
+
+  /// CDN-URL für resized Logo-Variante.
   ///
-  /// Die Resize Extension schreibt von stores/... nach logos/stores/...
-  /// [storeId]: Store ID
-  /// [baseName]: z.B. "logo_1739000000" (ohne Extension)
-  /// [ext]: ".webp" oder ".png"
+  /// Resize Extension schreibt in /logos/ Unterordner:
+  ///   stores/{storeId}/logo/original/logos/{baseName}_360x360.{webp|png}
   static String buildResizedLogoCdnUrl({
     required String storeId,
     required String baseName,
-    required String ext, // erwartet z.B. ".webp" oder ".png"
+    required String ext,
   }) {
     final safeExt = (ext == '.png') ? '.png' : '.webp';
-
-    // ✅ echter Output-Pfad (von dir verifiziert)
-    return '$cdnBaseUrl/stores/$storeId/logo/original/logos/${baseName}_360x360$safeExt';
+    return cdnUrlForStoragePath(
+      'stores/$storeId/logo/original/logos/${baseName}_360x360$safeExt',
+    );
   }
 
-  /// Baut CDN-URL für das Original-Logo im /stores/ Pfad.
+  /// CDN-URL für das Original-Logo (PNG, Transparenz).
   static String buildOriginalLogoCdnUrl({
     required String storeId,
     required String baseName,
   }) {
-    // Original bleibt PNG (Transparenz)
-    return '$cdnBaseUrl/stores/$storeId/logo/original/$baseName.png';
+    return cdnUrlForStoragePath(
+      'stores/$storeId/logo/original/$baseName.png',
+    );
   }
-
 }

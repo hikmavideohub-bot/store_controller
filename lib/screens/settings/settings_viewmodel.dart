@@ -477,25 +477,24 @@ class SettingsViewModel extends BaseViewModel {
         bucket: 'gs://aldeebtech-1ec64.firebasestorage.app',
       );
 
-      // New logo flow: URL points to /logos/ path (written by Cloud Function)
-      if (oldLogoUrl.startsWith('https://cdn.aldeebtech.de/images/logos/')) {
-        final storagePath = Uri.decodeComponent(
-          oldLogoUrl.replaceFirst('https://cdn.aldeebtech.de/images/', ''),
-        );
-        final filename = _extractBaseFilename(oldLogoUrl);
-        if (filename == null) return;
+      // New logo flow: URL contains /logos/ (encoded or unencoded)
+      if (CdnHelper.isResizedLogoUrl(oldLogoUrl)) {
+        final storagePath = CdnHelper.extractStoragePath(oldLogoUrl);
+        if (storagePath == null) return;
+        final baseName = _extractBaseFilename(oldLogoUrl);
+        if (baseName == null) return;
 
-        // Determine prefix directory from the full storage path
+        // Determine prefix directory from the decoded storage path
         final lastSlash = storagePath.lastIndexOf('/');
         if (lastSlash == -1) return;
         final dirPath = storagePath.substring(0, lastSlash);
 
         // Delete webp + png variants of the old baseName
         final variants = [
-          '$dirPath/${filename}_360x360.webp',
-          '$dirPath/${filename}_360x360.png',
-          '$dirPath/$filename.webp',
-          '$dirPath/$filename.png',
+          '$dirPath/${baseName}_360x360.webp',
+          '$dirPath/${baseName}_360x360.png',
+          '$dirPath/$baseName.webp',
+          '$dirPath/$baseName.png',
         ];
         for (final path in variants) {
           try {
@@ -530,13 +529,23 @@ class SettingsViewModel extends BaseViewModel {
     }
   }
 
+  /// Extrahiert den Basis-Dateinamen aus einer CDN-URL.
+  /// Handhabt sowohl encoded (%2F) als auch unencoded URLs.
   String? _extractBaseFilename(String url) {
     try {
-      final uri = Uri.parse(url.trim());
-      final pathSegments = uri.pathSegments;
-      if (pathSegments.isEmpty) return null;
+      // Decode den Storage-Pfad für encoded CDN URLs
+      String path;
+      final storagePath = CdnHelper.extractStoragePath(url);
+      if (storagePath != null) {
+        path = storagePath;
+      } else {
+        path = Uri.parse(url.trim()).path;
+      }
 
-      String filename = pathSegments.last;
+      // Letztes Segment nach "/" holen
+      final lastSlash = path.lastIndexOf('/');
+      String filename = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+
       // Remove dimension suffixes and extensions to get base name
       filename = filename
           .replaceAll('_1600x1600.jpeg', '')
