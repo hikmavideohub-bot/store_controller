@@ -30,11 +30,11 @@ class StoreConfigService {
     return null;
   }
 
-  /// ✅ Ob Store-Name neben Logo angezeigt werden soll (Standard: true)
+  /// ✅ Ob Store-Name neben Logo angezeigt werden soll (Standard: false)
   static bool get showNameWithLogo {
     final s = storeNotifier.value;
     final value = s?['show_name_with_logo'];
-    if (value == null) return true; // Default: Name anzeigen
+    if (value == null) return false; // Default: Name nicht anzeigen
     return value == true || value.toString().toLowerCase() == 'true';
   }
 

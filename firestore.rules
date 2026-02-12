@@ -163,10 +163,15 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════════════════════
 
     match /system/{docId} {
-      // Authentifizierte User können lesen (FX-Rates, Regions)
-      allow read: if isAuthenticated();
-      // Nur Admin kann schreiben (Cloud Functions nutzen Admin SDK)
-      allow write: if isMasterAdmin();
+    // Authentifizierte User können lesen (FX-Rates, Regions)
+    allow read: if isAuthenticated();
+    allow write: if isMasterAdmin();
+
+    // ✅ Ausnahme: stats darf kein normaler User lesen
+    match /stats/{statsId} {
+    allow read: if isMasterAdmin();   // oder: if false;
+    allow write: if isMasterAdmin();
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -179,6 +184,11 @@ service cloud.firestore {
     }
 
     match /plans/{planId} {
+      allow read: if true;
+      allow write: if isMasterAdmin();
+    }
+
+    match /admin_dismissed_problems/{admin_dismissed_problemsId} {
       allow read: if true;
       allow write: if isMasterAdmin();
     }
@@ -214,6 +224,14 @@ service cloud.firestore {
     match /global_product_category_dictionary/{docId} {
       allow read: if isAuthenticated();
       allow write: if false;
+    }
+
+    match /i18n_product_names/{docId} {
+      allow read, write: if isMasterAdmin();
+    }
+
+    match /i18n_category_names/{docId} {
+      allow read, write: if isMasterAdmin();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

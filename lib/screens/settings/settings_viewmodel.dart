@@ -42,7 +42,7 @@ class SettingsViewModel extends BaseViewModel {
 
   // Ob der Store-Name neben dem Logo angezeigt werden soll
   // true = Name + Logo, false = nur Logo
-  bool showNameWithLogo = true;
+  bool showNameWithLogo = false;
 
   // Store/Website Sprache (für die öffentliche Web-App)
   String storeLang = 'ar'; // Standard: Arabisch
@@ -341,7 +341,7 @@ class SettingsViewModel extends BaseViewModel {
       showNameWithLogo = rawShowName == true ||
           rawShowName.toString().toLowerCase() == 'true';
     } else {
-      showNameWithLogo = true; // Default: Name anzeigen
+      showNameWithLogo = false; // Default: Name nicht anzeigen
     }
 
     // Store/Website Sprache laden
