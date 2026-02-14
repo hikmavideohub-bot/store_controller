@@ -233,7 +233,16 @@ service cloud.firestore {
     match /i18n_category_names/{docId} {
       allow read, write: if isMasterAdmin();
     }
+    // ═══════════════════════════════════════════════════════════════════════════
+// MODERATION (ADMIN ONLY)
+// ═══════════════════════════════════════════════════════════════════════════
+match /moderation/{docId} {
+  allow read, write: if isMasterAdmin();
+}
 
+match /moderation/events/items/{eventId} {
+  allow read, write: if isMasterAdmin();
+}
     // ═══════════════════════════════════════════════════════════════════════════
     // CATCH-ALL (DENY)
     // ═══════════════════════════════════════════════════════════════════════════
