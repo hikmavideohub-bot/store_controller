@@ -2443,3 +2443,5 @@ exports.translateProductDescriptionOnce =
   require("./i18n_product_descriptions").translateProductDescriptionOnce;
 exports.runPendingDescTranslations =
   require("./i18n_product_descriptions").runPendingDescTranslations;
+exports.moderateProductAfterWrite =
+  require("./moderation_products").moderateProductAfterWrite;

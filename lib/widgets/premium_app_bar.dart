@@ -212,6 +212,10 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
     with SingleTickerProviderStateMixin {
   late AnimationController _titleController;
   late Animation<double> _titleAnimation;
+  final FocusNode _searchFocusNode = FocusNode();
+  bool _isSearchFocused = false;
+  ModalRoute<dynamic>? _route;
+
 
   @override
   void initState() {
@@ -224,15 +228,53 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
       parent: _titleController,
       curve: Curves.easeOutCubic,
     );
+    
+    _searchFocusNode.addListener(_onSearchFocusChange);
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _titleController.forward();
     });
   }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Wenn eine neue Route über diese gelegt wird: Suche defokussieren,
+    // damit die Tastatur nicht "hängen bleibt" beim Zurückkommen.
+    final route = ModalRoute.of(context);
+    if (_route != route) {
+      (_route?.secondaryAnimation)?.removeStatusListener(_handleRouteSecondaryStatus);
+      (_route?.secondaryAnimation)?.addStatusListener(_handleRouteSecondaryStatus);
+      _route = route;
+
+    }
+  }
+
+  void _handleRouteSecondaryStatus(AnimationStatus status) {
+    if (status == AnimationStatus.forward || status == AnimationStatus.completed) {
+      _unfocusSearch();
+    }
+  }
+
 
   @override
   void dispose() {
+    (_route?.secondaryAnimation)?.removeStatusListener(_handleRouteSecondaryStatus);
     _titleController.dispose();
+    _searchFocusNode.removeListener(_onSearchFocusChange);
+    _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  void _onSearchFocusChange() {
+    setState(() {
+      _isSearchFocused = _searchFocusNode.hasFocus;
+    });
+  }
+
+  void _unfocusSearch() {
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+    }
   }
 
   @override
@@ -243,11 +285,14 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
     // Wir nutzen tertiary für "Premium/Gold" Elemente
     final premiumColor = colors.tertiary;
 
-    return AppBar(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: true,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: _unfocusSearch,
+      child: AppBar(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
       leading: widget.showBackButton
           ? _buildScaleOnTapIcon(
               onTap: () => Navigator.of(context).pop(),
@@ -290,25 +335,38 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
                   child: Row(
                     children: [
                       Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            // Nutzt Input-Fill-Color oder Surface
-                            color:
-                                theme.inputDecorationTheme.fillColor ??
-                                colors.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: colors.outline.withValues(alpha: 0.3),
-                              width: 1,
+                        child: GestureDetector(
+                          onTap: () {
+                            // Do nothing - prevent the parent GestureDetector from unfocusing
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              // Nutzt Input-Fill-Color oder Surface
+                              color:
+                                  theme.inputDecorationTheme.fillColor ??
+                                  colors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: colors.outline.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
                             ),
-                          ),
-                          child: TextField(
-                            controller: widget.searchController,
-                            onChanged: widget.onSearchChanged,
-                            style: TextStyle(
-                              color: colors.onSurface,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            child: TextField(
+                              controller: widget.searchController,
+                              focusNode: _searchFocusNode,
+                              onChanged: widget.onSearchChanged,
+                              onTap: () {
+                                _unfocusSearch();
+                                (widget.onSearchCleared ?? () {})();
+                                setState(() {});
+                              },
+                              onTapOutside: (_) {
+                                _unfocusSearch(); // <-- Tastatur zu, Suche nicht mehr aktiv
+                              },
+                              style: TextStyle(
+                                color: colors.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
                             decoration: InputDecoration(
                               hintStyle: TextStyle(
                                 color: theme.hintColor,
@@ -322,8 +380,13 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
                                   widget.searchController?.text.isNotEmpty ==
                                       true
                                   ? _buildScaleOnTapIcon(
-                                      onTap: widget.onSearchCleared ?? () {},
-                                      icon: const Icon(
+                                    onTap: () {
+                                      _unfocusSearch();
+                                      (widget.onSearchCleared ?? () {})();
+                                      setState(() {});
+                                    },
+
+                                    icon: const Icon(
                                         Icons.clear_rounded,
                                         size: 18,
                                       ),
@@ -341,6 +404,7 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
                               ),
                             ),
                           ),
+                        ),
                         ),
                       ),
                       if (widget.onFiltersPressed != null) ...[
@@ -368,6 +432,7 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
               ),
             )
           : null,
+    )
     );
   }
 

@@ -132,6 +132,12 @@ Future<void> _initializeApp(Locale savedLocale, AppThemeMode savedTheme) async {
   await TrialWelcomeManager.load();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  // Web: Auth-Session persistent im Browser speichern (indexedDB),
+  // damit User nach erneutem Besuch eingeloggt bleiben.
+  if (kIsWeb) {
+    await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+  }
+
   // Initialisiere VersionService
   await VersionService.init();
 

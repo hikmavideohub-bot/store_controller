@@ -14,6 +14,14 @@ class Product {
   String category;
   bool productActive;
 
+  // Moderation (read-only, server managed)
+  bool moderationAutoBlocked;
+  bool moderationManualBlocked;
+  String? moderationMessageKey;
+
+  bool get isBlocked => moderationAutoBlocked || moderationManualBlocked;
+
+
   // Offer Fields
   bool hasOffer;
   String offerType;
@@ -49,7 +57,13 @@ class Product {
     required this.offerStartDate,
     required this.offerEndDate,
     required this.offerActive,
+
+    // moderation defaults (server fills)
+    this.moderationAutoBlocked = false,
+    this.moderationManualBlocked = false,
+    this.moderationMessageKey,
   });
+
 
   // ===============================================
   // Helpers
@@ -160,8 +174,17 @@ class Product {
         ? rawDesc
         : (rawDescMap is Map ? rawDescMap : rawDesc);
 
+    final modRaw = data['moderation'];
+    final mod = (modRaw is Map)
+        ? Map<String, dynamic>.from(modRaw as Map)
+        : const <String, dynamic>{};
+
+    final moderationAutoBlocked = mod['autoBlocked'] == true;
+    final moderationManualBlocked = mod['manualBlocked'] == true;
+    final moderationMessageKey = mod['messageKey']?.toString();
+
     return Product(
-      id: (data['id'] ?? '').toString(),
+    id: (data['id'] ?? '').toString(),
       name: (data['name'] ?? '').toString(),
       price: _toDouble(data['price']),
       sizeValue: _toDouble(data['size_value'] ?? data['sizevalue']),
@@ -199,6 +222,10 @@ class Product {
       offerActive: _toBool(
         data['offer_active'] ?? data['offerActive'] ?? data['offer_aktive'],
       ),
+
+      moderationAutoBlocked: moderationAutoBlocked,
+      moderationManualBlocked: moderationManualBlocked,
+      moderationMessageKey: moderationMessageKey,
     );
   }
 
@@ -231,7 +258,12 @@ class Product {
     String? offerStartDate,
     String? offerEndDate,
     bool? offerActive,
+
+    bool? moderationAutoBlocked,
+    bool? moderationManualBlocked,
+    String? moderationMessageKey,
   }) {
+
     return Product(
       id: id ?? this.id,
       name: name ?? this.name,
@@ -255,6 +287,10 @@ class Product {
       offerStartDate: offerStartDate ?? this.offerStartDate,
       offerEndDate: offerEndDate ?? this.offerEndDate,
       offerActive: offerActive ?? this.offerActive,
+
+      moderationAutoBlocked: moderationAutoBlocked ?? this.moderationAutoBlocked,
+      moderationManualBlocked: moderationManualBlocked ?? this.moderationManualBlocked,
+      moderationMessageKey: moderationMessageKey ?? this.moderationMessageKey,
     );
   }
 }

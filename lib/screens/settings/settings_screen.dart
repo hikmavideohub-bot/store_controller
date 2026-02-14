@@ -113,12 +113,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           if (vm.saving)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(context).colorScheme.onSurface
+                      : Theme.of(context).colorScheme.primary,
+                  backgroundColor: (Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(context).colorScheme.onSurface
+                      : Theme.of(context).colorScheme.primary)
+                      .withValues(alpha: 0.18),
+                ),
               ),
             )
           else
@@ -217,14 +226,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               icon: vm.saving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.18),
+                ),
+              )
                   : const Icon(Icons.save),
               label: Text(
                 vm.saving ? s.savingButton : s.saveChangesButton,
@@ -759,12 +769,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         onPressed: vm.busy ? null : () => _finishWizard(vm),
                         icon: vm.busy
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
-                                  color: Colors.white,
                                   strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.onTertiary),
                                 ),
                               )
                             : const Icon(Icons.check_circle, size: 20),

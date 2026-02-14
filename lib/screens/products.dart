@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../widgets/premium_app_bar.dart';
 import '../services/store_config_service.dart';
@@ -153,6 +154,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
+  void _dismissKeyboard() {
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+
   @override
   void initState() {
     super.initState();
@@ -163,9 +169,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
   @override
   void dispose() {
     ApiService.productsNotifier.removeListener(_onProductsChanged);
+    // Bildschirm wird verlassen → Tastatur schließen & Suche aufräumen
+    FocusManager.instance.primaryFocus?.unfocus();
+    _searchCtrl.clear();
     _searchCtrl.dispose();
     super.dispose();
   }
+
 
   void _onProductsChanged() {
     if (!mounted) return;
@@ -430,6 +440,47 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final deleted = await _runAction(() => _deleteProductNow(p));
     return deleted == true;
   }
+  Future<void> _showProductPolicyDialog(Product p) async {
+    final s = AppLocalizations.of(context)!;
+    final storeId = ApiService.storeId ?? '';
+    final productId = p.id;
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(s.productPolicyMismatchTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(s.productPolicyMismatchBody),
+            const SizedBox(height: 8),
+            Text(
+              s.productPolicyMismatchSubtext,
+              style: const TextStyle(color: Color(0xFF616161)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(s.cancel),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final subject = Uri.encodeComponent('Produktprüfung');
+              final body = Uri.encodeComponent('StoreId: $storeId\nProduktId: $productId\n');
+              final uri = Uri.parse(
+                'mailto:contact.aldeebtech@gmail.com?subject=$subject&body=$body',
+              );
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            },
+            child: Text(s.productPolicyMismatchCta),
+          ),
+        ],
+      ),
+    );
+  }
 
   // =======================
   // UI HELPERS
@@ -542,6 +593,125 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   // =======================
+  // EXCEL EXPORT DIALOG
+  // =======================
+  void _showExportDialog(AppLocalizations s) {
+    final colors = Theme.of(context).colorScheme;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Icon(Icons.download_rounded, color: colors.primary, size: 36),
+        title: Text(s.xlsExportDialogTitle),
+        content: Text(
+          s.xlsExportDialogMsg,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: colors.onSurface.withValues(alpha: 0.7)),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(s.laterButton, style: TextStyle(color: colors.outline)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.primary,
+              foregroundColor: colors.onPrimary,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.download_rounded, size: 18),
+            onPressed: () {
+              Navigator.pop(ctx);
+              final sid = ApiService.storeId;
+              if (sid == null) return;
+              ProductsExportService.instance.exportStoreProductsToXlsx(
+                context: context,
+                storeId: sid,
+              );
+            },
+            label: Text(s.xlsExportDialogConfirm),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // MODERATION DIALOG
+  // =======================
+  void _showModerationDialog(Product p) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final s = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Icon(Icons.warning_rounded, color: colors.error, size: 36),
+        title: Text(
+          s.productPolicyMismatchTitle,
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              s.productPolicyMismatchBody,
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              s.productPolicyMismatchSubtext,
+              style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(s.cancel),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: colors.primary,
+              foregroundColor: colors.onPrimary,
+            ),
+            icon: const Icon(Icons.email_rounded, size: 18),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final storeId = ApiService.storeId ?? 'unknown';
+              final subject = Uri.encodeComponent('Produktprüfung');
+              final body = Uri.encodeComponent(
+                'StoreId: $storeId\nProduktId: ${p.id}\nProduktname: ${p.name}\n\nIch glaube, diese Sperre ist ein Fehler.',
+              );
+              final mailUrl = 'mailto:contact.aldeebtech@gmail.com?subject=$subject&body=$body';
+
+              if (await canLaunchUrl(Uri.parse(mailUrl))) {
+                await launchUrl(Uri.parse(mailUrl));
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Email: contact.aldeebtech@gmail.com'),
+                      duration: const Duration(seconds: 5),
+                    ),
+                  );
+                }
+              }
+            },
+            label: Text(s.productPolicyMismatchCta),
+          ),
+        ],
+      ),
+    );
+  }
+
   // FILTER SHEET
   // =======================
   void _openFiltersSheet(List<String> categories) {
@@ -589,7 +759,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
             right: 16,
             top: 10,
             bottom:
-                MediaQuery.of(sheetCtx).viewInsets.bottom +
                 MediaQuery.of(sheetCtx).viewPadding.bottom +
                 20,
           ),
@@ -740,6 +909,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   // PRODUCT ACTIONS SHEET
   // =======================
   void _openProductActions(Product p) {
+    _dismissKeyboard();
     final router = _router;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
@@ -921,6 +1091,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final offerLine = hasOfferToday ? _offerText(p) : null;
     final currentDirection = Directionality.of(context);
     final s = AppLocalizations.of(context)!;
+    final blocked = p.isBlocked;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, left: 8, right: 8),
@@ -929,8 +1100,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            color: colors.surface,
-            border: Border.all(color: colors.outline.withValues(alpha: 0.2)),
+            color: blocked ? colors.errorContainer.withValues(alpha: 0.35) : colors.surface,
+            border: Border.all(
+              color: blocked
+                  ? colors.error.withValues(alpha: 0.35)
+                  : colors.outline.withValues(alpha: 0.2),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.03),
@@ -943,9 +1118,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
             children: [
               InkWell(
                 onLongPress: () {
+                  _dismissKeyboard();
                   if (!_actionBusy) _openProductActions(p);
                 },
                 onTap: () async {
+                  _dismissKeyboard();
                   if (_actionBusy || router == null) return;
                   final result = await router.push('/edit/${p.id}', extra: p);
                   if (!mounted) return;
@@ -1016,6 +1193,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                   Icons.local_offer,
                                   size: 14,
                                   color: Colors.black,
+                                ),
+                              ),
+                            ),
+                          // Moderation warning icon
+                          if (p.isBlocked)
+                            Positioned(
+                              top: 6,
+                              right: 6,
+                              child: GestureDetector(
+                                onTap: () => _showModerationDialog(p),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: colors.error,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.priority_high,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1098,7 +1296,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     GestureDetector(
-                      onTap: _actionBusy
+                    onTap: _actionBusy
                           ? null
                           : () => _runAction(() => _toggleActive(p)),
                       child: AnimatedContainer(
@@ -1290,6 +1488,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
+      resizeToAvoidBottomInset: false,
       appBar: PremiumAnimatedAppBar(
         title: s.productsTitle,
         showSettings: true,
@@ -1300,20 +1499,51 @@ class _ProductsScreenState extends State<ProductsScreen> {
           _searchCtrl.clear();
           setState(() => _query = '');
         },
-        onFiltersPressed: () => _openFiltersSheet(categories),
-        onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        onFiltersPressed: () {
+          _dismissKeyboard();
+          _openFiltersSheet(categories);
+        },
+        onMenuPressed: () {
+          _dismissKeyboard();
+          _scaffoldKey.currentState?.openDrawer();
+        },
+
         actions: [
-          IconButton(
-            icon: const Icon(Icons.download_rounded),
-            tooltip: s.xlsExportButton,
-            onPressed: () {
-              final sid = ApiService.storeId;
-              if (sid == null) return;
-              ProductsExportService.instance.exportStoreProductsToXlsx(
-                context: context,
-                storeId: sid,
-              );
-            },
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.download_rounded),
+                tooltip: s.xlsExportButton,
+                onPressed: () {
+                  _dismissKeyboard();
+                  _showExportDialog(s);
+                },
+
+              ),
+              Positioned(
+                right: 2,
+                bottom: 4,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'xlsx',
+                      style: TextStyle(
+                        fontSize: 7,
+                        fontWeight: FontWeight.w900,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

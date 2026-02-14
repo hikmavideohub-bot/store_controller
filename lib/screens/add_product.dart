@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:store_controller/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -898,6 +898,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final s = AppLocalizations.of(context)!;
     final isEditing = widget.productToEdit != null;
 
+// Upload-Overlay liegt auf dunklem Scrim → Farbe muss immer gut sichtbar sein
+    final uploadOverlayFg = theme.brightness == Brightness.dark
+        ? colors.onSurface
+        : colors.onPrimary;
+
+
     // Lokalisierte Vorschläge
     final List<String> descSuggestions = [
       s.descQuality,
@@ -925,14 +931,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
           child: ElevatedButton.icon(
             onPressed: _isSaving || _uploadingImage ? null : _submit,
             icon: _isSaving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
+                ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                value: _uploadProgress > 0 ? _uploadProgress : null,
+                color: uploadOverlayFg,
+                backgroundColor: uploadOverlayFg.withValues(alpha: 0.18),
+              ),
+            )
                 : const Icon(Icons.rocket_launch, size: 20),
             label: Text(
               s.publishButton,
@@ -958,17 +965,35 @@ class _AddProductScreenState extends State<AddProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(
-                controller: _nameController,
-                textDirection: _getTextDirection(_nameController.text),
-                onChanged: (_) =>
-                    setState(() {}), // Rebuild für Richtungswechsel
-                decoration: _premiumInputDecoration(
-                  s.productNameLabel,
-                  icon: Icons.shopping_bag,
-                  controller: _nameController,
-                ),
-                validator: validateRequired,
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _nameController,
+                builder: (context, value, _) {
+                  final dir = _getTextDirection(value.text) ?? Directionality.of(context);
+
+                  return TextFormField(
+                    controller: _nameController,
+                    textDirection: dir,
+                    onTap: () {
+                      // Workaround: RTL-Cursor landet manchmal auf (len-1) statt len
+                      if (dir != TextDirection.rtl) return;
+
+                      Future.microtask(() {
+                        final len = _nameController.text.length;
+                        final sel = _nameController.selection;
+
+                        if (len > 0 && sel.isCollapsed && sel.baseOffset == len - 1) {
+                          _nameController.selection = TextSelection.collapsed(offset: len);
+                        }
+                      });
+                    },
+                    decoration: _premiumInputDecoration(
+                      s.productNameLabel,
+                      icon: Icons.shopping_bag,
+                      controller: _nameController,
+                    ),
+                    validator: validateRequired,
+                  );
+                },
               ),
               const SizedBox(height: 16),
 
@@ -1035,12 +1060,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                 icon: Icons.auto_awesome,
                               ).copyWith(
                                 suffixIcon: _isLoadingRecommendation
-                                    ? const Padding(
-                                        padding: EdgeInsets.all(12),
+                                    ? Padding(
+                                        padding: const EdgeInsets.all(12),
                                         child: SizedBox(
                                           height: 20,
                                           width: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: theme.colorScheme.primary,
+                                          ),
                                         ),
                                       )
                                     : _recommendedCategory != null
@@ -1463,20 +1491,23 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     children: [
                       CircularProgressIndicator(
                         value: _uploadProgress > 0 ? _uploadProgress : null,
-                        color: colors.onPrimary,
+                        color: theme.brightness == Brightness.dark ? colors.onSurface : colors.onPrimary,
+                        backgroundColor: (theme.brightness == Brightness.dark ? colors.onSurface : colors.onPrimary)
+                            .withValues(alpha:0.18),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         '${(_uploadProgress * 100).toStringAsFixed(0)}%',
                         style: TextStyle(
-                          color: colors.onPrimary,
+                          color: theme.brightness == Brightness.dark ? colors.onSurface : colors.onPrimary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         _uploadStatus,
                         style: TextStyle(
-                          color: colors.onPrimary.withValues(alpha: 0.8),
+                          color: (theme.brightness == Brightness.dark ? colors.onSurface : colors.onPrimary)
+                              .withValues(alpha:0.8),
                           fontSize: 12,
                         ),
                       ),

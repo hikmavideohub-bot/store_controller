@@ -77,38 +77,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     }
   }
 
-  Future<bool> _confirmDeleteCategorySwipe(String name) async {
-    // Capture context and localization BEFORE async operation
-    final ctx = _scaffoldKey.currentContext;
-    if (ctx == null) return false;
-    final s = AppLocalizations.of(ctx)!;
-
-    if (!await _checkWriteAccess()) return false;
-
-    // Check context is still valid after async
-    if (!mounted || !ctx.mounted) return false;
-
-    return await showDialog<bool>(
-          context: ctx,
-          builder: (dctx) => AlertDialog(
-            title: Text(s.deleteCategoryTitle),
-            content: Text(s.deleteCategoryMsg(name)),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dctx, false),
-                child: Text(s.cancel),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(dctx, true),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: Text(s.delete),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
-
+  
   Future<void> _reload({bool silent = false}) async {
     bool showedCache = false;
 
@@ -161,8 +130,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
-            ),
-          ),
+      ),
+      ),
         );
       }
     }
@@ -197,7 +166,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           backgroundColor: colors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-          ),
+      ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -208,8 +177,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
+      ),
+      ),
                 const SizedBox(height: 20),
                 TextField(
                   controller: ctrl,
@@ -218,13 +187,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     labelText: label,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                    ),
+      ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: colors.primary, width: 2),
-                    ),
-                  ),
-                ),
+      ),
+      ),
+      ),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -232,7 +201,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(s.cancel),
-                    ),
+      ),
                     const SizedBox(width: 12),
                     ElevatedButton(
                       onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
@@ -241,15 +210,15 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         foregroundColor: colors.onPrimary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
+      ),
+      ),
                       child: Text(s.save),
-                    ),
+      ),
                   ],
-                ),
+      ),
               ],
-            ),
-          ),
+      ),
+      ),
         );
       },
     );
@@ -289,8 +258,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
-              ),
-            ),
+      ),
+      ),
           );
         }
       } else {
@@ -299,7 +268,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             SnackBar(
               content: Text(s.categoryRenameFail),
               backgroundColor: errorColor,
-            ),
+      ),
           );
         }
       }
@@ -332,7 +301,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           backgroundColor: theme.colorScheme.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-          ),
+      ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -342,7 +311,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   Icons.warning_amber_rounded,
                   color: Colors.orange,
                   size: 40,
-                ),
+      ),
                 const SizedBox(height: 16),
                 Text(
                   s.deleteCategoryTitle,
@@ -350,16 +319,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.onSurface,
-                  ),
-                ),
+      ),
+      ),
                 const SizedBox(height: 12),
                 Text(
                   s.deleteCategoryConfirmMsg(name, moveTo),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
+      ),
+      ),
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -367,7 +336,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     TextButton(
                       onPressed: () => Navigator.pop(dialogCtx, false),
                       child: Text(s.cancel),
-                    ),
+      ),
                     const SizedBox(width: 12),
                     ElevatedButton(
                       onPressed: () {
@@ -378,15 +347,15 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
+      ),
+      ),
                       child: Text(s.delete),
-                    ),
+      ),
                   ],
-                ),
+      ),
               ],
-            ),
-          ),
+      ),
+      ),
         );
       },
     );
@@ -413,8 +382,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
-              ),
-            ),
+      ),
+      ),
           );
         }
       } else {
@@ -423,7 +392,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             SnackBar(
               content: Text(s.categoryDeleteFail),
               backgroundColor: errorColor,
-            ),
+      ),
           );
         }
       }
@@ -479,7 +448,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               20,
               20,
               30 + MediaQuery.of(sheetCtx).viewPadding.bottom,
-            ),
+      ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -490,13 +459,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       decoration: BoxDecoration(
                         color: colors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(14),
-                      ),
+      ),
                       child: Icon(
                         Icons.category_rounded,
                         color: colors.primary,
                         size: 26,
-                      ),
-                    ),
+      ),
+      ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -507,20 +476,20 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
-                            ),
-                          ),
+      ),
+      ),
                           Text(
                             s.productsCount(productCount),
                             style: const TextStyle(
                               fontSize: 13,
                               color: Colors.grey,
-                            ),
-                          ),
+      ),
+      ),
                         ],
-                      ),
-                    ),
+      ),
+      ),
                   ],
-                ),
+      ),
                 const SizedBox(height: 24),
 
                 _buildActionTile(
@@ -532,7 +501,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     Navigator.pop(sheetCtx);
                     _openCategoryProducts(category);
                   },
-                ),
+      ),
 
                 const SizedBox(height: 12),
 
@@ -545,7 +514,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     Navigator.pop(sheetCtx);
                     _showApplyOfferDialog(category);
                   },
-                ),
+      ),
 
                 if (hasFullOffer) ...[
                   const SizedBox(height: 12),
@@ -558,10 +527,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       Navigator.pop(sheetCtx);
                       await _disableCategoryOffers(category);
                     },
-                  ),
+      ),
                 ],
               ],
-            ),
+      ),
           );
         },
       ),
@@ -586,7 +555,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: iconColor.withValues(alpha: 0.15)),
-          ),
+      ),
           child: Row(
             children: [
               Icon(icon, color: iconColor, size: 24),
@@ -600,22 +569,22 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
-                      ),
-                    ),
+      ),
+      ),
                     Text(
                       subtitle,
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
+      ),
                   ],
-                ),
-              ),
+      ),
+      ),
               Icon(
                 Icons.chevron_right_rounded,
                 color: iconColor.withValues(alpha: 0.5),
-              ),
+      ),
             ],
-          ),
-        ),
+      ),
+      ),
       ),
     );
   }
@@ -655,7 +624,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               30 +
                   MediaQuery.of(sheetCtx).viewInsets.bottom +
                   MediaQuery.of(sheetCtx).viewPadding.bottom,
-            ),
+      ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -666,13 +635,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       decoration: BoxDecoration(
                         color: colors.tertiary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(14),
-                      ),
+      ),
                       child: Icon(
                         Icons.bolt_rounded,
                         color: colors.tertiary,
                         size: 26,
-                      ),
-                    ),
+      ),
+      ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -683,20 +652,20 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
-                            ),
-                          ),
+      ),
+      ),
                           Text(
                             s.applyToCategorySubtitle(category),
                             style: const TextStyle(
                               fontSize: 13,
                               color: Colors.grey,
-                            ),
-                          ),
+      ),
+      ),
                         ],
-                      ),
-                    ),
+      ),
+      ),
                   ],
-                ),
+      ),
                 const SizedBox(height: 24),
 
                 TextFormField(
@@ -706,11 +675,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     labelText: s.percentageLabel,
                     prefixIcon: const Icon(Icons.percent_rounded),
                     hintText: s.percentageHint,
-                  ),
+      ),
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
-                  ),
-                ),
+      ),
+      ),
                 const SizedBox(height: 16),
 
                 InkWell(
@@ -722,7 +691,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       initialDateRange: DateTimeRange(
                         start: startDate,
                         end: endDate,
-                      ),
+      ),
                     );
                     if (res != null) {
                       setSheetState(() {
@@ -738,8 +707,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: Theme.of(sheetCtx).dividerColor,
-                      ),
-                    ),
+      ),
+      ),
                     child: Row(
                       children: [
                         Icon(Icons.date_range_rounded, color: colors.primary),
@@ -753,22 +722,22 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Theme.of(sheetCtx).hintColor,
-                                ),
-                              ),
+      ),
+      ),
                               Text(
                                 '${startDate.day}/${startDate.month}/${startDate.year} - ${endDate.day}/${endDate.month}/${endDate.year}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
-                                ),
-                              ),
+      ),
+      ),
                             ],
-                          ),
-                        ),
+      ),
+      ),
                         const Icon(Icons.edit_calendar_rounded, size: 20),
                       ],
-                    ),
-                  ),
-                ),
+      ),
+      ),
+      ),
                 const SizedBox(height: 24),
 
                 Row(
@@ -780,11 +749,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
+      ),
+      ),
                         child: Text(s.cancel),
-                      ),
-                    ),
+      ),
+      ),
                     const SizedBox(width: 12),
                     Expanded(
                       flex: 2,
@@ -801,7 +770,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 content: Text(s.invalidPercentageError),
                                 backgroundColor: Colors.orange,
                                 behavior: SnackBarBehavior.floating,
-                              ),
+      ),
                             );
                             return;
                           }
@@ -819,18 +788,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
+      ),
+      ),
                         child: Text(
                           s.applyOfferButton,
                           style: const TextStyle(fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                    ),
+      ),
+      ),
+      ),
                   ],
-                ),
+      ),
               ],
-            ),
+      ),
           );
         },
       ),
@@ -866,7 +835,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               content: Text(s.categoryOfferAppliedMsg(category)),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
-            ),
+      ),
           );
         } else {
           ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(
@@ -874,7 +843,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               content: Text(s.categoryOfferApplyFail),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
-            ),
+      ),
           );
         }
       }
@@ -898,7 +867,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               content: Text(s.categoryOffersDisabledMsg(category)),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
-            ),
+      ),
           );
         } else {
           ScaffoldMessenger.of(_scaffoldKey.currentContext!).showSnackBar(
@@ -906,7 +875,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               content: Text(s.categoryOffersDisableFail),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
-            ),
+      ),
           );
         }
       }
@@ -923,181 +892,110 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-      child: Dismissible(
-        key: ValueKey('cat_$category'),
-        direction: _busy ? DismissDirection.none : DismissDirection.horizontal,
-
-        background: Container(
-          decoration: BoxDecoration(
-            color: Colors.red.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: colors.outline.withValues(alpha: 0.2),
+            width: 1,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          alignment: Alignment.centerLeft,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.delete_sweep_rounded,
-                color: Colors.red,
-                size: 28,
-              ),
-              Text(
-                s.delete,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        secondaryBackground: Container(
-          decoration: BoxDecoration(
-            color: colors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          alignment: Alignment.centerRight,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.mode_edit_outline_rounded,
-                color: colors.primary,
-                size: 28,
-              ),
-              Text(
-                s.edit,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colors.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        confirmDismiss: (direction) async {
-          if (_busy) return false;
-          if (direction == DismissDirection.startToEnd) {
-            final ok = await _confirmDeleteCategorySwipe(category);
-            if (ok) await _deleteCategory(category);
-            return false;
-          }
-          if (direction == DismissDirection.endToStart) {
-            await _renameCategory(category);
-            return false;
-          }
-          return false;
-        },
-
-        child: Container(
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: colors.outline.withValues(alpha: 0.2),
-              width: 1,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () => _showCategoryActionSheet(category, count),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            colors.primary.withValues(alpha: 0.15),
-                            colors.primary.withValues(alpha: 0.05),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => _showCategoryActionSheet(category, count),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          colors.primary.withValues(alpha: 0.15),
+                          colors.primary.withValues(alpha: 0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Icon(
+                      Icons.grid_view_rounded,
+                      color: colors.primary,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          category,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Icon(
-                        Icons.grid_view_rounded,
-                        color: colors.primary,
-                        size: 26,
-                      ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white10
+                                : Colors.black.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            s.productsCount(count),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.hintColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
+                  ),
 
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            category,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white10
-                                  : Colors.black.withValues(alpha: 0.05),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              s.productsCount(count),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: theme.hintColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                  if (!_busy)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildActionCircle(
+                          icon: Icons.edit_rounded,
+                          color: colors.primary,
+                          onTap: () => _renameCategory(category),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildActionCircle(
+                          icon: Icons.delete_outline_rounded,
+                          color: Colors.redAccent,
+                          onTap: () => _deleteCategory(category),
+                        ),
+                      ],
                     ),
-
-                    if (!_busy)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildActionCircle(
-                            icon: Icons.edit_rounded,
-                            color: colors.primary,
-                            onTap: () => _renameCategory(category),
-                          ),
-                          const SizedBox(width: 8),
-                          _buildActionCircle(
-                            icon: Icons.delete_outline_rounded,
-                            color: Colors.redAccent,
-                            onTap: () => _deleteCategory(category),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
@@ -1105,6 +1003,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       ),
     );
   }
+
 
   Widget _buildActionCircle({
     required IconData icon,
@@ -1120,7 +1019,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Icon(icon, size: 20, color: color),
-        ),
+      ),
       ),
     );
   }
@@ -1150,7 +1049,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               child: CircularProgressIndicator(
                 color: colors.primary,
                 strokeWidth: 2.5,
-              ),
+      ),
             )
           : RefreshIndicator(
               color: colors.primary,
@@ -1166,28 +1065,28 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
-                        ),
+      ),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 8,
-                              ),
+      ),
                               decoration: BoxDecoration(
                                 color: colors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: colors.primary.withValues(alpha: 0.3),
-                                ),
-                              ),
+      ),
+      ),
                               child: Row(
                                 children: [
                                   Icon(
                                     Icons.grid_view_rounded,
                                     size: 16,
                                     color: colors.primary,
-                                  ),
+      ),
                                   const SizedBox(width: 6),
                                   Text(
                                     s.categoriesCountLabel(cats.length),
@@ -1195,32 +1094,32 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                       color: colors.primary,
-                                    ),
-                                  ),
+      ),
+      ),
                                 ],
-                              ),
-                            ),
+      ),
+      ),
                             const SizedBox(width: 12),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 8,
-                              ),
+      ),
                               decoration: BoxDecoration(
                                 color: colors.surfaceContainerHighest
                                     .withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: colors.outline.withValues(alpha: 0.2),
-                                ),
-                              ),
+      ),
+      ),
                               child: Row(
                                 children: [
                                   Icon(
                                     Icons.inventory_2_rounded,
                                     size: 16,
                                     color: theme.hintColor,
-                                  ),
+      ),
                                   const SizedBox(width: 6),
                                   Text(
                                     s.productsCount(_products.length),
@@ -1228,14 +1127,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                       color: theme.hintColor,
-                                    ),
-                                  ),
+      ),
+      ),
                                 ],
-                              ),
-                            ),
+      ),
+      ),
                           ],
-                        ),
-                      ),
+      ),
+      ),
 
                       const SizedBox(height: 16),
 
@@ -1248,26 +1147,26 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 Icons.grid_view_rounded,
                                 size: 60,
                                 color: theme.hintColor.withValues(alpha: 0.3),
-                              ),
+      ),
                               const SizedBox(height: 20),
                               Text(
                                 s.noCategoriesTitle,
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
-                                ),
-                              ),
+      ),
+      ),
                               const SizedBox(height: 8),
                               Text(
                                 s.noCategoriesSubtitle,
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: theme.hintColor,
-                                ),
+      ),
                                 textAlign: TextAlign.center,
-                              ),
+      ),
                             ],
-                          ),
+      ),
                         )
                       else
                         ...List.generate(cats.length, (index) {
@@ -1278,9 +1177,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
                       SizedBox(
                         height: 140 + MediaQuery.of(context).viewPadding.bottom,
-                      ),
+      ),
                     ],
-                  ),
+      ),
 
                   if (_busy)
                     Positioned.fill(
@@ -1290,13 +1189,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           child: CircularProgressIndicator(
                             color: colors.primary,
                             strokeWidth: 2.5,
-                          ),
-                        ),
-                      ),
-                    ),
+      ),
+      ),
+      ),
+      ),
                 ],
-              ),
-            ),
+      ),
+      ),
     );
   }
 }
@@ -1427,7 +1326,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
             isActive ? Icons.check_circle : Icons.cancel,
             size: 16,
             color: fg,
-          ),
+      ),
           const SizedBox(width: 6),
           Text(
             isActive ? s.availableStatus : s.unavailableStatus,
@@ -1435,8 +1334,8 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
               color: fg,
               fontWeight: FontWeight.w900,
               fontSize: 12,
-            ),
-          ),
+      ),
+      ),
         ],
       ),
     );
@@ -1455,7 +1354,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
         border: Border.all(
           color: accentColor.withValues(alpha: 0.4),
           width: 1.1,
-        ),
+      ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Row(
@@ -1470,8 +1369,8 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
               fontWeight: FontWeight.w900,
               fontSize: 11.5,
               letterSpacing: 0.2,
-            ),
-          ),
+      ),
+      ),
         ],
       ),
     );
@@ -1532,15 +1431,15 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(s.cancel),
-          ),
+      ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: colors.error,
               foregroundColor: colors.onError,
-            ),
+      ),
             child: Text(s.delete),
-          ),
+      ),
         ],
       ),
     );
@@ -1557,7 +1456,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
           SnackBar(
             content: Text(s.deleteSuccess),
             backgroundColor: Colors.green,
-          ),
+      ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1588,9 +1487,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
               color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
-            ),
+      ),
           ],
-        ),
+      ),
         child: Stack(
           children: [
             InkWell(
@@ -1620,8 +1519,8 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                             color: colors.surfaceContainerHighest,
                             border: Border.all(
                               color: colors.outline.withValues(alpha: 0.1),
-                            ),
-                          ),
+      ),
+      ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
                             child: (p.thumb.isNotEmpty || p.image.isNotEmpty)
@@ -1634,7 +1533,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                                           Icons.image_not_supported,
                                           color: theme.hintColor,
                                           size: 28,
-                                        ),
+      ),
                                       );
                                     },
                                   )
@@ -1643,10 +1542,10 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                                       Icons.image_not_supported,
                                       color: theme.hintColor,
                                       size: 28,
-                                    ),
-                                  ),
-                          ),
-                        ),
+      ),
+      ),
+      ),
+      ),
                         if (hasOfferToday)
                           Positioned(
                             top: 6,
@@ -1655,20 +1554,20 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                                 vertical: 5,
-                              ),
+      ),
                               decoration: BoxDecoration(
                                 color: colors.tertiary,
                                 borderRadius: BorderRadius.circular(12),
-                              ),
+      ),
                               child: const Icon(
                                 Icons.local_offer,
                                 size: 14,
                                 color: Colors.black,
-                              ),
-                            ),
-                          ),
+      ),
+      ),
+      ),
                       ],
-                    ),
+      ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -1681,10 +1580,10 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.2,
                               color: colors.onSurface,
-                            ),
+      ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                          ),
+      ),
                           const SizedBox(height: 6),
                           Text(
                             _priceLine(p),
@@ -1693,8 +1592,8 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                               color: colors.primary,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.2,
-                            ),
-                          ),
+      ),
+      ),
                           if (offerLine != null) ...[
                             const SizedBox(height: 6),
                             Row(
@@ -1703,7 +1602,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                                   Icons.history_toggle_off,
                                   size: 16,
                                   color: colors.tertiary,
-                                ),
+      ),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
@@ -1712,11 +1611,11 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w900,
                                       color: colors.tertiary,
-                                    ),
-                                  ),
-                                ),
+      ),
+      ),
+      ),
                               ],
-                            ),
+      ),
                           ],
                           const SizedBox(height: 10),
                           // HIER GEÄNDERT: Row mit ScrollView falls es zu breit wird
@@ -1730,15 +1629,15 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                                   _offerChip(p),
                                 ],
                               ],
-                            ),
-                          ),
+      ),
+      ),
                         ],
-                      ),
-                    ),
+      ),
+      ),
                   ],
-                ),
-              ),
-            ),
+      ),
+      ),
+      ),
             // ACTION BUTTONS POSITIONED (Overlay, damit sie keinen Platz wegnehmen)
             Positioned(
               top: 10,
@@ -1762,8 +1661,8 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                         border: Border.all(
                           color: p.productActive ? Colors.green : Colors.grey,
                           width: 1.2,
-                        ),
-                      ),
+      ),
+      ),
                       child: Stack(
                         children: [
                           AnimatedAlign(
@@ -1780,13 +1679,13 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                                 color: p.productActive
                                     ? Colors.green
                                     : Colors.grey,
-                              ),
-                            ),
-                          ),
+      ),
+      ),
+      ),
                         ],
-                      ),
-                    ),
-                  ),
+      ),
+      ),
+      ),
                   const SizedBox(height: 12),
                   IconButton(
                     tooltip: s.delete,
@@ -1800,20 +1699,20 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: colors.error.withValues(alpha: 0.3),
-                        ),
-                      ),
+      ),
+      ),
                       child: Icon(
                         Icons.delete_outline,
                         size: 18,
                         color: colors.error,
-                      ),
-                    ),
-                  ),
+      ),
+      ),
+      ),
                 ],
-              ),
-            ),
+      ),
+      ),
           ],
-        ),
+      ),
       ),
     );
   }
@@ -1827,7 +1726,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
           title: widget.category,
           showBackButton: true,
           showSettings: false,
-        ),
+      ),
         body: Center(child: Text(s.noProducts)),
       );
     }

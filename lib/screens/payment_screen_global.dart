@@ -356,9 +356,15 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
       body: plansToDisplay.isEmpty
           ? Center(child: Text(s.noPlansAvailable))
           : ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                Text(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          20 + MediaQuery.of(context).viewPadding.bottom,
+        ),
+        children: [
+
+          Text(
                   s.choosePlanSubtitle,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
@@ -467,7 +473,14 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
                     textAlign: TextAlign.center,
                   )
                 else
-                  _buildPayButton(s),
+                  Column(
+                    children: [
+                      _buildCheckoutSummaryCard(s),
+                      const SizedBox(height: 12),
+                      _buildPayButton(s),
+                    ],
+                  ),
+
 
                 const SizedBox(height: 30),
                 _buildFeaturesList(context),
@@ -707,6 +720,149 @@ class _PaymentScreenGlobalState extends State<PaymentScreenGlobal> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+
+  Widget _buildCheckoutSummaryCard(AppLocalizations s) {
+    final colors = Theme.of(context).colorScheme;
+    final calc = _currentPricing;
+
+    final planText =
+    (calc.billingCycle == 12) ? s.pricingActivationYearly : s.pricingActivationSixMonths;
+
+    final hasOffer = calc.hasOffer && calc.originalMonthlyPrice != null;
+    final originalTotal = hasOffer ? (calc.originalMonthlyPrice! * calc.billingCycle) : calc.totalPrice;
+    final discountAmount = hasOffer ? (originalTotal - calc.totalPrice) : 0.0;
+
+    String fmt(double v) => PricingCalculator.formatPriceForCurrency(
+      v,
+      calc.currencyCode,
+      calc.currencySymbol,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.outline.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            s.pricingCheckoutTitle,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: colors.onSurface,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // الخطة
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  s.pricingCheckoutPlanLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+              Text(
+                planText,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: colors.onSurface,
+                ),
+              ),
+            ],
+          ),
+
+          // السعر الأصلي قبل العرض + تطبيق العرض (فقط إذا فيه عرض)
+          if (hasOffer) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    s.pricingCheckoutOriginalLabel,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+                Text(
+                  fmt(originalTotal),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    decoration: TextDecoration.lineThrough,
+                    color: colors.onSurface.withValues(alpha: 0.75),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    s.pricingCheckoutOfferLabel,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+                Text(
+                  s.pricingCheckoutDiscountValue(calc.discountPercent!, fmt(discountAmount)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: colors.tertiary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Divider(height: 1),
+          ),
+
+          // المجموع
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  s.pricingCheckoutTotalLabel,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: colors.onSurface,
+                  ),
+                ),
+              ),
+              Text(
+                fmt(calc.totalPrice),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: colors.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
