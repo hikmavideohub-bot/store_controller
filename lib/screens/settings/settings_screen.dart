@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
 import 'package:store_controller/services/api_service.dart';
-
+import 'package:store_controller/widgets/responsive_center.dart';
 import 'settings_viewmodel.dart';
 import 'widgets/settings_header.dart';
 import 'widgets/store_info_card.dart';
@@ -137,8 +137,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
+        body: ResponsiveCenter(
+          maxWidth: 1100,
+          child: ListView(
+
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
         children: [
           SettingsHeader(vm: vm),
           const SizedBox(height: 24),
@@ -264,6 +267,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     ),
+      ),
     );
   }
 
@@ -438,7 +442,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 )
               : null,
         ),
-        body: Column(
+        body: ResponsiveCenter(
+          maxWidth: 1100,
+          child: Column(
+
           children: [
             // Step Indicator
             Container(
@@ -792,6 +799,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
+      ),
       ),
       ),
     );

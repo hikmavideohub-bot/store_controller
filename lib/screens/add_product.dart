@@ -7,7 +7,7 @@ import 'package:store_controller/l10n/generated/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
-
+import 'package:store_controller/widgets/responsive_center.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config.dart';
 import '../widgets/premium_app_bar.dart';
@@ -20,20 +20,35 @@ import '../storage/store_prefs.dart';
 import '../utils/cdn_helper.dart';
 
 class CommaDecimalFormatter extends TextInputFormatter {
+  final int maxDecimals;
+  CommaDecimalFormatter({this.maxDecimals = 3});
+
   @override
   TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final sanitized = newValue.text.replaceAll(RegExp(r'[^0-9,]'), '');
-    if (sanitized.startsWith(',')) return oldValue;
-    if (sanitized.split(',').length > 2) return oldValue;
+      TextEditingValue oldValue,
+      TextEditingValue newValue,
+      ) {
+    var t = newValue.text.replaceAll(' ', '');
+    t = t.replaceAll(RegExp(r'[^0-9,\.]'), '');
+    t = t.replaceAll('.', ','); // Punkt -> Komma
+
+    if (t.startsWith(',')) return oldValue;
+
+    final parts = t.split(',');
+    if (parts.length > 2) return oldValue;
+
+    if (parts.length == 2 && parts[1].length > maxDecimals) {
+      return oldValue; // blockt die 4. Nachkommastelle
+    }
+
     return TextEditingValue(
-      text: sanitized,
-      selection: TextSelection.collapsed(offset: sanitized.length),
+      text: t,
+      selection: TextSelection.collapsed(offset: t.length),
     );
   }
 }
+
+
 
 class AddProductScreen extends StatefulWidget {
   final Product? productToEdit;
@@ -118,9 +133,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     final initialCat = p?.category.trim() ?? '';
     _nameController = TextEditingController(text: p?.name ?? '');
-    _priceController = TextEditingController(text: _formatNumToText(p?.price));
+    _priceController = TextEditingController(text: _format2or3FromNum(p?.price));
     _sizeValueController = TextEditingController(
-      text: _formatNumToText(p?.sizeValue),
+      text: _format2or3FromNum(p?.sizeValue),
     );
     _imageController = TextEditingController(text: p?.image ?? '');
     _thumbController = TextEditingController(text: p?.thumb ?? '');
@@ -138,14 +153,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
     _bundlePriceController = TextEditingController(
       text: (p != null && p.bundlePrice > 0)
-          ? _formatNumToText(p.bundlePrice)
+          ? _format2or3FromNum(p.bundlePrice)
           : '',
     );
     _bulkQtyController = TextEditingController(
       text: (p != null && p.bulkQty > 0) ? p.bulkQty.toString() : '',
     );
     _bulkPriceController = TextEditingController(
-      text: (p != null && p.bulkPrice > 0) ? _formatNumToText(p.bulkPrice) : '',
+      text: (p != null && p.bulkPrice > 0) ? _format2or3FromNum(p.bulkPrice) : '',
     );
     _categoryController = TextEditingController(text: initialCat);
 
@@ -199,6 +214,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _initDiscountedPrice();
       _checkAccessOnLoad();
     });
+
   }
 
   void _initDiscountedPrice() {
@@ -265,11 +281,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return double.tryParse(s.replaceAll(',', '.').trim()) ?? 0.0;
   }
 
+  // ✅ Nutzt jetzt deine dynamische 2-oder-3-Logik
   String _fmtMoney(double v) {
     if (v == v.roundToDouble()) {
       return v.toStringAsFixed(0).replaceAll('.', ',');
     }
-    return v.toStringAsFixed(2).replaceAll('.', ',');
+    return _format2or3FromNum(v);
   }
 
   String _fmtPercent(double v) {
@@ -657,23 +674,59 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   String _formatNumToText(dynamic v) =>
       v == null ? '' : v.toString().replaceAll('.', ',');
+
+  String _format2or3FromNum(dynamic v) {
+    if (v == null) return '';
+    final d = (v is num)
+        ? v.toDouble()
+        : (double.tryParse(v.toString().replaceAll(',', '.')) ?? 0.0);
+
+    // Standard 2, aber wenn 3. Stelle != 0 -> 3 anzeigen
+    final s3 = d.toStringAsFixed(3);
+    final s = s3.endsWith('0') ? d.toStringAsFixed(2) : s3;
+    return s.replaceAll('.', ',');
+  }
+
+  String _format2or3FromText(String input) {
+    var t = input.trim().replaceAll(' ', '').replaceAll('.', ',');
+    if (t.isEmpty) return '';
+
+    final parts = t.split(',');
+    final intPart = parts[0].isEmpty ? '0' : parts[0];
+    var dec = parts.length > 1 ? parts[1] : '';
+
+    if (dec.length >= 3) {
+      dec = dec.substring(0, 3);
+      return '$intPart,$dec';
+    }
+
+    if (dec.length == 0) dec = '00';
+    else if (dec.length == 1) dec = '${dec}0'; // 2 -> 2,50
+
+    return '$intPart,$dec';
+  }
+
   double _parsePrice(String v) =>
       double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
+
+  void _normalize2or3(TextEditingController c) {
+    final out = _format2or3FromText(c.text);
+    if (out.isEmpty) return;
+    c.value = c.value.copyWith(
+      text: out,
+      selection: TextSelection.collapsed(offset: out.length),
+      composing: TextRange.empty,
+    );
+  }
+
   void _normalizePriceText() {
-    if (_priceController.text.isNotEmpty) {
-      _priceController.text = _formatNumToText(
-        _parsePrice(_priceController.text),
-      );
-    }
+    if (_priceController.text.isNotEmpty) _normalize2or3(_priceController);
   }
 
   void _normalizeWeightText() {
-    if (_sizeValueController.text.isNotEmpty) {
-      _sizeValueController.text = _formatNumToText(
-        _parsePrice(_sizeValueController.text),
-      );
-    }
+    if (_sizeValueController.text.isNotEmpty) _normalize2or3(_sizeValueController);
   }
+
 
   Future<void> _selectOfferRange(BuildContext context) async {
     final picked = await showDateRangePicker(
@@ -957,8 +1010,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ),
       ),
       // -------------------------------
-      body: SingleChildScrollView(
-        // Padding unten entfernt, da BottomBar jetzt Platz einnimmt
+        body: ResponsiveCenter(
+          maxWidth: 720,
+          child: SingleChildScrollView(
+            // Padding unten entfernt, da BottomBar jetzt Platz einnimmt
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -997,185 +1052,50 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 16),
 
-              // --- PREIS/GRÖßE (links) + KATEGORIE-EMPFEHLUNG/DROPDOWN (rechts) ---
+              // --- PREIS & GRÖßE nebeneinander, darunter Kategorien (vollbreit) ---
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Linke Spalte: Preis → Size ──
                   Expanded(
-                    flex: 2,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _priceController,
-                          focusNode: _priceFocusNode,
-                          textDirection: TextDirection.ltr,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          inputFormatters: [CommaDecimalFormatter()],
-                          decoration: _premiumInputDecoration(
-                            s.priceLabel,
-                            icon: Icons.euro,
-                          ),
-                          validator: validateRequired,
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _sizeValueController,
-                          focusNode: _weightFocusNode,
-                          textDirection: TextDirection.ltr,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          inputFormatters: [CommaDecimalFormatter()],
-                          decoration: _premiumInputDecoration(
-                            s.sizeLabel,
-                            controller: _sizeValueController,
-                          ).copyWith(
-                            prefixIcon: Icon(Icons.scale, size: 20, color: colors.primary), // kleiner
-                            prefixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 0), // optional
-                          ),
-                          validator: validateRequired,
-                        ),
-                      ],
+                    child: TextFormField(
+                      controller: _priceController,
+                      focusNode: _priceFocusNode,
+                      textDirection: TextDirection.ltr,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [CommaDecimalFormatter(maxDecimals: 3)],
+                      decoration: _premiumInputDecoration(
+                        s.priceLabel,
+                        icon: Icons.euro,
+                      ),
+                      validator: validateRequired,
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // ── Rechte Spalte: Empfohlene Kategorie → Kategorie-Dropdown ──
                   Expanded(
-                    flex: 3,
-                    child: Column(
-                      children: [
-                        InkWell(
-                          onTap: _recommendedCategory != null && !_isLoadingRecommendation
-                              ? _applyRecommendedCategory
-                              : null,
-                          borderRadius: BorderRadius.circular(14),
-                          child: AbsorbPointer(
-                            child: TextFormField(
-                              readOnly: true,
-                              decoration: _premiumInputDecoration(
-                                s.recommendedCategoryLabel,
-                                icon: Icons.auto_awesome,
-                              ).copyWith(
-                                suffixIcon: _isLoadingRecommendation
-                                    ? Padding(
-                                        padding: const EdgeInsets.all(12),
-                                        child: SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: theme.colorScheme.primary,
-                                          ),
-                                        ),
-                                      )
-                                    : _recommendedCategory != null
-                                        ? Icon(Icons.touch_app, size: 20, color: colors.primary)
-                                        : null,
-                              ),
-                              controller: TextEditingController(
-                                text: _isLoadingRecommendation
-                                    ? ''
-                                    : (_recommendedCategory ?? '—'),
-                              ),
-                              style: TextStyle(
-                                color: _recommendedCategory != null
-                                    ? colors.onSurface
-                                    : colors.onSurface.withValues(alpha: 0.4),
-                              ),
-                            ),
-                          ),
+                    child: TextFormField(
+                      controller: _sizeValueController,
+                      focusNode: _weightFocusNode,
+                      textDirection: TextDirection.ltr,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [CommaDecimalFormatter()],
+                      decoration: _premiumInputDecoration(
+                        s.sizeLabel,
+                        controller: _sizeValueController,
+                      ).copyWith(
+                        prefixIcon: Icon(Icons.scale, size: 20, color: colors.primary),
+                        prefixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 0),
+
+                        // ✅ nur visuell: zeigt z.B. " kg" im Feld, gespeichert wird weiterhin nur die Zahl
+                        suffixText: ' ${_getUnitLabel(_selectedUnit, s)}',
+                        suffixStyle: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: colors.onSurface.withValues(alpha: 0.7),
                         ),
-                        const SizedBox(height: 12),
-                        _showNewCategoryField
-                            ? TextFormField(
-                                controller: _categoryController,
-                                focusNode: _categoryFocusNode,
-                                textDirection: _getTextDirection(
-                                  _categoryController.text,
-                                ),
-                                onChanged: (_) =>
-                                    setState(() {}),
-                                decoration:
-                                    _premiumInputDecoration(
-                                      s.newCategoryLabel,
-                                      icon: Icons.add_box,
-                                    ).copyWith(
-                                      suffixIcon: IconButton(
-                                        icon: const Icon(
-                                          Icons.cancel,
-                                          color: Colors.redAccent,
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            _showNewCategoryField = false;
-                                            _categoryController.text =
-                                                _selectedCategory ?? '';
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                validator: validateRequired,
-                              )
-                            : DropdownButtonFormField<String>(
-                                isExpanded: true,
-                                initialValue:
-                                    _categories.contains(_selectedCategory)
-                                    ? _selectedCategory
-                                    : null,
-                                decoration: _premiumInputDecoration(
-                                  s.categoryLabel,
-                                  icon: Icons.grid_view,
-                                ),
-                                validator: (v) => (v == null || v.isEmpty)
-                                    ? s.requiredField
-                                    : null,
-                                items: [
-                                  ..._categories.map(
-                                    (c) =>
-                                        DropdownMenuItem(value: c, child: Text(c)),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'new',
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.add_circle_outline,
-                                          size: 20,
-                                          color: colors.primary,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          s.addNewCategory,
-                                          style: TextStyle(
-                                            color: colors.primary,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                                onChanged: (v) {
-                                  if (v == 'new') {
-                                    setState(() {
-                                      _showNewCategoryField = true;
-                                      _categoryController.clear();
-                                    });
-                                    WidgetsBinding.instance.addPostFrameCallback(
-                                      (_) => _categoryFocusNode.requestFocus(),
-                                    );
-                                  } else if (v != null) {
-                                    setState(() {
-                                      _selectedCategory = v;
-                                      _categoryController.text = v;
-                                    });
-                                  }
-                                },
-                              ),
-                      ],
+                      ),
+                      validator: validateRequired,
                     ),
                   ),
                 ],
@@ -1187,13 +1107,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   segments: _unitOptions
                       .map(
                         (u) => ButtonSegment(
-                          value: u,
-                          label: Text(
-                            _getUnitLabel(u, s),
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
-                      )
+                      value: u,
+                      label: Text(
+                        _getUnitLabel(u, s),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  )
                       .toList(),
                   selected: {_selectedUnit},
                   onSelectionChanged: (newSet) =>
@@ -1205,6 +1125,127 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+
+              InkWell(
+                onTap: _recommendedCategory != null && !_isLoadingRecommendation
+                    ? _applyRecommendedCategory
+                    : null,
+                borderRadius: BorderRadius.circular(14),
+                child: AbsorbPointer(
+                  child: TextFormField(
+                    readOnly: true,
+                    decoration: _premiumInputDecoration(
+                      s.recommendedCategoryLabel,
+                      icon: Icons.auto_awesome,
+                    ).copyWith(
+                      suffixIcon: _isLoadingRecommendation
+                          ? Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      )
+                          : _recommendedCategory != null
+                          ? Icon(Icons.touch_app, size: 20, color: colors.primary)
+                          : null,
+                    ),
+                    controller: TextEditingController(
+                      text: _isLoadingRecommendation ? '' : (_recommendedCategory ?? '—'),
+                    ),
+                    style: TextStyle(
+                      color: _recommendedCategory != null
+                          ? colors.onSurface
+                          : colors.onSurface.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              _showNewCategoryField
+                  ? TextFormField(
+                controller: _categoryController,
+                focusNode: _categoryFocusNode,
+                textDirection: _getTextDirection(_categoryController.text),
+                onChanged: (_) => setState(() {}),
+                decoration: _premiumInputDecoration(
+                  s.newCategoryLabel,
+                  icon: Icons.add_box,
+                ).copyWith(
+                  suffixIcon: IconButton(
+                    icon: const Icon(
+                      Icons.cancel,
+                      color: Colors.redAccent,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _showNewCategoryField = false;
+                        _categoryController.text = _selectedCategory ?? '';
+                      });
+                    },
+                  ),
+                ),
+                validator: validateRequired,
+              )
+                  : DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: _categories.contains(_selectedCategory)
+                    ? _selectedCategory
+                    : null,
+                decoration: _premiumInputDecoration(
+                  s.categoryLabel,
+                  icon: Icons.grid_view,
+                ),
+                validator: (v) => (v == null || v.isEmpty) ? s.requiredField : null,
+                items: [
+                  ..._categories.map(
+                        (c) => DropdownMenuItem(value: c, child: Text(c)),
+                  ),
+                  DropdownMenuItem(
+                    value: 'new',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.add_circle_outline,
+                          size: 20,
+                          color: colors.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          s.addNewCategory,
+                          style: TextStyle(
+                            color: colors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                onChanged: (v) {
+                  if (v == 'new') {
+                    setState(() {
+                      _showNewCategoryField = true;
+                      _categoryController.clear();
+                    });
+                    WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => _categoryFocusNode.requestFocus(),
+                    );
+                  } else if (v != null) {
+                    setState(() {
+                      _selectedCategory = v;
+                      _categoryController.text = v;
+                    });
+                  }
+                },
+              ),
+
 
               // ---------------------------------------------------------------
               const SizedBox(height: 24),
@@ -1274,7 +1315,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
             ],
           ),
         ),
-      ),
+          ),
+        ),
     );
   }
 
@@ -1409,6 +1451,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
       ],
     );
   }
+
+
 
 
   Widget _buildImageSection(ThemeData theme, ColorScheme colors) {

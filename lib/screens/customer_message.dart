@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../services/api_service.dart';
 import '../widgets/premium_app_bar.dart';
+import 'package:store_controller/widgets/responsive_center.dart';
 
 class CustomerMessageScreen extends StatefulWidget {
   const CustomerMessageScreen({super.key});
@@ -245,8 +246,10 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
         showBackButton: true,
         showSettings: false,
       ),
-      body: _loading
-          ? Center(child: CircularProgressIndicator(color: colors.primary))
+        body: ResponsiveCenter(
+          maxWidth: 900,
+          child: _loading
+              ? Center(child: CircularProgressIndicator(color: colors.primary))
           : SingleChildScrollView(
               padding: EdgeInsets.only(
                 left: 20,
@@ -294,7 +297,8 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
                   _buildActionButtons(hasChanged, s),
                 ],
               ),
-            ),
+          ),
+        ),
     );
   }
 

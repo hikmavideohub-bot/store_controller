@@ -12,6 +12,7 @@ import '../widgets/premium_app_bar.dart';
 import '../widgets/app_drawer.dart';
 import '../core/access_manager.dart';
 import '../core/paywall_messages.dart';
+import 'package:store_controller/widgets/responsive_center.dart';
 
 class _CommaFormatter extends TextInputFormatter {
   @override
@@ -1044,8 +1045,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         showSettings: false,
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
       ),
-      body: _loading
-          ? Center(
+        body: ResponsiveCenter(
+          maxWidth: 1200,
+          child: _loading
+
+              ? Center(
               child: CircularProgressIndicator(
                 color: colors.primary,
                 strokeWidth: 2.5,
@@ -1196,6 +1200,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 ],
       ),
       ),
+        ),
     );
   }
 }
@@ -1737,14 +1742,18 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
         showBackButton: true,
         showSettings: false,
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.only(top: 16, bottom: 20),
+        body: ResponsiveCenter(
+          maxWidth: 1100,
+          child: ListView.builder(
+
+          padding: const EdgeInsets.only(top: 16, bottom: 20),
         itemCount: _items.length,
         itemBuilder: (context, index) {
           final p = _items[index];
           return _buildProductCard(p);
         },
       ),
+    ),
     );
   }
 }

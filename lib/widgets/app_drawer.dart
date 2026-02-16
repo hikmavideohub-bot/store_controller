@@ -12,6 +12,7 @@ import '../main.dart';
 import '../services/store_config_service.dart';
 import '../services/rating_prompt_service.dart';
 import '../services/version_service.dart';
+import '../repositories/pricing_repository.dart';
 
 class AppDrawer extends StatelessWidget {
   final String currentRoute;
@@ -110,9 +111,11 @@ class AppDrawer extends StatelessWidget {
     final name = _storeName(s);
     final id = _storeId();
 
-    final Uri emailLaunchUri = Uri(
+    const supportMail = 'contact.aldeebtech@gmail.com';
+
+    final uri = Uri(
       scheme: 'mailto',
-      path: 'contact.aldeebtech@gmail.com',
+      path: supportMail,
       query: _encodeQueryParameters({
         'subject': s.supportEmailSubject(name, id),
         'body': s.supportEmailBody(name, id),
@@ -120,23 +123,33 @@ class AppDrawer extends StatelessWidget {
     );
 
     try {
-      if (!await launchUrl(
-        emailLaunchUri,
-        mode: LaunchMode.externalApplication,
-      )) {
-        throw 'Could not launch email app';
+      final ok = await launchUrl(uri, mode: LaunchMode.platformDefault);
+      if (!ok) {
+        await Clipboard.setData(const ClipboardData(text: supportMail));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Keine Mail-App gefunden. Email kopiert: $supportMail')),
+        );
       }
     } catch (e) {
-      debugPrint('Error launching email: $e');
+      await Clipboard.setData(const ClipboardData(text: supportMail));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Mail konnte nicht geöffnet werden. Email kopiert: $supportMail')),
+      );
     }
   }
 
+
   // --- UI Dialoge ---
 
-  static void showSupportDialog(BuildContext context) {
+  static void showSupportDialog(BuildContext context) async {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final s = AppLocalizations.of(context)!;
+
+    // syriaPhone einmal am Anfang laden
+    final syriaPhone = await _getSyriaContactPhone();
+
+    if (!context.mounted) return;
 
     showDialog(
       context: context,
@@ -175,11 +188,11 @@ class AppDrawer extends StatelessWidget {
             ],
           ),
         ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch, // Buttons über volle Breite
           children: [
-            const SizedBox(height: 16),
             Text(
               s.supportCenterMsg,
               style: TextStyle(
@@ -188,55 +201,58 @@ class AppDrawer extends StatelessWidget {
                 color: colors.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              s.contactEmailLabel,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: colors.primary,
+            const SizedBox(height: 32),
+
+            // --- EMAIL BUTTON ---
+            FilledButton.icon(
+              icon: const Icon(Icons.forward_to_inbox_rounded, size: 22),
+              label: Text(
+                s.contactEmailLabel,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: colors.primary,
+                foregroundColor: colors.onPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await _sendSupportEmail(context);
+              },
             ),
+
+            // --- WHATSAPP BUTTON (Nur wenn Nummer vorhanden) ---
+            if (syriaPhone != null && syriaPhone.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                icon: const Icon(Icons.wechat, size: 22),
+                label: Text(
+                  s.contactWhatsAppLabel,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  // Typische WhatsApp Farben für einen schönen Kontrast
+                  backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.15),
+                  foregroundColor: const Color(0xFF1DA851),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: const Color(0xFF25D366).withValues(alpha: 0.3),
+                      )
+                  ),
+                ),
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await _openWhatsApp(syriaPhone, context);
+                },
+              ),
+            ],
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: colors.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'contact.aldeebtech@gmail.com',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: colors.onSurfaceVariant,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.copy_rounded,
-                      size: 20,
-                      color: colors.primary,
-                    ),
-                    onPressed: () {
-                      Clipboard.setData(
-                        const ClipboardData(
-                          text: 'contact.aldeebtech@gmail.com',
-                        ),
-                      );
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(s.emailCopiedMsg)));
-                    },
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
         actionsPadding: const EdgeInsets.symmetric(
@@ -244,32 +260,60 @@ class AppDrawer extends StatelessWidget {
           vertical: 16,
         ),
         actions: [
+          // Einfacher Schließen-Button unten rechts
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              s.closeButton,
+              s.closeButton, // Schließen
               style: TextStyle(
                 color: colors.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          FilledButton.icon(
-            icon: const Icon(Icons.send_rounded, size: 18),
-            label: Text(s.sendNowButton),
-            style: FilledButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _sendSupportEmail(context);
-            },
-          ),
         ],
       ),
     );
+  }
+
+  static Future<String?> _getSyriaContactPhone() async {
+    try {
+      final pricingRepo = PricingRepository();
+      final config = await pricingRepo.fetchSubscriptionConfig();
+      return config.syriaContactPhone;
+    } catch (e) {
+      debugPrint('Fehler beim Laden der Syria Contact Phone: $e');
+      return null;
+    }
+  }
+
+  static Future<void> _openWhatsApp(String phone, BuildContext context) async {
+    final s = AppLocalizations.of(context)!;
+    // WhatsApp URL Format: https://wa.me/phone_without_plus_or_spaces
+    final cleanPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
+    final url = Uri.parse('https://wa.me/$cleanPhone');
+
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback: Kopiere Nummer in Zwischenablage
+        await Clipboard.setData(ClipboardData(text: phone));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            // ✅ HIER: String-Interpolation statt dem '+' Operator
+            SnackBar(content: Text('${s.whatsappNotAvailable} $phone')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          // ✅ Hier zur Sicherheit auch als direkter String
+          SnackBar(content: Text('${s.whatsappError}')),
+        );
+      }
+    }
   }
 
   // --- Build Methode ---
@@ -402,9 +446,10 @@ class AppDrawer extends StatelessWidget {
                   context: context,
                   icon: Icons.support_agent_rounded,
                   title: s.drawerSupport,
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
-                    showSupportDialog(context);
+                    final rootCtx = Navigator.of(context, rootNavigator: true).context;
+                    showSupportDialog(rootCtx);
                   },
                 ),
 
@@ -438,13 +483,25 @@ class AppDrawer extends StatelessWidget {
                   },
                 ),
 
-                _drawerItem(
-                  context: context,
-                  icon: Icons.star_border_rounded,
-                  title: s.drawerRate,
-                  onTap: () {
-                    Navigator.pop(context);
-                    showAppRatingDialog(context);
+                // Dynamisches Rating-Item basierend auf Bewertungs-Status
+                FutureBuilder<bool>(
+                  future: RatingPromptService.hasAlreadyRated(),
+                  builder: (context, snapshot) {
+                    final hasRated = snapshot.data ?? false;
+                    
+                    return _drawerItem(
+                      context: context,
+                      icon: hasRated 
+                          ? Icons.star_rounded 
+                          : Icons.star_border_rounded,
+                      title: hasRated 
+                          ? (s.updateRating)
+                          : s.drawerRate,
+                      onTap: () {
+                        Navigator.pop(context);
+                        showAppRatingDialog(context);
+                      },
+                    );
                   },
                 ),
 
@@ -1051,7 +1108,125 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
-  static void showAppRatingDialog(BuildContext context) {
+  static void showAppRatingDialog(BuildContext context) async {
+    // Prüfen ob der Nutzer bereits bewertet hat
+    final hasRated = await RatingPromptService.hasAlreadyRated();
+    
+    if (hasRated) {
+      await _showAlreadyRatedDialog(context);
+    } else {
+      await _showRatingDialog(context);
+    }
+  }
+
+  static Future<void> _showAlreadyRatedDialog(BuildContext context) async {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final s = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.star_rounded,
+              color: Colors.amber,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                s.alreadyRatedTitle,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                overflow: TextOverflow.visible,
+                maxLines: 2,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              s.alreadyRatedMsg,
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.primaryContainer.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    color: colors.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      s.alreadyRatedHint ,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              s.cancelButton,
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.store_rounded, size: 18),
+            label: Text(s.goToPlayStore ),
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final url = Uri.parse(
+                'https://play.google.com/store/apps/details?id=com.aldeebtech.storecontroller',
+              );
+              if (await canLaunchUrl(url)) {
+                await launchUrl(
+                  url,
+                  mode: LaunchMode.externalApplication,
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Future<void> _showRatingDialog(BuildContext context) async {
     int selectedStars = 0;
     final commentCtrl = TextEditingController();
 

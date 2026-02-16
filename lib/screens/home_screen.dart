@@ -7,6 +7,7 @@ import '../widgets/app_drawer.dart';
 import '../viewmodels/home_viewmodel.dart';
 import '../models/product.dart';
 import '../services/store_config_service.dart';
+import 'package:store_controller/widgets/responsive_center.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -60,8 +61,10 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
         showSettings: false,
         onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
       ),
-      body: RefreshIndicator(
-        onRefresh: () => vm.syncAllData(s),
+        body: ResponsiveCenter(
+          maxWidth: 1300,
+          child: RefreshIndicator(
+          onRefresh: () => vm.syncAllData(s),
         color: colors.primary,
         child: ListView(
           padding: EdgeInsets.fromLTRB(
@@ -90,7 +93,9 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
           ],
         ),
       ),
+        ),
     );
+
   }
 
   Widget _buildHeader(BuildContext context, AppLocalizations s) {
@@ -805,8 +810,11 @@ class _FilteredProductsScreen extends StatelessWidget {
         showBackButton: true,
         showSettings: false,
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        body: ResponsiveCenter(
+          maxWidth: 1000,
+          child: ListView.builder(
+
+          padding: const EdgeInsets.all(16),
         itemCount: products.length,
         itemBuilder: (context, index) {
           final p = products[index];
@@ -853,6 +861,7 @@ class _FilteredProductsScreen extends StatelessWidget {
           );
         },
       ),
+        ),
     );
   }
 }

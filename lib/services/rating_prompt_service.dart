@@ -95,6 +95,11 @@ class RatingPromptService {
     return (now - firstLaunchTime) >= threeDaysInMillis && launchCount >= 5;
   }
 
+  static Future<bool> hasAlreadyRated() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kHasRatedOrDismissed) ?? false;
+  }
+
   static Future<void> markAsDone() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kHasRatedOrDismissed, true);

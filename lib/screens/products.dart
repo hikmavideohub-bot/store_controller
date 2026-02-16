@@ -12,6 +12,8 @@ import '../storage/store_prefs.dart';
 import '../core/access_manager.dart';
 import '../core/paywall_messages.dart';
 import '../services/products_export_service.dart';
+import 'package:store_controller/widgets/responsive_center.dart';
+
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -33,8 +35,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
 
-  final NumberFormat _moneyFmt = NumberFormat("#,##0.00", "en");
-  final NumberFormat _sizeFmt = NumberFormat("#,##0.##", "en");
+  // .00# bedeutet: Zeige IMMER 2 Nachkommastellen (z.B. 2,50),
+  // aber falls eine 3. da ist, zeige diese auch an (z.B. 2,555).
+  final NumberFormat _moneyFmt = NumberFormat("#,##0.00#", "en");
+
+  // .### bedeutet: Zeige bis zu 3 Nachkommastellen an, aber lass überflüssige Nullen weg.
+  final NumberFormat _sizeFmt = NumberFormat("#,##0.###", "en");
 
   String _catFilter = 'all';
   String _offerFilter = 'all';
@@ -1552,14 +1558,18 @@ class _ProductsScreenState extends State<ProductsScreen> {
         headerSubtitle: s.manageProducts,
         onSync: () async => _loadProducts(silent: false),
       ),
-      body: _loading
-          ? Center(child: CircularProgressIndicator(color: colors.primary))
+        body: ResponsiveCenter(
+          maxWidth: 1200,
+          child: _loading
+
+              ? Center(child: CircularProgressIndicator(color: colors.primary))
           : RefreshIndicator(
               color: colors.primary,
               backgroundColor: colors.surface,
               onRefresh: () => _loadProducts(silent: true),
               child: _buildProductList(context),
             ),
+          ),
     );
   }
 }
