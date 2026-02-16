@@ -1253,29 +1253,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
               // MODERNER BILD UPLOAD BEREICH
               _buildImageSection(theme, colors),
 
-              // Toggle nur beim Erstellen
-              if (widget.productToEdit == null) ...[
-                SwitchListTile.adaptive(
-                  value: _autoTranslateOnCreate,
-                  title: Text(s.autoTranslateOnCreateTitle),
-                  subtitle: _autoTranslateOnCreate
-                      ? Text(
-                    s.autoTranslateOnCreateHint,
-                    style: const TextStyle(fontSize: 12),
-                  )
-                      : null,
-                  onChanged: (v) => setState(() => _autoTranslateOnCreate = v),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                const SizedBox(height: 8),
-              ],
-
-
-
               const SizedBox(height: 24),
-
-              // DESCRIPTION — Language Tabs
-              _buildDescriptionSection(s, colors, descSuggestions),
+              // MODERNE DESCRIPTION SECTION
+              _buildDescriptionSection(theme, colors, s, descSuggestions),
 
               const SizedBox(height: 24),
 
@@ -1345,10 +1325,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Widget _buildDescriptionSection(
-    AppLocalizations s,
-    ColorScheme colors,
-    List<String> descSuggestions,
-  ) {
+      ThemeData theme,
+      ColorScheme colors,
+      AppLocalizations s,
+      List<String> descSuggestions,
+      ) {
     final langLabels = {
       'ar': s.descLangAr,
       'de': s.descLangDe,
@@ -1363,92 +1344,175 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     final ctrl = _descControllerFor(_selectedDescLang);
 
-// Limit nur für Create + Toggle true + Source-Feld (Primary)
+    // Limit nur für Create + Toggle true + Source-Feld (Primary)
     final limitAuto = widget.productToEdit == null &&
         _autoTranslateOnCreate &&
         _selectedDescLang == _primaryDescLang;
 
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Language selector
-        SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<String>(
-            segments: orderedLangs
-                .map((k) => ButtonSegment<String>(value: k, label: Text(langLabels[k]!)))
-                .toList(),
-            selected: {_selectedDescLang},
-            onSelectionChanged: (newSet) => setState(() => _selectedDescLang = newSet.first),
-            showSelectedIcon: false,
-            style: SegmentedButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colors.outline.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // --- KOPFZEILE ---
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Icon(Icons.translate_rounded, color: colors.primary, size: 22),
+                const SizedBox(width: 10),
+                Text(
+                  s.descriptionLabel,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: colors.onSurface,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(height: 12),
+          Divider(height: 1, color: colors.outline.withValues(alpha: 0.15)),
 
-        // Description field for selected language
-        TextFormField(
-          key: ValueKey('desc_$_selectedDescLang'),
-          controller: ctrl,
-          maxLines: 3,
-          maxLength: limitAuto ? 300 : null,
-          inputFormatters: limitAuto ? [LengthLimitingTextInputFormatter(300)] : null,
-          textDirection: _selectedDescLang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
-          onChanged: (_) => setState(() {}),
-          decoration: _premiumInputDecoration(
-            _descHint(s, _selectedDescLang),
-            icon: Icons.description,
-            controller: ctrl,
-          ),
-        ),
-
-        // Suggestion chips
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 40,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: descSuggestions.length,
-            separatorBuilder: (ctx, i) => const SizedBox(width: 8),
-            itemBuilder: (ctx, i) {
-              return ActionChip(
-                label: Text(
-                  descSuggestions[i],
-                  style: TextStyle(fontSize: 12, color: colors.onSurface),
-                ),
-                backgroundColor: colors.surfaceContainer,
-                side: BorderSide.none,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                onPressed: () {
-                  final text = ctrl.text;
-                  final toAdd = descSuggestions[i];
-                  ctrl.text = text.isEmpty ? toAdd : '$text\n$toAdd';
-                },
-              );
-            },
-          ),
-        ),
-
-        if (_autoTranslateUsed && widget.productToEdit != null) ...[
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.check_circle, size: 16, color: colors.primary),
-              const SizedBox(width: 6),
-              Text(
-                s.autoTranslateUsed,
-                style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
+          // --- AUTO TRANSLATE TOGGLE (Nur beim Erstellen) ---
+          if (widget.productToEdit == null) ...[
+            SwitchListTile.adaptive(
+              value: _autoTranslateOnCreate,
+              title: Text(
+                s.autoTranslateOnCreateTitle,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
               ),
-            ],
+              subtitle: _autoTranslateOnCreate
+                  ? Text(
+                s.autoTranslateOnCreateHint,
+                style: TextStyle(fontSize: 12, color: theme.hintColor),
+              )
+                  : null,
+              activeTrackColor: colors.primary,
+              onChanged: (v) => setState(() => _autoTranslateOnCreate = v),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            ),
+            Divider(height: 1, color: colors.outline.withValues(alpha: 0.15)),
+          ],
+
+          // --- AUTO TRANSLATE USED HINWEIS (Nur beim Bearbeiten) ---
+          if (_autoTranslateUsed && widget.productToEdit != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: colors.primaryContainer.withValues(alpha: 0.2),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, size: 18, color: colors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      s.autoTranslateUsed,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: colors.outline.withValues(alpha: 0.15)),
+          ],
+
+          // --- SPRACH-TABS & TEXTFELD ---
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Language selector
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<String>(
+                    segments: orderedLangs
+                        .map((k) => ButtonSegment<String>(
+                      value: k,
+                      label: Text(
+                        langLabels[k]!,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ))
+                        .toList(),
+                    selected: {_selectedDescLang},
+                    onSelectionChanged: (newSet) =>
+                        setState(() => _selectedDescLang = newSet.first),
+                    showSelectedIcon: false,
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Description field
+                TextFormField(
+                  key: ValueKey('desc_$_selectedDescLang'),
+                  controller: ctrl,
+                  maxLines: 4, // Ein bisschen mehr Platz für die Beschreibung
+                  maxLength: limitAuto ? 300 : null,
+                  inputFormatters: limitAuto ? [LengthLimitingTextInputFormatter(300)] : null,
+                  textDirection: _selectedDescLang == 'ar'
+                      ? TextDirection.rtl
+                      : TextDirection.ltr,
+                  onChanged: (_) => setState(() {}),
+                  decoration: _premiumInputDecoration(
+                    _descHint(s, _selectedDescLang),
+                    icon: Icons.notes_rounded,
+                    controller: ctrl,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Suggestion chips
+                SizedBox(
+                  height: 36,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: descSuggestions.length,
+                    separatorBuilder: (ctx, i) => const SizedBox(width: 8),
+                    itemBuilder: (ctx, i) {
+                      return ActionChip(
+                        label: Text(
+                          descSuggestions[i],
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                        backgroundColor: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                        side: BorderSide(color: colors.outline.withValues(alpha: 0.2)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        onPressed: () {
+                          final text = ctrl.text;
+                          final toAdd = descSuggestions[i];
+                          ctrl.text = text.isEmpty ? toAdd : '$text\n$toAdd';
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
-      ],
+      ),
     );
   }
 
