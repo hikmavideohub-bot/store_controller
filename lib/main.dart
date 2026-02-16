@@ -35,6 +35,7 @@ import 'screens/reset_password.dart';
 import 'screens/verify_email.dart';
 import 'screens/payment_screen.dart';
 import 'screens/subscription_info.dart';
+import 'screens/reference_price_screen.dart';
 
 // Models
 import 'models/product.dart';
@@ -307,6 +308,11 @@ class MyApp extends StatefulWidget {
             paymentSuccess: state.uri.queryParameters['success'] == 'true',
           );
         },
+      ),
+      // Füge das zu deinen GoRoute-Einträgen hinzu:
+      GoRoute(
+        path: '/reference_price',
+        builder: (context, state) => const ReferencePriceScreen(),
       ),
     ],
   );

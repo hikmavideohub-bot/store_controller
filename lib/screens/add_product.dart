@@ -18,6 +18,7 @@ import '../core/access_manager.dart';
 import '../core/paywall_messages.dart';
 import '../storage/store_prefs.dart';
 import '../utils/cdn_helper.dart';
+import '../services/store_config_service.dart';
 
 class CommaDecimalFormatter extends TextInputFormatter {
   final int maxDecimals;
@@ -1056,19 +1057,47 @@ class _AddProductScreenState extends State<AddProductScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: TextFormField(
-                      controller: _priceController,
-                      focusNode: _priceFocusNode,
-                      textDirection: TextDirection.ltr,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [CommaDecimalFormatter(maxDecimals: 3)],
-                      decoration: _premiumInputDecoration(
-                        s.priceLabel,
-                        icon: Icons.euro,
-                      ),
-                      validator: validateRequired,
+                    // نستخدم AnimatedBuilder لكي يتحدث الـ helperText مباشرة عند الكتابة
+                    child: AnimatedBuilder(
+                        animation: _priceController,
+                        builder: (context, child) {
+                          // جلب الإعدادات
+                          final store = StoreConfigService.store;
+                          final bool useRef = store?['use_reference_price'] ?? false;
+                          final double refRate = (store?['reference_rate'] ?? 1.0).toDouble();
+                          final String refCurrency = store?['reference_currency'] ?? '€';
+                          final String localCurrency = store?['currency'] ?? '€';
+
+                          // حساب السعر النهائي إذا تم إدخال رقم
+                          String? helperText;
+                          if (useRef && _priceController.text.isNotEmpty) {
+                            double inputPrice = _parsePrice(_priceController.text);
+                            double finalPrice = inputPrice * refRate;
+                            helperText = s.refPriceHelperText(_fmtMoney(finalPrice), localCurrency);
+                          }
+
+                          return TextFormField(
+                            controller: _priceController,
+                            focusNode: _priceFocusNode,
+                            textDirection: TextDirection.ltr,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [CommaDecimalFormatter(maxDecimals: 3)],
+                            decoration: _premiumInputDecoration(
+                              // إذا كانت الميزة مفعلة، نغير اسم الحقل ليصبح بالعملة المرجعية
+                              useRef ? '${s.priceLabel} ($refCurrency)' : s.priceLabel,
+                              icon: Icons.sell_outlined,
+                            ).copyWith(
+                              // إظهار السعر النهائي باللون الأخضر تحت الحقل
+                              helperText: helperText,
+                              helperStyle: const TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                            validator: validateRequired,
+                          );
+                        }
                     ),
                   ),
                   const SizedBox(width: 12),

@@ -13,6 +13,8 @@ import '../services/store_config_service.dart';
 import '../services/rating_prompt_service.dart';
 import '../services/version_service.dart';
 import '../repositories/pricing_repository.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class AppDrawer extends StatelessWidget {
   final String currentRoute;
@@ -460,6 +462,16 @@ class AppDrawer extends StatelessWidget {
                   onTap: () {
                     Navigator.pop(context);
                     _showAdvancedStats(context);
+                  },
+                ),
+
+                _drawerItem(
+                  context: context,
+                  icon: Icons.currency_exchange_rounded,
+                  title: s.refPriceMenuTitle,
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push('/reference_price'); // ✅ Navigiert jetzt zum neuen Screen
                   },
                 ),
 
