@@ -85,6 +85,7 @@ class SettingsViewModel extends BaseViewModel {
   String authProvider = 'email';
   String createdAtRaw = '';
   String storeId = '';
+  String currencyCode = 'EUR'; // oder was du willst als Default
 
   WorkingHours workingHours = {};
 
@@ -287,7 +288,9 @@ class SettingsViewModel extends BaseViewModel {
     if (firestoreStoreName.isNotEmpty) {
       storeNameCtrl.text = firestoreStoreName;
     }
-    currencyCtrl.text = (s['currency'] ?? '€').toString();
+
+    currencyCode = (s['currency'] ?? 'EUR').toString();
+    currencyCtrl.text = _getSymbolFromCode(currencyCode); // Für das Versandkosten-Feld
 
     // page_description: Map (new) or String (legacy fallback)
     final rawDesc = s['page_description'] ?? s['pageDescription'] ?? '';
@@ -569,8 +572,9 @@ class SettingsViewModel extends BaseViewModel {
     notifyListeners();
   }
 
-  void setCurrency(String curr) {
-    currencyCtrl.text = curr;
+  void setCurrency(String code) {
+    currencyCode = code;
+    currencyCtrl.text = _getSymbolFromCode(code);
     markDirty();
     notifyListeners();
   }
@@ -858,7 +862,7 @@ class SettingsViewModel extends BaseViewModel {
 
           final data = {
             'store_name': storeNameCtrl.text.trim(),
-            'currency': currencyCtrl.text.trim(),
+            'currency': currencyCode,
             'page_description': {
               'ar': pageDescArCtrl.text.trim(),
               'de': pageDescDeCtrl.text.trim(),
@@ -970,6 +974,50 @@ class SettingsViewModel extends BaseViewModel {
       GeocodingService.debugLog('⚠️ Allgemeiner Fehler (Karte): $e');
       setError('Adresse konnte nicht ermittelt werden');
     }
+  }
+
+  String _getSymbolFromCode(String code) {
+    return switch (code) {
+    // Arabische Währungen
+      'SYP' => 'ل.س',
+      'AED' => 'د.إ',
+      'BHD' => 'د.ب',
+      'DZD' => 'د.ج',
+      'EGP' => 'ج.م',
+      'IQD' => 'ع.د',
+      'JOD' => 'د.أ',
+      'KWD' => 'د.ك',
+      'LBP' => 'ل.ل',
+      'LYD' => 'د.ل',
+      'MAD' => 'د.م.',
+      'OMR' => 'ر.ع.',
+      'QAR' => 'ر.ق',
+      'SAR' => '﷼',
+      'SDG' => 'ج.س',
+      'DJF' => 'Fdj',
+      'TND' => 'د.ت',
+      'YER' => 'ر.ي',
+      'MRU' => 'UM',
+      'SOS' => 'Sh',
+      'KMF' => 'CF',
+
+    // Weltwährungen
+      'USD' => '\$',
+      'EUR' => '€',
+      'TRY' => '₺',
+      'GBP' => '£',
+      'CHF' => 'CHF',
+      'AUD' => 'A\$',
+      'CAD' => 'C\$',
+      'BRL' => 'R\$',
+      'CNY' => '¥',
+      'JPY' => '¥',
+      'RUB' => '₽',
+      'SEK' => 'kr',
+
+    // Fallback
+      _ => code,
+    };
   }
 
   Future<void> logout() async {

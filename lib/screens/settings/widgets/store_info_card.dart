@@ -125,198 +125,125 @@ class StoreInfoCard extends StatelessWidget {
 
 // --- Hilfs-Widgets ---
 
+// Öffentliche Klasse, damit wir die Währungen in der ganzen App nutzen können
+extension CurrencyLabelByCodeX on AppLocalizations {
+  /// Liefert das lokalisierte Label aus ARB (z.B. currencyLabelUSD)
+  /// Fallback: gibt den Code zurück.
+  String currencyLabelByCode(String code) => switch (code) {
+  // --- Arabische Währungen ---
+    'AED' => currencyLabelAED, // VAE Dirham
+    'BHD' => currencyLabelBHD, // Bahrain Dinar
+    'DJF' => currencyLabelDJF, // Dschibuti-Franc
+    'DZD' => currencyLabelDZD, // Algerischer Dinar
+    'EGP' => currencyLabelEGP, // Ägyptisches Pfund
+    'IQD' => currencyLabelIQD, // Irakischer Dinar
+    'JOD' => currencyLabelJOD, // Jordanischer Dinar
+    'KMF' => currencyLabelKMF, // Komoren-Franc
+    'KWD' => currencyLabelKWD, // Kuwait-Dinar
+    'LBP' => currencyLabelLBP, // Libanesisches Pfund
+    'LYD' => currencyLabelLYD, // Libyscher Dinar
+    'MAD' => currencyLabelMAD, // Marokkanischer Dirham
+    'MRU' => currencyLabelMRU, // Mauretanischer Ouguiya
+    'OMR' => currencyLabelOMR, // Omanischer Rial
+    'QAR' => currencyLabelQAR, // Katar-Riyal
+    'SAR' => currencyLabelSAR, // Saudi-Riyal
+    'SDG' => currencyLabelSDG, // Sudanesisches Pfund
+    'SOS' => currencyLabelSOS, // Somalia-Schilling
+    'SYP' => currencyLabelSYP, // Syrische Lira
+    'TND' => currencyLabelTND, // Tunesischer Dinar
+    'YER' => currencyLabelYER, // Jemen-Rial
+
+// --- Bekannte Weltwährungen ---
+    'AUD' => currencyLabelAUD, // Australischer Dollar
+    'BRL' => currencyLabelBRL, // Brasilianischer Real
+    'CAD' => currencyLabelCAD, // Kanadischer Dollar
+    'CHF' => currencyLabelCHF, // Schweizer Franken
+    'CNY' => currencyLabelCNY, // Chinesischer Yuan
+    'EUR' => currencyLabelEUR, // Euro
+    'GBP' => currencyLabelGBP, // Britisches Pfund
+    'JPY' => currencyLabelJPY, // Japanischer Yen
+    'RUB' => currencyLabelRUB, // Russischer Rubel
+    'SEK' => currencyLabelSEK, // Schwedische Krone
+    'TRY' => currencyLabelTRY, // Türkische Lira
+    'USD' => currencyLabelUSD, // US-Dollar
+    _ => code,
+  };
+}
+
+class StoreCurrencies {
+  /// Arabische Länder zuerst (du kannst die Reihenfolge hier ändern)
+  static const List<String> arabFirstCodes = [
+    'SYP', 'AED', 'BHD', 'DZD', 'EGP', 'IQD', 'JOD', 'KWD', 'LBP', 'LYD',
+    'MAD', 'OMR', 'QAR', 'SAR', 'SDG', 'DJF', 'TND', 'YER', 'MRU', 'SOS',
+    'KMF',
+  ];
+
+  /// Optional: direkt NACH Arab (die 3 wichtigsten Fremdwährungen)
+  static const List<String> pinnedOtherCodes = [
+    'EUR', 'TRY', 'USD'
+  ];
+
+  /// Alle unterstützten Codes (alphabetisch) - Nur arabische und die berühmtesten Weltwährungen
+  static const List<String> supportedCodes = [
+    'AED', 'AUD', 'BHD', 'BRL', 'CAD', 'CHF', 'CNY', 'DJF', 'DZD', 'EGP',
+    'EUR', 'GBP', 'IQD', 'JOD', 'JPY', 'KMF', 'KWD', 'LBP', 'LYD', 'MAD',
+    'MRU', 'OMR', 'QAR', 'RUB', 'SAR', 'SDG', 'SEK', 'SOS', 'SYP', 'TND',
+    'TRY', 'USD', 'YER',
+  ];
+
+  /// ✅ Endgültige Reihenfolge: Arab → (optional pinned) → Rest (alphabetisch, ohne Duplikate)
+  static final List<String> orderedCodes = (() {
+    final out = <String>[];
+    final seen = <String>{};
+
+    void push(Object? code) {
+      final c = (code ?? '').toString();
+      if (c.isEmpty) return;
+      if (seen.add(c)) out.add(c);
+    }
+
+    for (final c in arabFirstCodes) push(c);
+    for (final c in pinnedOtherCodes) push(c);
+    for (final c in supportedCodes) push(c);
+
+    return List<String>.unmodifiable(out);
+  })();
+
+}
+
 class _CurrencyDropdown extends StatelessWidget {
   final SettingsViewModel vm;
   const _CurrencyDropdown({required this.vm});
 
-  // Bevorzugte Währungen (werden zuerst angezeigt)
-  static const List<(String symbol, String label)> _preferred = [
-    // Syrien bleibt oben
-    ('ل.س', 'ل.س  الليرة السورية (SYP)'),
-
-    // Alphabetisch nach dem internationalen Code sortiert
-    ('د.إ', 'د.إ  درهم إماراتي (AED)'),
-    ('ج.م', 'ج.م  الجنيه المصري (EGP)'),
-    ('€', '€  Euro (EUR)'),
-    ('د.أ', 'د.أ  دينار أردني (JOD)'),
-    ('د.ك', 'د.ك  دينار كويتي (KWD)'),
-    ('ر.ع.', 'ر.ع.  ريال عماني (OMR)'),
-    ('ر.ق', 'ر.ق  ريال قطري (QAR)'),
-    ('﷼', '﷼  ريال سعودي (SAR)'),
-    ('₺', '₺  Türk Lirası (TRY)'),
-    ('\$', '\$  US Dollar (USD)'),
-  ];
-
-  // Alle anderen Weltwährungen (alphabetisch nach Code)
-  static const List<(String symbol, String label)> _allOther = [
-    ('Lek', 'Lek  ALL - Albanian Lek'),
-    ('դր', 'դր  AMD - Armenian Dram'),
-    ('Kz', 'Kz  AOA - Angolan Kwanza'),
-    ('\$', '\$  ARS - Argentine Peso'),
-    ('A\$', 'A\$  AUD - Australian Dollar'),
-    ('₼', '₼  AZN - Azerbaijani Manat'),
-    ('KM', 'KM  BAM - Bosnia Mark'),
-    ('\$', '\$  BBD - Barbados Dollar'),
-    ('৳', '৳  BDT - Bangladeshi Taka'),
-    ('лв', 'лв  BGN - Bulgarian Lev'),
-    ('د.ب', 'د.ب  BHD - Bahraini Dinar'),
-    ('FBu', 'FBu  BIF - Burundian Franc'),
-    ('\$', '\$  BMD - Bermudian Dollar'),
-    ('\$', '\$  BND - Brunei Dollar'),
-    ('Bs', 'Bs  BOB - Bolivian Boliviano'),
-    ('R\$', 'R\$  BRL - Brazilian Real'),
-    ('\$', '\$  BSD - Bahamian Dollar'),
-    ('Nu.', 'Nu.  BTN - Bhutanese Ngultrum'),
-    ('P', 'P  BWP - Botswana Pula'),
-    ('Br', 'Br  BYN - Belarusian Ruble'),
-    ('\$', '\$  BZD - Belize Dollar'),
-    ('C\$', 'C\$  CAD - Canadian Dollar'),
-    ('FC', 'FC  CDF - Congolese Franc'),
-    ('CHF', 'CHF  CHF - Swiss Franc'),
-    ('\$', '\$  CLP - Chilean Peso'),
-    ('¥', '¥  CNY - Chinese Yuan'),
-    ('\$', '\$  COP - Colombian Peso'),
-    ('₡', '₡  CRC - Costa Rican Colón'),
-    ('\$', '\$  CUP - Cuban Peso'),
-    ('Esc', 'Esc  CVE - Cape Verdean Escudo'),
-    ('Kč', 'Kč  CZK - Czech Koruna'),
-    ('Fdj', 'Fdj  DJF - Djiboutian Franc'),
-    ('kr', 'kr  DKK - Danish Krone'),
-    ('\$', '\$  DOP - Dominican Peso'),
-    ('د.ج', 'د.ج  DZD - Algerian Dinar'),
-    ('kr', 'kr  EEK - Estonian Kroon'),
-    ('Nfk', 'Nfk  ERN - Eritrean Nakfa'),
-    ('Br', 'Br  ETB - Ethiopian Birr'),
-    ('\$', '\$  FJD - Fijian Dollar'),
-    ('£', '£  FKP - Falkland Pound'),
-    ('£', '£  GBP - British Pound'),
-    ('₾', '₾  GEL - Georgian Lari'),
-    ('GH₵', 'GH₵  GHS - Ghanaian Cedi'),
-    ('£', '£  GIP - Gibraltar Pound'),
-    ('D', 'D  GMD - Gambian Dalasi'),
-    ('FG', 'FG  GNF - Guinean Franc'),
-    ('Q', 'Q  GTQ - Guatemalan Quetzal'),
-    ('\$', '\$  GYD - Guyanese Dollar'),
-    ('HK\$', 'HK\$  HKD - Hong Kong Dollar'),
-    ('L', 'L  HNL - Honduran Lempira'),
-    ('kn', 'kn  HRK - Croatian Kuna'),
-    ('G', 'G  HTG - Haitian Gourde'),
-    ('Ft', 'Ft  HUF - Hungarian Forint'),
-    ('Rp', 'Rp  IDR - Indonesian Rupiah'),
-    ('₪', '₪  ILS - Israeli Shekel'),
-    ('₹', '₹  INR - Indian Rupee'),
-    ('ع.د', 'ع.د  IQD - Iraqi Dinar'),
-    ('﷼', '﷼  IRR - Iranian Rial'),
-    ('kr', 'kr  ISK - Icelandic Króna'),
-    ('\$', '\$  JMD - Jamaican Dollar'),
-    ('¥', '¥  JPY - Japanese Yen'),
-    ('KSh', 'KSh  KES - Kenyan Shilling'),
-    ('сом', 'сом  KGS - Kyrgyz Som'),
-    ('៛', '៛  KHR - Cambodian Riel'),
-    ('CF', 'CF  KMF - Comorian Franc'),
-    ('₩', '₩  KRW - South Korean Won'),
-    ('₭', '₭  LAK - Lao Kip'),
-    ('ل.ل', 'ل.ل  LBP - Lebanese Pound'),
-    ('Rs', 'Rs  LKR - Sri Lankan Rupee'),
-    ('\$', '\$  LRD - Liberian Dollar'),
-    ('M', 'M  LSL - Lesotho Loti'),
-    ('د.ل', 'د.ل  LYD - Libyan Dinar'),
-    ('د.م.', 'د.م.  MAD - Moroccan Dirham'),
-    ('L', 'L  MDL - Moldovan Leu'),
-    ('Ar', 'Ar  MGA - Malagasy Ariary'),
-    ('ден', 'ден  MKD - Macedonian Denar'),
-    ('K', 'K  MMK - Myanmar Kyat'),
-    ('₮', '₮  MNT - Mongolian Tögrög'),
-    ('MOP\$', 'MOP\$  MOP - Macanese Pataca'),
-    ('UM', 'UM  MRU - Mauritanian Ouguiya'),
-    ('Rs', 'Rs  MUR - Mauritian Rupee'),
-    ('Rf', 'Rf  MVR - Maldivian Rufiyaa'),
-    ('MK', 'MK  MWK - Malawian Kwacha'),
-    ('\$', '\$  MXN - Mexican Peso'),
-    ('RM', 'RM  MYR - Malaysian Ringgit'),
-    ('MT', 'MT  MZN - Mozambican Metical'),
-    ('\$', '\$  NAD - Namibian Dollar'),
-    ('₦', '₦  NGN - Nigerian Naira'),
-    ('C\$', 'C\$  NIO - Nicaraguan Córdoba'),
-    ('kr', 'kr  NOK - Norwegian Krone'),
-    ('Rs', 'Rs  NPR - Nepalese Rupee'),
-    ('NZ\$', 'NZ\$  NZD - New Zealand Dollar'),
-    ('B/.', 'B/.  PAB - Panamanian Balboa'),
-    ('S/', 'S/  PEN - Peruvian Sol'),
-    ('K', 'K  PGK - Papua New Guinean Kina'),
-    ('₱', '₱  PHP - Philippine Peso'),
-    ('Rs', 'Rs  PKR - Pakistani Rupee'),
-    ('zł', 'zł  PLN - Polish Zloty'),
-    ('₲', '₲  PYG - Paraguayan Guaraní'),
-    ('lei', 'lei  RON - Romanian Leu'),
-    ('дин', 'дин  RSD - Serbian Dinar'),
-    ('₽', '₽  RUB - Russian Ruble'),
-    ('FRw', 'FRw  RWF - Rwandan Franc'),
-    ('\$', '\$  SBD - Solomon Islands Dollar'),
-    ('Rs', 'Rs  SCR - Seychellois Rupee'),
-    ('ج.س', 'ج.س  SDG - Sudanese Pound'),
-    ('kr', 'kr  SEK - Swedish Krona'),
-    ('S\$', 'S\$  SGD - Singapore Dollar'),
-    ('£', '£  SHP - Saint Helena Pound'),
-    ('Le', 'Le  SLL - Sierra Leonean Leone'),
-    ('Sh', 'Sh  SOS - Somali Shilling'),
-    ('\$', '\$  SRD - Surinamese Dollar'),
-    ('£', '£  SSP - South Sudanese Pound'),
-    ('Db', 'Db  STN - São Tomé Dobra'),
-    ('\$', '\$  SVC - Salvadoran Colón'),
-    ('E', 'E  SZL - Eswatini Lilangeni'),
-    ('฿', '฿  THB - Thai Baht'),
-    ('SM', 'SM  TJS - Tajikistani Somoni'),
-    ('T', 'T  TMT - Turkmenistani Manat'),
-    ('د.ت', 'د.ت  TND - Tunisian Dinar'),
-    ('T\$', 'T\$  TOP - Tongan Paʻanga'),
-    ('\$', '\$  TTD - Trinidad Dollar'),
-    ('NT\$', 'NT\$  TWD - Taiwan Dollar'),
-    ('TSh', 'TSh  TZS - Tanzanian Shilling'),
-    ('₴', '₴  UAH - Ukrainian Hryvnia'),
-    ('USh', 'USh  UGX - Ugandan Shilling'),
-    ('\$U', '\$U  UYU - Uruguayan Peso'),
-    ('сўм', 'сўм  UZS - Uzbekistani Som'),
-    ('Bs.S', 'Bs.S  VES - Venezuelan Bolívar'),
-    ('₫', '₫  VND - Vietnamese Dong'),
-    ('VT', 'VT  VUV - Vanuatu Vatu'),
-    ('T', 'T  WST - Samoan Tala'),
-    ('FCFA', 'FCFA  XAF - Central African CFA'),
-    ('EC\$', 'EC\$  XCD - East Caribbean Dollar'),
-    ('CFA', 'CFA  XOF - West African CFA'),
-    ('CFP', 'CFP  XPF - CFP Franc'),
-    ('ر.ي', 'ر.ي  YER - Yemeni Rial'),
-    ('R', 'R  ZAR - South African Rand'),
-    ('ZK', 'ZK  ZMW - Zambian Kwacha'),
-    ('Z\$', 'Z\$  ZWL - Zimbabwean Dollar'),
-  ];
-
-  static List<(String, String)> get _allCurrencies => [
-    ..._preferred,
-    ..._allOther,
-  ];
-
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context)!;
+
+    // ✅ Wichtig: VM speichert nur den Code (z.B. "USD"), nicht das Symbol.
+    final code = vm.currencyCode;
+    final label = s.currencyLabelByCode(code);
+
     return TextFormField(
-      controller: vm.currencyCtrl,
       readOnly: true,
+      controller: TextEditingController(text: label),
       decoration: InputDecoration(
         labelText: s.currencyLabel,
         prefixIcon: const Icon(Icons.currency_exchange),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         suffixIcon: PopupMenuButton<String>(
           icon: const Icon(Icons.arrow_drop_down),
-          onSelected: (val) => vm.setCurrency(val),
+          onSelected: (code) => vm.setCurrency(code), // code speichern
           constraints: const BoxConstraints(maxHeight: 400),
-          itemBuilder: (ctx) => _allCurrencies
+          itemBuilder: (ctx) => StoreCurrencies.orderedCodes
               .map(
-                (e) => PopupMenuItem(
-                  value: e.$1,
-                  child: Text(e.$2, textDirection: TextDirection.ltr),
-                ),
-              )
+                (code) => PopupMenuItem(
+              value: code,
+              child: Text(
+                s.currencyLabelByCode(code),
+                textDirection: TextDirection.ltr,
+              ),
+            ),
+          )
               .toList(),
         ),
       ),
@@ -415,7 +342,7 @@ class _PageDescMultiLangFieldState extends State<_PageDescMultiLangField> {
           key: ValueKey('pageDesc_$_selectedLang'),
           controller: ctrl,
           textDirection:
-              _selectedLang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
+          _selectedLang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
           maxLines: 3,
           maxLength: 40,
           decoration: InputDecoration(
@@ -423,7 +350,7 @@ class _PageDescMultiLangFieldState extends State<_PageDescMultiLangField> {
             hintText: s.storeDescHint,
             prefixIcon: const Icon(Icons.description_outlined),
             border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             alignLabelWithHint: true,
           ),
         ),
@@ -438,18 +365,18 @@ class _StoreLangDropdown extends StatelessWidget {
 
   // Unterstützte Sprachen für die öffentliche Web-App
   static const List<(String code, String nativeName, String flag)> _languages =
-      [
-        ('ar', 'العربية', '🇸🇦'),
-        ('en', 'English', '🇬🇧'),
-        ('de', 'Deutsch', '🇩🇪'),
-        ('tr', 'Türkçe', '🇹🇷'),
-      ];
+  [
+    ('ar', 'العربية', '🇸🇦'),
+    ('en', 'English', '🇬🇧'),
+    ('de', 'Deutsch', '🇩🇪'),
+    ('tr', 'Türkçe', '🇹🇷'),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context)!;
     final current = _languages.firstWhere(
-      (e) => e.$1 == vm.storeLang,
+          (e) => e.$1 == vm.storeLang,
       orElse: () => _languages.first,
     );
 
@@ -468,16 +395,16 @@ class _StoreLangDropdown extends StatelessWidget {
           itemBuilder: (ctx) => _languages
               .map(
                 (e) => PopupMenuItem(
-                  value: e.$1,
-                  child: Row(
-                    children: [
-                      Text(e.$3, style: const TextStyle(fontSize: 20)),
-                      const SizedBox(width: 12),
-                      Text(e.$2),
-                    ],
-                  ),
-                ),
-              )
+              value: e.$1,
+              child: Row(
+                children: [
+                  Text(e.$3, style: const TextStyle(fontSize: 20)),
+                  const SizedBox(width: 12),
+                  Text(e.$2),
+                ],
+              ),
+            ),
+          )
               .toList(),
         ),
       ),

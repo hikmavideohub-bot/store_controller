@@ -84,7 +84,54 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   String _currency() {
     final settings = StoreConfigService.store;
-    return settings?['currency']?.toString() ?? '€';
+    final useReferencePrice = settings?['use_reference_price'] == true;
+
+    String code = '';
+    if (useReferencePrice) {
+      code = settings?['reference_currency']?.toString() ?? 'USD';
+    } else {
+      code = settings?['currency']?.toString() ?? 'EUR';
+    }
+
+    return switch (code) {
+    // Arabische Währungen
+      'SYP' => 'ل.س',
+      'AED' => 'د.إ',
+      'BHD' => 'د.ب',
+      'DZD' => 'د.ج',
+      'EGP' => 'ج.م',
+      'IQD' => 'ع.د',
+      'JOD' => 'د.أ',
+      'KWD' => 'د.ك',
+      'LBP' => 'ل.ل',
+      'LYD' => 'د.ل',
+      'MAD' => 'د.م.',
+      'OMR' => 'ر.ع.',
+      'QAR' => 'ر.ق',
+      'SAR' => '﷼',
+      'SDG' => 'ج.س',
+      'DJF' => 'Fdj',
+      'TND' => 'د.ت',
+      'YER' => 'ر.ي',
+      'MRU' => 'UM',
+      'SOS' => 'Sh',
+      'KMF' => 'CF',
+
+    // Weltwährungen
+      'USD' => '\$',
+      'EUR' => '€',
+      'TRY' => '₺',
+      'GBP' => '£',
+      'CHF' => 'CHF',
+      'AUD' => 'A\$',
+      'CAD' => 'C\$',
+      'BRL' => 'R\$',
+      'CNY' => '¥',
+      'JPY' => '¥',
+      'RUB' => '₽',
+      'SEK' => 'kr',
+      _ => code, // Fallback, falls kein Symbol definiert ist
+    };
   }
 
   DateTime _parseDateSafe(String? value, DateTime fallback) {
@@ -494,8 +541,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   String _priceLine(Product p) {
     final price = _moneyFmt.format(p.price);
     final size = _sizeFmt.format(p.sizeValue);
-    final settings = StoreConfigService.store;
-    final currency = settings?['currency']?.toString() ?? '€';
+    final currency = _currency(); // Nutzt jetzt unsere dynamische Methode von oben!
     final s = AppLocalizations.of(context)!;
     final unit = _getUnitLabel(p.sizeUnit, s);
     return '$price $currency / $size $unit';
