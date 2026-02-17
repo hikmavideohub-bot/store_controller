@@ -35,7 +35,18 @@ class SettingsViewModel extends BaseViewModel {
     _ => pageDescDeCtrl,
   };
   final addressCtrl = TextEditingController();
-  final addressDescCtrl = TextEditingController();
+  final addressDescArCtrl = TextEditingController();
+  final addressDescDeCtrl = TextEditingController();
+  final addressDescEnCtrl = TextEditingController();
+  final addressDescTrCtrl = TextEditingController();
+
+  TextEditingController addressDescCtrlFor(String lang) => switch (lang) {
+    'ar' => addressDescArCtrl,
+    'de' => addressDescDeCtrl,
+    'en' => addressDescEnCtrl,
+    'tr' => addressDescTrCtrl,
+    _ => addressDescDeCtrl,
+  };
   final storeWebsiteCtrl = TextEditingController();
   String? selectedCountry;
   String logoUrl = '';
@@ -217,7 +228,10 @@ class SettingsViewModel extends BaseViewModel {
       pageDescEnCtrl,
       pageDescTrCtrl,
       addressCtrl,
-      addressDescCtrl,
+      addressDescArCtrl,
+      addressDescDeCtrl,
+      addressDescEnCtrl,
+      addressDescTrCtrl,
       storeWebsiteCtrl,
       phoneCtrl,
       waCtrl,
@@ -308,16 +322,37 @@ class SettingsViewModel extends BaseViewModel {
     }
 
     addressCtrl.text = (s['address'] ?? '').toString();
-    final rawAddrDesc = (s['address_description'] ?? '').toString();
-    addressDescCtrl.text = rawAddrDesc;
-    if (rawAddrDesc.trim().isNotEmpty) showAddressDescription = true;
+
+    // --- KORRIGIERTER BEREICH START ---
+    final rawAddrDesc = s['address_description'] ?? s['addressDescription'] ?? '';
+    if (rawAddrDesc is Map) {
+      addressDescArCtrl.text = (rawAddrDesc['ar'] ?? '').toString();
+      addressDescDeCtrl.text = (rawAddrDesc['de'] ?? '').toString();
+      addressDescEnCtrl.text = (rawAddrDesc['en'] ?? '').toString();
+      addressDescTrCtrl.text = (rawAddrDesc['tr'] ?? '').toString();
+
+      if (addressDescArCtrl.text.isNotEmpty || addressDescDeCtrl.text.isNotEmpty ||
+          addressDescEnCtrl.text.isNotEmpty || addressDescTrCtrl.text.isNotEmpty) {
+        showAddressDescription = true;
+      }
+    } else {
+      // Legacy Fallback (falls es noch ein einfacher String in der DB ist)
+      final legacyAddr = rawAddrDesc.toString();
+      addressDescArCtrl.text = legacyAddr;
+      addressDescDeCtrl.text = legacyAddr;
+      addressDescEnCtrl.text = legacyAddr;
+      addressDescTrCtrl.text = legacyAddr;
+      if (legacyAddr.trim().isNotEmpty) showAddressDescription = true;
+    }
+    // --- KORRIGIERTER BEREICH ENDE ---
+
     selectedCountry = s['address_country']?.toString();
     if (selectedCountry?.isEmpty ?? false) selectedCountry = null;
     storeWebsiteCtrl.text = (s['public_store_url'] ?? '').toString();
 
     shippingEnabled =
         s['shipping'] == true ||
-        s['shipping']?.toString().toLowerCase() == 'true';
+            s['shipping']?.toString().toLowerCase() == 'true';
     shippingPriceCtrl.text = (s['shipping_price'] ?? s['shippingPrice'] ?? '')
         .toString();
 
@@ -327,6 +362,7 @@ class SettingsViewModel extends BaseViewModel {
     emailSupportCtrl.text = (s['email_support'] ?? '').toString();
     emailLogin = (s['email_login'] ?? s['owner_email'] ?? '').toString();
     authProvider = (s['auth_provider'] ?? 'email').toString();
+
     // Koordinaten laden
     latitude = double.tryParse((s['latitude'] ?? '').toString());
     longitude = double.tryParse((s['longitude'] ?? '').toString());
@@ -398,7 +434,7 @@ class SettingsViewModel extends BaseViewModel {
     _phoneWaSyncLock = false;
     notifyListeners();
   }
-
+  
   void _parsePhone(String s, Function(String code, String phoneNumber) onFound) {
     if (s.isEmpty) return;
     if (s.contains('Closure') ||
@@ -870,7 +906,12 @@ class SettingsViewModel extends BaseViewModel {
               'tr': pageDescTrCtrl.text.trim(),
             },
             'address': addressCtrl.text.trim(),
-            'address_description': addressDescCtrl.text.trim(),
+            'address_description': {
+              'ar': addressDescArCtrl.text.trim(),
+              'de': addressDescDeCtrl.text.trim(),
+              'en': addressDescEnCtrl.text.trim(),
+              'tr': addressDescTrCtrl.text.trim(),
+            },
             'address_country': selectedCountry,
             'phone': phoneFull,
             'phone_code': phoneCode,
@@ -1037,7 +1078,10 @@ class SettingsViewModel extends BaseViewModel {
     pageDescEnCtrl.dispose();
     pageDescTrCtrl.dispose();
     addressCtrl.dispose();
-    addressDescCtrl.dispose();
+    addressDescArCtrl.dispose();
+    addressDescDeCtrl.dispose();
+    addressDescEnCtrl.dispose();
+    addressDescTrCtrl.dispose();
     storeWebsiteCtrl.dispose();
     phoneCtrl.dispose();
     waCtrl.dispose();

@@ -72,18 +72,7 @@ class ContactSection extends StatelessWidget {
             if (vm.showAddressDescription)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: TextField(
-                  controller: vm.addressDescCtrl,
-                  maxLines: 4,
-                  minLines: 2,
-                  maxLength: 500,
-                  decoration: InputDecoration(
-                    labelText: s.addressDescriptionLabel,
-                    hintText: s.addressDescriptionHint,
-                    border: const OutlineInputBorder(),
-                    alignLabelWithHint: true,
-                  ),
-                ),
+                child: _AddressDescMultiLangField(vm: vm),
               ),
           ],
         ),
@@ -390,6 +379,60 @@ class _PhoneRow extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+class _AddressDescMultiLangField extends StatefulWidget {
+  final SettingsViewModel vm;
+  const _AddressDescMultiLangField({required this.vm});
+
+  @override
+  State<_AddressDescMultiLangField> createState() => _AddressDescMultiLangFieldState();
+}
+
+class _AddressDescMultiLangFieldState extends State<_AddressDescMultiLangField> {
+  String _selectedLang = 'de';
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context)!;
+    final labels = {
+      'ar': s.descLangAr,
+      'de': s.descLangDe,
+      'en': s.descLangEn,
+      'tr': s.descLangTr,
+    };
+    final ctrl = widget.vm.addressDescCtrlFor(_selectedLang);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<String>(
+            segments: labels.entries
+                .map((e) => ButtonSegment(value: e.key, label: Text(e.value)))
+                .toList(),
+            selected: {_selectedLang},
+            onSelectionChanged: (sel) => setState(() => _selectedLang = sel.first),
+            showSelectedIcon: false,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: ctrl,
+          textDirection: _selectedLang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
+          maxLines: 4,
+          minLines: 2,
+          maxLength: 500,
+          decoration: InputDecoration(
+            labelText: s.addressDescriptionLabel,
+            hintText: s.addressDescriptionHint,
+            border: const OutlineInputBorder(),
+            alignLabelWithHint: true,
+          ),
         ),
       ],
     );

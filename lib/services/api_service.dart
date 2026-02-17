@@ -1469,7 +1469,8 @@ class ApiService {
   // CUSTOMER MESSAGE
   // ═══════════════════════════════════════════════════════════════════════════
 
-  static Future<String?> getCustomerMessage({bool forceRefresh = false}) async {
+// ÄNDERUNG 1: Gibt jetzt 'dynamic' statt 'String?' zurück
+  static Future<dynamic> getCustomerMessage({bool forceRefresh = false}) async {
     if (_storeId == null) return null;
     try {
       final doc = await _storesPublic.doc(_storeId).get();
@@ -1483,7 +1484,7 @@ class ApiService {
         }
       }
 
-      return data?['customer_message'] ?? '';
+      return data?['customer_message'];
     } catch (e) {
       return null;
     }
@@ -1499,10 +1500,11 @@ class ApiService {
     }
   }
 
+  // ÄNDERUNG 2: Akzeptiert jetzt 'dynamic message' statt 'String message'
   static Future<bool> setCustomerMessage(
-    String message, {
-    DateTime? expiryDate,
-  }) async {
+      dynamic message, {
+        DateTime? expiryDate,
+      }) async {
     if (_storeId == null) return false;
     try {
       await _storesPublic.doc(_storeId).update({

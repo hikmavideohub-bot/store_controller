@@ -78,7 +78,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     }
   }
 
-  
+
   Future<void> _reload({bool silent = false}) async {
     bool showedCache = false;
 
@@ -525,13 +525,43 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     title: s.stopCategoryOffersAction,
                     subtitle: s.stopCategoryOffersSubtitle,
                     onTap: () async {
+                      // 1. Schließt das Bottom-Sheet
                       Navigator.pop(sheetCtx);
-                      await _disableCategoryOffers(category);
+
+                      // 2. Öffnet den Bestätigungsdialog
+                      final confirm = await showDialog<bool>(
+                        context: ctx,
+                        builder: (dialogCtx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          title: Text(s.stopCategoryOffersConfirmTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          content: Text(s.stopCategoryOffersConfirmMessage),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(dialogCtx, false),
+                              child: Text(s.stopCategoryOffersConfirmNo, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () => Navigator.pop(dialogCtx, true),
+                              child: Text(s.stopCategoryOffersConfirmYes),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      // 3. Führt die Löschung nur aus, wenn der Nutzer auf "Ja" klickt
+                      if (confirm == true) {
+                        await _disableCategoryOffers(category);
+                      }
                     },
-      ),
+                  ),
                 ],
               ],
-      ),
+            ),
           );
         },
       ),
@@ -556,7 +586,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: iconColor.withValues(alpha: 0.15)),
-      ),
+          ),
           child: Row(
             children: [
               Icon(icon, color: iconColor, size: 24),
@@ -570,22 +600,22 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
-      ),
-      ),
+                      ),
+                    ),
                     Text(
                       subtitle,
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
-      ),
+                    ),
                   ],
-      ),
-      ),
+                ),
+              ),
               Icon(
                 Icons.chevron_right_rounded,
                 color: iconColor.withValues(alpha: 0.5),
-      ),
+              ),
             ],
-      ),
-      ),
+          ),
+        ),
       ),
     );
   }

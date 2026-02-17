@@ -928,6 +928,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   // Hilfsmethode zur Übersetzung der Einheiten
+  // Hilfsmethode zur Übersetzung der Einheiten
   String _getUnitLabel(String unit, AppLocalizations s) {
     switch (unit) {
       case 'kg':
@@ -943,6 +944,23 @@ class _AddProductScreenState extends State<AddProductScreen> {
       default:
         return unit;
     }
+  }
+
+  // Hilfsmethode für Währungssymbole
+  String _getCurrencySymbol(String code) {
+    final upper = code.toUpperCase().trim();
+    return switch (upper) {
+      'SYP' => 'ل.س', 'AED' => 'د.إ', 'BHD' => 'د.ب', 'DZD' => 'د.ج',
+      'EGP' => 'ج.م', 'IQD' => 'ع.د', 'JOD' => 'د.أ', 'KWD' => 'د.ك',
+      'LBP' => 'ل.ل', 'LYD' => 'د.ل', 'MAD' => 'د.م.', 'OMR' => 'ر.ع.',
+      'QAR' => 'ر.ق', 'SAR' => '﷼', 'SDG' => 'ج.س', 'DJF' => 'Fdj',
+      'TND' => 'د.ت', 'YER' => 'ر.ي', 'MRU' => 'UM', 'SOS' => 'Sh',
+      'KMF' => 'CF', 'USD' => '\$', 'EUR' => '€', 'TRY' => '₺',
+      'GBP' => '£', 'CHF' => 'CHF', 'AUD' => 'A\$', 'CAD' => 'C\$',
+      'BRL' => 'R\$', 'CNY' => '¥', 'JPY' => '¥', 'RUB' => '₽',
+      'SEK' => 'kr',
+      _ => upper,
+    };
   }
 
   @override
@@ -1065,8 +1083,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           final store = StoreConfigService.store;
                           final bool useRef = store?['use_reference_price'] ?? false;
                           final double refRate = (store?['reference_rate'] ?? 1.0).toDouble();
-                          final String refCurrency = store?['reference_currency'] ?? '€';
-                          final String localCurrency = store?['currency'] ?? '€';
+
+                          // ISO Codes in Symbole umwandeln
+                          final String refCurrencyIso = store?['reference_currency']?.toString() ?? 'EUR';
+                          final String localCurrencyIso = store?['currency']?.toString() ?? 'EUR';
+                          final String refCurrency = _getCurrencySymbol(refCurrencyIso);
+                          final String localCurrency = _getCurrencySymbol(localCurrencyIso);
 
                           // حساب السعر النهائي إذا تم إدخال رقم
                           String? helperText;
