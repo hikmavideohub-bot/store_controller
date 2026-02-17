@@ -1073,6 +1073,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
               // --- PREIS & GRÖßE nebeneinander, darunter Kategorien (vollbreit) ---
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     // نستخدم AnimatedBuilder لكي يتحدث الـ helperText مباشرة عند الكتابة
@@ -1109,12 +1110,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
                               useRef ? '${s.priceLabel} ($refCurrency)' : s.priceLabel,
                               icon: Icons.sell_outlined,
                             ).copyWith(
-                              // إظهار السعر النهائي باللون الأخضر تحت الحقل
-                              helperText: helperText,
+                            ).copyWith(
+                              helperText: useRef ? (helperText ?? ' ') : null,
+                              helperMaxLines: 4, // <- mehrzeilig, kein Abschneiden
                               helperStyle: const TextStyle(
                                 color: Colors.green,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
+                                height: 1.2,
                               ),
                             ),
                             validator: validateRequired,
@@ -1591,128 +1594,138 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final imageUrl = _previewImageUrl ?? _imageController.text;
     final hasImage = imageUrl.trim().isNotEmpty;
 
-    return InkWell(
-      key: key,
-      onTap: _uploadingImage ? null : _pickAndUploadImage,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        height: 200,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: hasImage
-              ? null
-              : Border.all(color: colors.outline.withValues(alpha: 0.3)),
-          boxShadow: hasImage
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.10),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-          image: hasImage
-              ? DecorationImage(
-                  image: NetworkImage(imageUrl),
-                  fit: BoxFit.cover,
-                )
-              : null,
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            if (!hasImage && !_uploadingImage)
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.cloud_upload_outlined,
-                    size: 48,
-                    color: colors.primary.withValues(alpha: 0.55),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(s.tapToUpload, style: TextStyle(color: theme.hintColor)),
-                ],
-              ),
+    // Auf großen Screens sonst extrem breit (z.B. 720x200).
+    // Höhe skaliert leicht mit Breite, aber mit Cap.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.of(context).size.width;
 
-            // Upload Overlay
-            if (_uploadingImage)
-              Container(
-                decoration: BoxDecoration(
-                  color: colors.scrim.withValues(alpha: 0.72),
-                  borderRadius: BorderRadius.circular(16),
+        final h = (w * 0.55).clamp(200.0, 320.0);
+
+        return InkWell(
+          key: key,
+          onTap: _uploadingImage ? null : _pickAndUploadImage,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            height: h,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: hasImage
+                  ? null
+                  : Border.all(color: colors.outline.withValues(alpha: 0.3)),
+              boxShadow: hasImage
+                  ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.10),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+              ]
+                  : null,
+              image: hasImage
+                  ? DecorationImage(
+                image: NetworkImage(imageUrl),
+                // weniger Zoom / keine abgeschnittenen Details
+                fit: BoxFit.contain,
+                alignment: Alignment.center,
+              )
+                  : null,
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (!hasImage && !_uploadingImage)
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircularProgressIndicator(
-                        value: _uploadProgress > 0 ? _uploadProgress : null,
-                        color: theme.brightness == Brightness.dark ? colors.onSurface : colors.onPrimary,
-                        backgroundColor: (theme.brightness == Brightness.dark ? colors.onSurface : colors.onPrimary)
-                            .withValues(alpha:0.18),
+                      Icon(
+                        Icons.cloud_upload_outlined,
+                        size: 48,
+                        color: colors.primary.withValues(alpha: 0.55),
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        '${(_uploadProgress * 100).toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          color: theme.brightness == Brightness.dark ? colors.onSurface : colors.onPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        _uploadStatus,
-                        style: TextStyle(
-                          color: (theme.brightness == Brightness.dark ? colors.onSurface : colors.onPrimary)
-                              .withValues(alpha:0.8),
-                          fontSize: 12,
-                        ),
-                      ),
+                      const SizedBox(height: 8),
+                      Text(s.tapToUpload, style: TextStyle(color: theme.hintColor)),
                     ],
                   ),
-                ),
-              ),
 
-            // Edit/Delete Buttons wenn Bild da ist
-            if (hasImage && !_uploadingImage)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: colors.scrim.withValues(alpha: 0.6),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.edit,
-                          color: colors.onPrimary,
-                          size: 20,
-                        ),
-                        onPressed: _pickAndUploadImage,
+                if (_uploadingImage)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: colors.scrim.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(
+                            value: _uploadProgress > 0 ? _uploadProgress : null,
+                            color: theme.brightness == Brightness.dark
+                                ? colors.onSurface
+                                : colors.onPrimary,
+                            backgroundColor:
+                            (theme.brightness == Brightness.dark ? colors.onSurface : colors.onPrimary)
+                                .withValues(alpha: 0.18),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            '${(_uploadProgress * 100).toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              color: theme.brightness == Brightness.dark
+                                  ? colors.onSurface
+                                  : colors.onPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            _uploadStatus,
+                            style: TextStyle(
+                              color: (theme.brightness == Brightness.dark ? colors.onSurface : colors.onPrimary)
+                                  .withValues(alpha: 0.8),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    CircleAvatar(
-                      backgroundColor: colors.error.withValues(alpha: 0.85),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.delete,
-                          color: colors.onError,
-                          size: 20,
+                  ),
+
+                if (hasImage && !_uploadingImage)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: colors.scrim.withValues(alpha: 0.6),
+                          child: IconButton(
+                            icon: Icon(Icons.edit, color: colors.onPrimary, size: 20),
+                            onPressed: _pickAndUploadImage,
+                          ),
                         ),
-                        onPressed: () => _deleteCurrentImage(),
-                      ),
+                        const SizedBox(width: 8),
+                        CircleAvatar(
+                          backgroundColor: colors.error.withValues(alpha: 0.85),
+                          child: IconButton(
+                            icon: Icon(Icons.delete, color: colors.onError, size: 20),
+                            onPressed: () => _deleteCurrentImage(),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
+
 
   bool _isManagedCdnImage(String url) {
     try {
