@@ -880,8 +880,15 @@ exports.createStripeCheckoutSession = onCall(
     const productName = langDict[planId] || langDict['default'];
 
     // SCHRITT E: STRIPE SESSION
-    let returnBaseUrl = "https://admin.aldeebtech.de/payment";
-    if (platform === 'web') returnBaseUrl = "https://aldeebtech.de/#/payment";
+        let returnBaseUrl;
+
+        // Prüfen, ob die Zahlung vom Webbrowser oder von der Handy-App kommt
+        if (platform === 'web') {
+          returnBaseUrl = "https://admin.aldeebtech.de/payment";
+        } else {
+          // Das ist der magische Deep-Link, der deine App wieder öffnet!
+          returnBaseUrl = "aldeebtech://payment";
+        }
 
     try {
       const session = await stripe.checkout.sessions.create({
