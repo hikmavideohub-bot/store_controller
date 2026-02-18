@@ -2439,8 +2439,6 @@ exports.syncStoresOnCategoryDictUpdate =
 
 exports.translateProductDescription =
   require("./i18n_product_descriptions").translateProductDescription;
-exports.translateProductDescriptionOnce =
-  require("./i18n_product_descriptions").translateProductDescriptionOnce;
 exports.runPendingDescTranslations =
   require("./i18n_product_descriptions").runPendingDescTranslations;
 exports.moderateProductAfterWrite =

@@ -853,10 +853,51 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
 
 
+      // NEU: Wir bereiten eine Variable für das finale Produkt vor
+      Product finalProductToReturn = p;
+
       if (success && widget.productToEdit == null && _autoTranslateOnCreate) {
         final storeId = ApiService.storeId;
         if (storeId != null) {
+          // 1. App wartet auf Firebase und füllt die Text-Controller mit der Übersetzung
           await _waitForTranslationAndFill(storeId, _draftProductId);
+
+          // 2. Wir erstellen das Produkt-Objekt NEU, damit es die frischen Übersetzungen enthält!
+          finalProductToReturn = Product(
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            sizeValue: p.sizeValue,
+            sizeUnit: p.sizeUnit,
+            image: p.image,
+            thumb: p.thumb,
+            category: p.category,
+            productActive: p.productActive,
+            hasOffer: p.hasOffer,
+            offerType: p.offerType,
+            percent: p.percent,
+            bundleQty: p.bundleQty,
+            bundlePrice: p.bundlePrice,
+            bulkQty: p.bulkQty,
+            bulkPrice: p.bulkPrice,
+            offerStartDate: p.offerStartDate,
+            offerEndDate: p.offerEndDate,
+            offerActive: p.offerActive,
+            // HIER holen wir uns die fertigen Übersetzungen direkt aus den Controllern:
+            descriptionMap: {
+              'ar': _descArController.text.trim(),
+              'de': _descDeController.text.trim(),
+              'en': _descEnController.text.trim(),
+              'tr': _descTrController.text.trim(),
+            },
+            description: _descDeController.text.trim().isNotEmpty
+                ? _descDeController.text.trim()
+                : _descEnController.text.trim().isNotEmpty
+                ? _descEnController.text.trim()
+                : _descArController.text.trim().isNotEmpty
+                ? _descArController.text.trim()
+                : _descTrController.text.trim(),
+          );
         }
       }
 
@@ -874,7 +915,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
         );
         // Kurze Verzögerung damit der User die Message sieht
         await Future.delayed(const Duration(milliseconds: 500));
-        if (mounted) context.pop(p);
+
+        // 3. Wir geben das AKTUALISIERTE Produkt an die Liste zurück!
+        if (mounted) context.pop(finalProductToReturn);
       }
 
     } finally {
