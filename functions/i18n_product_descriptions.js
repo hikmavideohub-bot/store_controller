@@ -17,6 +17,10 @@ const AZURE_TRANSLATOR_KEY = defineSecret("AZURE_TRANSLATOR_KEY");
 const AZURE_TRANSLATOR_ENDPOINT = defineSecret("AZURE_TRANSLATOR_ENDPOINT");
 const AZURE_TRANSLATOR_REGION = defineSecret("AZURE_TRANSLATOR_REGION");
 
+// Gemini API Secret & Import
+const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
 // Constants
 const SUPPORTED_LANGS = ["ar", "de", "en", "tr"];
 const MAX_DESC_LEN = 300; // only for auto-translate, NOT for manual edits
@@ -123,14 +127,57 @@ async function azureTranslate(text, fromLang, targetLangs) {
   }
 
   const json = await res.json();
-  const translations = {};
-  for (const t of json?.[0]?.translations ?? []) {
-    if (t.to && t.text) translations[t.to] = t.text;
+    const translations = {};
+    for (const t of json?.[0]?.translations ?? []) {
+      if (t.to && t.text) translations[t.to] = t.text;
+    }
+    return translations;
   }
-  return translations;
-}
 
-// ---------- Budget + Lock (atomic) ----------
+  // ---------- Gemini Translator ----------
+  async function geminiTranslate(text, sourceLang, targetLangs) {
+    console.log(`[Gemini] Starte Übersetzung von ${sourceLang} nach ${targetLangs.join(", ")}`);
+
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
+
+    // WICHTIG: Wir zwingen das Modell auf JSON-Ausgabe
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: { responseMimeType: "application/json" }
+    });
+
+    const prompt = `
+    Übersetze die folgende Produktbeschreibung von ${sourceLang} in die folgenden Sprachen: ${targetLangs.join(", ")}.
+    Gib als Antwort NUR ein JSON-Objekt zurück. Die Keys müssen die Sprachcodes sein (z.B. "en", "de", "tr", "ar") und die Values die Übersetzungen.
+    Text: "${text}"
+    `;
+
+    const result = await model.generateContent(prompt);
+    let responseText = result.response.text();
+
+    console.log(`[Gemini] Rohe Antwort vom Server:`, responseText);
+
+    return JSON.parse(responseText);
+  }
+
+  // ---------- Fallback Wrapper (Gemini -> Azure) ----------
+  async function translateWithFallback(text, sourceLang, targetLangs) {
+    try {
+      const translations = await geminiTranslate(text, sourceLang, targetLangs);
+      console.log(`[translateWithFallback] Gemini war erfolgreich!`);
+      return { translations, provider: "gemini" };
+    } catch (error) {
+      // Hier loggen wir GANZ GENAU, was schiefgelaufen ist!
+      console.error(`[translateWithFallback] GEMINI ABSTURZ: ${error.message}`);
+      console.error(`[translateWithFallback] Vollständiger Error:`, error);
+      console.log(`[translateWithFallback] Wechsle zu Azure Fallback...`);
+
+      const translations = await azureTranslate(text, sourceLang, targetLangs);
+      return { translations, provider: "azure" };
+    }
+  }
+
+  // ---------- Budget + Lock (atomic) ----------
 
 /**
  * Atomically: check autoTranslateUsed lock, reserve char budget,
@@ -225,8 +272,8 @@ exports.translateProductDescription = onDocumentCreated(
   {
     document: "stores_public/{storeId}/products/{productId}",
     region: REGION_PRIMARY,
-    // IMPORTANT: needed because we may call Azure here
-    secrets: [AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_ENDPOINT, AZURE_TRANSLATOR_REGION],
+    // IMPORTANT: needed because we may call Azure or Gemini here
+    secrets: [AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_ENDPOINT, AZURE_TRANSLATOR_REGION, GEMINI_API_KEY],
     timeoutSeconds: 120,
   },
   async (event) => {
@@ -329,10 +376,10 @@ exports.translateProductDescription = onDocumentCreated(
     }
 
     // ---- 5) Translate + write (fill ONLY empty target fields) ----
-    try {
-      const translations = await azureTranslate(inputTextForAuto, sourceLang, targetLangs);
+      try {
+        const { translations, provider } = await translateWithFallback(inputTextForAuto, sourceLang, targetLangs);
 
-      const currentDesc = { ...normalized };
+        const currentDesc = { ...normalized };
 
       // NEVER overwrite non-empty values (manual text wins)
       // SourceLang stays full manual text (not truncated) if already present
@@ -359,9 +406,9 @@ exports.translateProductDescription = onDocumentCreated(
           descAutoTranslateRequested: admin.firestore.FieldValue.delete(),
           sourceHint: admin.firestore.FieldValue.delete(),
           description_meta: {
-            autoTranslateUsed: true,
-            provider: "azure",
-            sourceLang,
+                      autoTranslateUsed: true,
+                      provider: provider,
+                      sourceLang,
             autoSourceText: inputTextForAuto,
             hash,
             translatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -394,7 +441,7 @@ exports.translateProductDescription = onDocumentCreated(
 exports.translateProductDescriptionOnce = onCall(
   {
     region: REGION_PRIMARY,
-    secrets: [AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_ENDPOINT, AZURE_TRANSLATOR_REGION],
+     secrets: [AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_ENDPOINT, AZURE_TRANSLATOR_REGION, GEMINI_API_KEY],
   },
   async (request) => {
     // ---- Auth ----
@@ -468,7 +515,7 @@ exports.translateProductDescriptionOnce = onCall(
 
     // f) Azure translate
     try {
-      const translations = await azureTranslate(inputTextForAuto, sourceLang, targetLangs);
+      const { translations, provider } = await translateWithFallback(inputTextForAuto, sourceLang, targetLangs);
 
       // g) Write — fill only empty keys, never overwrite non-empty
       const currentDesc = data.description && typeof data.description === "object"
@@ -498,9 +545,9 @@ exports.translateProductDescriptionOnce = onCall(
         description: currentDesc,
         descTranslationStatus: "ready",
         description_meta: {
-          autoTranslateUsed: true,
-          provider: "azure",
-          sourceLang,
+                  autoTranslateUsed: true,
+                  provider: provider,
+                  sourceLang,
           autoSourceText: inputTextForAuto,
           hash,
           translatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -532,7 +579,7 @@ exports.runPendingDescTranslations = onSchedule(
   {
     schedule: "0 0 1 * *",
     region: REGION_PRIMARY,
-    secrets: [AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_ENDPOINT, AZURE_TRANSLATOR_REGION],
+        secrets: [AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_ENDPOINT, AZURE_TRANSLATOR_REGION, GEMINI_API_KEY],
     timeoutSeconds: 540,
   },
   async () => {
@@ -620,7 +667,7 @@ exports.runPendingDescTranslations = onSchedule(
           }
 
           try {
-            const translations = await azureTranslate(inputTextForAuto, sourceLang, targetLangs);
+            const { translations, provider } = await translateWithFallback(inputTextForAuto, sourceLang, targetLangs);
 
             // Fill only empty keys
             const currentDesc = prodData.description && typeof prodData.description === "object"
@@ -647,9 +694,9 @@ exports.runPendingDescTranslations = onSchedule(
               description: currentDesc,
               descTranslationStatus: "ready",
               description_meta: {
-                autoTranslateUsed: true,
-                provider: "azure",
-                sourceLang,
+                              autoTranslateUsed: true,
+                              provider: provider,
+                              sourceLang,
                 autoSourceText: inputTextForAuto,
                 hash,
                 translatedAt: admin.firestore.FieldValue.serverTimestamp(),
