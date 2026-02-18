@@ -1327,6 +1327,79 @@ exports.cleanupExpiredAccounts = onSchedule(
   }
 );
 
+/**
+ * SECURE: Cleanup Incomplete Setups (v2 Schedule)
+ * Löscht alle Stores, die im Status "draft" feststecken (Setup-Wizard nicht abgeschlossen)
+ * und älter als 24 Stunden sind.
+ */
+exports.cleanupIncompleteSetups = onSchedule(
+  {
+    region: REGION_PRIMARY,
+    maxInstances: 1, // Cron-Job braucht nur 1 Instanz
+    schedule: "30 4 * * *", // Läuft täglich um 04:30 UTC (30 Min nach dem anderen Cleanup)
+    timeZone: "UTC"
+  },
+  async (event) => {
+    const now = new Date();
+    // 24 Stunden zurückrechnen
+    const cutoffTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    let deletedCount = 0;
+
+    try {
+      // 1. Suche in Private nach allen unfertigen Stores
+      const incompleteStores = await db.collection("stores_private")
+        .where("status", "==", "draft")
+        .get();
+
+      for (const doc of incompleteStores.docs) {
+        const storeData = doc.data();
+        const createdAt = storeData.created_at;
+
+        if (!createdAt) continue; // Überspringen, falls kein Datum existiert
+
+        // Datum konvertieren (Firestore Timestamp -> JS Date)
+        let createdDate = createdAt?.toDate ? createdAt.toDate() : new Date(createdAt);
+
+        if (createdDate < cutoffTime) {
+          const storeId = doc.id;
+          try {
+            console.log(`🗑️ Lösche unfertigen Store: ${storeId}`);
+
+            // LÖSCHEN: Private
+            await db.collection("stores_private").doc(storeId).delete();
+            // LÖSCHEN: Public
+            await db.collection("stores_public").doc(storeId).delete();
+
+            // LÖSCHEN: Auth User aus Firebase Authentication
+            try {
+              await admin.auth().deleteUser(storeId);
+            } catch (e) {
+              console.warn(`Auth-User ${storeId} war bereits gelöscht.`);
+            }
+
+            // LÖSCHEN: Produkte (falls sie im Draft-Status überhaupt angelegt wurden)
+            const productsSnap = await db.collection("stores_public").doc(storeId)
+              .collection("products").get();
+            if (productsSnap.size > 0) {
+              const batch = db.batch();
+              productsSnap.docs.forEach(d => batch.delete(d.ref));
+              await batch.commit();
+            }
+
+            deletedCount++;
+          } catch (deleteError) {
+            console.error(`❌ Failed to delete incomplete store ${storeId}:`, deleteError);
+          }
+        }
+      }
+      console.log(`✅ Incomplete Setup Cleanup complete. Deleted: ${deletedCount} unfertige Accounts.`);
+    } catch (error) {
+      console.error("Cleanup incomplete setups failed:", error);
+    }
+  }
+);
+
 exports.requestAccountDeletion = onCall(
   { region: REGION_PRIMARY },
   async (request) => {

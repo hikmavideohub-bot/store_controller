@@ -428,6 +428,31 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     return items.every((p) => p.hasOffer && p.offerActive);
   }
 
+  // NEU: Prüft, ob ein Produkt ein heute gültiges Angebot hat
+  bool _isOfferValidToday(Product p) {
+    if (!p.hasOffer || !p.offerActive) return false;
+
+    final now = DateTime.now();
+    final start = DateTime.tryParse(p.offerStartDate);
+    final end = DateTime.tryParse(p.offerEndDate);
+
+    if (start == null || end == null) return true;
+
+    final today = DateTime(now.year, now.month, now.day);
+    final s = DateTime(start.year, start.month, start.day);
+    final e = DateTime(end.year, end.month, end.day);
+
+    return !today.isBefore(s) && !today.isAfter(e);
+  }
+
+  // NEU: Prüft, ob irgendein Produkt in der Kategorie ein Angebot hat
+  bool _categoryHasAnyOffer(String category) {
+    return _products.any((p) =>
+    p.category.trim() == category.trim() && _isOfferValidToday(p)
+    );
+  }
+
+
   void _showCategoryActionSheet(String category, int productCount) {
     final ctx = _scaffoldKey.currentContext!;
     final colors = Theme.of(ctx).colorScheme;
@@ -921,6 +946,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final s = AppLocalizations.of(_scaffoldKey.currentContext!)!;
 
+    // NEU: Prüfen ob es Angebote gibt
+    final hasOffers = _categoryHasAnyOffer(category);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
       child: Container(
@@ -928,8 +956,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           color: colors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: colors.outline.withValues(alpha: 0.2),
-            width: 1,
+            color: hasOffers // Wenn Angebot da ist, Rahmen leicht hervorheben
+                ? colors.tertiary.withValues(alpha: 0.4)
+                : colors.outline.withValues(alpha: 0.2),
+            width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
@@ -984,26 +1014,71 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white10
-                                : Colors.black.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            s.productsCount(count),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.hintColor,
-                              fontWeight: FontWeight.w600,
+                        const SizedBox(height: 6),
+
+                        // ÄNDERUNG HIER: Row für Anzahl UND Offer-Badge
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white10
+                                    : Colors.black.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                s.productsCount(count),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: theme.hintColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
-                          ),
+
+                            // NEU: Offer Badge mit Text
+                            if (hasOffers) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colors.tertiary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: colors.tertiary.withValues(alpha: 0.4),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Optional: Ein winziges Icon sieht neben dem Text oft noch edler aus.
+                                    // Wenn du es GAR NICHT willst, kannst du diese Icon-Zeile einfach löschen.
+                                    Icon(
+                                      Icons.local_offer_rounded,
+                                      size: 11,
+                                      color: colors.tertiary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      s.activeOffersBadge, // <--- Dein neuer ARB-Key!
+                                      style: TextStyle(
+                                        fontSize: 10, // Etwas kleiner für den längeren Text
+                                        fontWeight: FontWeight.w800,
+                                        color: colors.tertiary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),

@@ -175,7 +175,7 @@ class CdnHelper {
   }) {
     final safeExt = (ext == '.png') ? '.png' : '.webp';
     return cdnUrlForStoragePath(
-      'stores/$storeId/logo/original/logos/${baseName}_360x360$safeExt',
+      'stores/$storeId/logo/original/${baseName}_360x360$safeExt',
     );
   }
 
