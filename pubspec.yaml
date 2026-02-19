@@ -57,7 +57,7 @@ dependencies:
   share_plus: ^10.1.0
 
   # Location (optional)
-  google_maps_flutter: ^2.5.0 # oder aktuellste Version
+  google_maps_flutter: 2.14.2
   geolocator: ^13.0.0
   geocoding: ^3.0.0
 
@@ -72,6 +72,9 @@ dependencies:
 # =====================================================
 # DEV DEPENDENCIES
 # =====================================================
+dependency_overrides:
+  google_maps_flutter_android: 2.18.9
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
