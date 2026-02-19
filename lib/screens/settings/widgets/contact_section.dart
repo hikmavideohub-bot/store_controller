@@ -245,6 +245,28 @@ class _AddressSelector extends StatelessWidget {
             ),
           ),
         ),
+        if (hasAddress) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 14, color: colors.primary.withValues(alpha: 0.8)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    s.addressPrecisionHint,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                      color: colors.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
 
         // Action Buttons Row
