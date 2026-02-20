@@ -119,6 +119,9 @@ class SettingsViewModel extends BaseViewModel {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     if (uid.isEmpty) return;
 
+    // Signalisiere Start der Verarbeitung
+    setLogoUploadInProgress(true);
+
     final webpUrl = CdnHelper.buildResizedLogoCdnUrl(
       storeId: uid,
       baseName: baseName,
@@ -149,6 +152,7 @@ class SettingsViewModel extends BaseViewModel {
 
     if (foundUrl == null) {
       debugPrint('pollForResizedLogo: resize not ready — NOT updating has_logo');
+      setLogoUploadInProgress(false);
       return;
     }
 
@@ -160,12 +164,14 @@ class SettingsViewModel extends BaseViewModel {
     }
 
     logoUrl = foundUrl;
-    notifyListeners();
-
-    // Persist
+    
+    // Persist IMMER sofort (für Wizard & UI Konsistenz)
     await StoreConfigService.mergeNonEmpty({'has_logo': foundUrl});
     await ApiService.updateStore({'has_logo': foundUrl});
     debugPrint('pollForResizedLogo: has_logo persisted');
+    
+    setLogoUploadInProgress(false);
+    notifyListeners();
   }
 
   /// Robust gegen Cloudflare: kein HEAD, sondern GET mit Range + CacheBust.
@@ -496,14 +502,21 @@ class SettingsViewModel extends BaseViewModel {
 
     final oldUrl = logoUrl;
     logoUrl = '';
-    markDirty();
+    
+    // UI sofort aktualisieren
     notifyListeners();
 
     // Altes Bild aus dem Image-Cache entfernen
     CachedNetworkImage.evictFromCache(oldUrl);
 
-    // Lösche alle Varianten im Hintergrund
+    // Persistenz: Sofort in DB speichern (wichtig für Wizard & Konsistenz)
+    await StoreConfigService.mergeNonEmpty({'has_logo': ''});
+    await ApiService.updateStore({'has_logo': ''});
+
+    // Lösche alle Varianten im Hintergrund aus Firebase Storage
     await _deleteOldLogo(storeId, oldUrl);
+    
+    debugPrint('✅ Logo deleted and persisted as empty');
   }
 
   void setShowNameWithLogo(bool value) {

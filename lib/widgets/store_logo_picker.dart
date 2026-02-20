@@ -17,6 +17,9 @@ class StoreLogoPicker extends StatefulWidget {
   final Function()? onLogoDeleted;
   final Function(String baseName)? onLogoUploaded;
   final ValueChanged<bool>? onUploadStateChanged;
+  
+  /// Wenn true, wird ein Ladeindikator angezeigt (z.B. während das Resize-Polling läuft)
+  final bool isProcessing;
   final double size;
 
   const StoreLogoPicker({
@@ -28,6 +31,7 @@ class StoreLogoPicker extends StatefulWidget {
     this.onLogoDeleted,
     this.onLogoUploaded,
     this.onUploadStateChanged,
+    this.isProcessing = false,
     this.size = 80,
   });
 
@@ -36,8 +40,10 @@ class StoreLogoPicker extends StatefulWidget {
 }
 
 class _StoreLogoPickerState extends State<StoreLogoPicker> {
-  bool _uploading = false;
+  bool _localUploading = false;
   double _uploadProgress = 0.0;
+
+  bool get _isLoading => _localUploading || widget.isProcessing;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +59,7 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
           children: [
             // Logo Container
             GestureDetector(
-              onTap: _uploading ? null : _pickAndUploadLogo,
+              onTap: _isLoading ? null : _pickAndUploadLogo,
               child: Container(
                 width: widget.size,
                 height: widget.size,
@@ -73,7 +79,7 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
                   ],
                 ),
                 child: ClipOval(
-                  child: _uploading
+                  child: _isLoading
                       ? _buildUploadProgress(colors)
                       : _buildLogoContent(colors),
                 ),
@@ -86,7 +92,7 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
                 bottom: 0,
                 left: 0,
                 child: GestureDetector(
-                  onTap: _uploading ? null : () => _confirmDelete(context, s),
+                  onTap: _isLoading ? null : () => _confirmDelete(context, s),
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
@@ -152,6 +158,9 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
   }
 
   Widget _buildUploadProgress(ColorScheme colors) {
+    // Wenn wir nur "processing" sind (Polling), zeigen wir einen unbestimmten Spinner
+    final showDeterminate = _localUploading && _uploadProgress > 0;
+    
     return Container(
       color: colors.scrim.withValues(alpha: 0.7),
       child: Center(
@@ -162,14 +171,16 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
               width: widget.size * 0.4,
               height: widget.size * 0.4,
               child: CircularProgressIndicator(
-                value: _uploadProgress > 0 ? _uploadProgress : null,
+                value: showDeterminate ? _uploadProgress : null,
                 color: colors.onPrimary,
                 strokeWidth: 3,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              '${(_uploadProgress * 100).toStringAsFixed(0)}%',
+              showDeterminate 
+                  ? '${(_uploadProgress * 100).toStringAsFixed(0)}%'
+                  : '...', // Polling State
               style: TextStyle(
                 color: colors.onPrimary,
                 fontSize: 10,
@@ -238,11 +249,8 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
       return;
     }
 
-    final authUid = FirebaseAuth.instance.currentUser?.uid ?? 'NO_AUTH';
-    debugPrint('Logo Upload: storeId=$effectiveStoreId, auth=$authUid');
-
     setState(() {
-      _uploading = true;
+      _localUploading = true;
       _uploadProgress = 0.0;
     });
     widget.onUploadStateChanged?.call(true);
@@ -281,22 +289,15 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
 
       if (mounted) {
         setState(() {
-          _uploading = false;
+          _localUploading = false;
         });
-        widget.onUploadStateChanged?.call(false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(s.saveChangesButton),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        // Wir rufen hier NICHT false auf, da das ViewModel den Status via isProcessing weiterhält
       }
     } catch (e) {
       debugPrint('Logo upload error: $e');
       if (mounted) {
         setState(() {
-          _uploading = false;
+          _localUploading = false;
         });
         widget.onUploadStateChanged?.call(false);
         ScaffoldMessenger.of(context).showSnackBar(
