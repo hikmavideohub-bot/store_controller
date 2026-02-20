@@ -7,19 +7,27 @@ import 'package:store_controller/l10n/generated/app_localizations.dart';
 
 /// Wiederverwendbares Widget für Store-Logo Upload
 ///
-/// Zeigt aktuelles Logo (Bild) oder Store-Name-Initialen als Fallback.
-/// Tap öffnet ImagePicker für neuen Upload.
+/// - Zeigt aktuelles Logo oder Platzhalter
+/// - Tap => Upload
+/// - Delete => sofort löschen (kein "erst nach Speichern")
+/// - Zeigt Status: Uploading / Processing / Deleting
 class StoreLogoPicker extends StatefulWidget {
   final String? logoUrl;
   final String storeName;
   final String storeId;
+
+  /// Optional: falls du lokal sofort UI updaten willst
   final Function(String newLogoUrl) onLogoChanged;
-  final Function()? onLogoDeleted;
-  final Function(String baseName)? onLogoUploaded;
+
+  /// Löscht Logo sofort (Firestore/Backend) + Storage cleanup (best effort)
+  final Future<void> Function()? onLogoDeleted;
+
+  /// Wird nach Upload aufgerufen, um Polling/Resized-Persist abzuwarten
+  final Future<void> Function(String baseName)? onLogoUploaded;
+
+  /// z.B. um Settings "disabled" zu machen während Upload/Delete läuft
   final ValueChanged<bool>? onUploadStateChanged;
-  
-  /// Wenn true, wird ein Ladeindikator angezeigt (z.B. während das Resize-Polling läuft)
-  final bool isProcessing;
+
   final double size;
 
   const StoreLogoPicker({
@@ -31,7 +39,6 @@ class StoreLogoPicker extends StatefulWidget {
     this.onLogoDeleted,
     this.onLogoUploaded,
     this.onUploadStateChanged,
-    this.isProcessing = false,
     this.size = 80,
   });
 
@@ -40,10 +47,11 @@ class StoreLogoPicker extends StatefulWidget {
 }
 
 class _StoreLogoPickerState extends State<StoreLogoPicker> {
-  bool _localUploading = false;
-  double _uploadProgress = 0.0;
+  bool _busy = false;
+  double _progress = 0.0;
 
-  bool get _isLoading => _localUploading || widget.isProcessing;
+  /// none | uploading | processing | deleting
+  String _phase = 'none';
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +65,8 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
         Stack(
           clipBehavior: Clip.none,
           children: [
-            // Logo Container
             GestureDetector(
-              onTap: _isLoading ? null : _pickAndUploadLogo,
+              onTap: _busy ? null : _pickAndUploadLogo,
               child: Container(
                 width: widget.size,
                 height: widget.size,
@@ -79,8 +86,8 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
                   ],
                 ),
                 child: ClipOval(
-                  child: _isLoading
-                      ? _buildUploadProgress(colors)
+                  child: _busy
+                      ? _buildProgressOverlay(colors, s)
                       : _buildLogoContent(colors),
                 ),
               ),
@@ -92,7 +99,7 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
                 bottom: 0,
                 left: 0,
                 child: GestureDetector(
-                  onTap: _isLoading ? null : () => _confirmDelete(context, s),
+                  onTap: _busy ? null : () => _confirmDelete(context, s),
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
@@ -100,10 +107,10 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
                       shape: BoxShape.circle,
                       border: Border.all(color: colors.surface, width: 2),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.delete,
                       size: 14,
-                      color: Colors.white,
+                      color: colors.onError,
                     ),
                   ),
                 ),
@@ -137,14 +144,14 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
         fit: BoxFit.cover,
         width: widget.size,
         height: widget.size,
-        placeholder: (_, __) => _buildInitials(colors),
-        errorWidget: (_, __, ___) => _buildInitials(colors),
+        placeholder: (_, __) => _buildPlaceholder(colors),
+        errorWidget: (_, __, ___) => _buildPlaceholder(colors),
       );
     }
-    return _buildInitials(colors);
+    return _buildPlaceholder(colors);
   }
 
-  Widget _buildInitials(ColorScheme colors) {
+  Widget _buildPlaceholder(ColorScheme colors) {
     return Container(
       color: colors.primaryContainer.withValues(alpha: 0.3),
       child: Center(
@@ -157,12 +164,15 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
     );
   }
 
-  Widget _buildUploadProgress(ColorScheme colors) {
-    // Wenn wir nur "processing" sind (Polling), zeigen wir einen unbestimmten Spinner
-    final showDeterminate = _localUploading && _uploadProgress > 0;
-    
+  Widget _buildProgressOverlay(ColorScheme colors, AppLocalizations s) {
+    final label = switch (_phase) {
+      'uploading' => _progress > 0 ? '${(_progress * 100).toStringAsFixed(0)}%' : s.logoUploading,
+      'deleting' => s.logoDeleting,
+      _ => s.logoProcessing,
+    };
+
     return Container(
-      color: colors.scrim.withValues(alpha: 0.7),
+      color: colors.inverseSurface.withValues(alpha: 0.78),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -171,21 +181,20 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
               width: widget.size * 0.4,
               height: widget.size * 0.4,
               child: CircularProgressIndicator(
-                value: showDeterminate ? _uploadProgress : null,
-                color: colors.onPrimary,
+                value: (_phase == 'uploading' && _progress > 0) ? _progress : null,
+                color: colors.onInverseSurface,
                 strokeWidth: 3,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
-              showDeterminate 
-                  ? '${(_uploadProgress * 100).toStringAsFixed(0)}%'
-                  : '...', // Polling State
+              label,
               style: TextStyle(
-                color: colors.onPrimary,
+                color: colors.onInverseSurface,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -193,7 +202,6 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
     );
   }
 
-  /// Zeigt Bestätigungsdialog vor dem Löschen des Logos
   Future<void> _confirmDelete(BuildContext context, AppLocalizations s) async {
     final colors = Theme.of(context).colorScheme;
 
@@ -203,9 +211,14 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.delete_outline, color: colors.error),
-            const SizedBox(width: 12),
-            Expanded(child: Text(s.deleteLogo)),
+            Icon(Icons.warning_amber_rounded, color: colors.error),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                s.deleteLogoTitle,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
         content: Text(s.deleteLogoConfirm),
@@ -227,12 +240,52 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
     );
 
     if (confirmed == true) {
-      widget.onLogoDeleted?.call();
+      await _runDelete(s);
+    }
+  }
+
+  Future<void> _runDelete(AppLocalizations s) async {
+    if (widget.onLogoDeleted == null) return;
+
+    setState(() {
+      _busy = true;
+      _progress = 0.0;
+      _phase = 'deleting';
+    });
+    widget.onUploadStateChanged?.call(true);
+
+    try {
+      await widget.onLogoDeleted!.call();
+
+      // UI sofort leeren (falls Parent nicht direkt rebuildet)
+      widget.onLogoChanged('');
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.logoDeletedToast)),
+      );
+    } catch (e) {
+      debugPrint('Logo delete error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.uploadError)),
+      );
+      rethrow;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _progress = 0.0;
+          _phase = 'none';
+        });
+      }
+      widget.onUploadStateChanged?.call(false);
     }
   }
 
   Future<void> _pickAndUploadLogo() async {
     final s = AppLocalizations.of(context)!;
+
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       maxWidth: 1600,
@@ -240,6 +293,7 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
     );
     if (file == null) return;
 
+    // ✅ DEIN FIX: effectiveStoreId (nicht kaputt machen)
     final effectiveStoreId = widget.storeId.isNotEmpty
         ? widget.storeId
         : (FirebaseAuth.instance.currentUser?.uid ?? '');
@@ -249,9 +303,13 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
       return;
     }
 
+    final authUid = FirebaseAuth.instance.currentUser?.uid ?? 'NO_AUTH';
+    debugPrint('Logo Upload: storeId=$effectiveStoreId, auth=$authUid');
+
     setState(() {
-      _localUploading = true;
-      _uploadProgress = 0.0;
+      _busy = true;
+      _progress = 0.0;
+      _phase = 'uploading';
     });
     widget.onUploadStateChanged?.call(true);
 
@@ -259,14 +317,18 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
       final storage = FirebaseStorage.instanceFor(
         bucket: 'gs://aldeebtech-1ec64.firebasestorage.app',
       );
+
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final uniqueName = 'logo_$timestamp';
+
       final imageRef = storage.ref(
         'stores/$effectiveStoreId/logo/original/$uniqueName.png',
       );
 
+      final bytes = await file.readAsBytes();
+
       final task = imageRef.putData(
-        await file.readAsBytes(),
+        bytes,
         SettableMetadata(
           contentType: 'image/png',
           cacheControl: 'public, max-age=3600',
@@ -274,9 +336,11 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
       );
 
       task.snapshotEvents.listen((snapshot) {
-        if (mounted) {
+        if (!mounted) return;
+        final total = snapshot.totalBytes;
+        if (total > 0) {
           setState(() {
-            _uploadProgress = snapshot.bytesTransferred / snapshot.totalBytes;
+            _progress = snapshot.bytesTransferred / total;
           });
         }
       });
@@ -284,26 +348,44 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
       await task;
       debugPrint('Logo upload complete: $uniqueName.png');
 
-      // Signal upload finished — viewmodel polls for resized variant
-      widget.onLogoUploaded?.call(uniqueName);
-
+      // Jetzt “Processing…” bis resized verfügbar + persisted ist
       if (mounted) {
         setState(() {
-          _localUploading = false;
+          _progress = 0.0; // indeterminate
+          _phase = 'processing';
         });
-        // Wir rufen hier NICHT false auf, da das ViewModel den Status via isProcessing weiterhält
       }
+
+      if (widget.onLogoUploaded != null) {
+        await widget.onLogoUploaded!.call(uniqueName);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _busy = false;
+        _progress = 0.0;
+        _phase = 'none';
+      });
+      widget.onUploadStateChanged?.call(false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.logoUpdatedToast)),
+      );
     } catch (e) {
       debugPrint('Logo upload error: $e');
       if (mounted) {
         setState(() {
-          _localUploading = false;
+          _busy = false;
+          _progress = 0.0;
+          _phase = 'none';
         });
         widget.onUploadStateChanged?.call(false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(s.uploadError)),
         );
       }
+      rethrow;
     }
   }
 }

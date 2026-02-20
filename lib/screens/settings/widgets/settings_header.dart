@@ -70,7 +70,6 @@ class SettingsHeader extends StatelessWidget {
       onLogoDeleted: () => vm.deleteLogo(),
       onLogoUploaded: (baseName) => vm.pollForResizedLogo(baseName),
       onUploadStateChanged: (uploading) => vm.setLogoUploadInProgress(uploading),
-      isProcessing: vm.logoUploadInProgress,
       size: 80,
     );
   }

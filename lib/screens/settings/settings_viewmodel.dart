@@ -498,25 +498,40 @@ class SettingsViewModel extends BaseViewModel {
   }
 
   Future<void> deleteLogo() async {
-    if (logoUrl.isEmpty || storeId.isEmpty) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty || logoUrl.isEmpty) return;
 
     final oldUrl = logoUrl;
+
+    setLogoUploadInProgress(true);
+
+    // UI sofort updaten
     logoUrl = '';
-    
-    // UI sofort aktualisieren
     notifyListeners();
 
-    // Altes Bild aus dem Image-Cache entfernen
-    CachedNetworkImage.evictFromCache(oldUrl);
+    try {
+      await CachedNetworkImage.evictFromCache(oldUrl);
 
-    // Persistenz: Sofort in DB speichern (wichtig für Wizard & Konsistenz)
-    await StoreConfigService.mergeNonEmpty({'has_logo': ''});
-    await ApiService.updateStore({'has_logo': ''});
+      // SOFORT persistieren (wichtig für Wizard ohne "Speichern")
+      final ok = await ApiService.updateStore({'has_logo': ''});
+      if (!ok) throw Exception('updateStore failed');
 
-    // Lösche alle Varianten im Hintergrund aus Firebase Storage
-    await _deleteOldLogo(storeId, oldUrl);
-    
-    debugPrint('✅ Logo deleted and persisted as empty');
+      // lokalen Cache updaten (damit loadData nicht wieder altes Logo zieht)
+      final cur = StoreConfigService.store ?? <String, dynamic>{};
+      cur['has_logo'] = '';
+      await StoreConfigService.set(cur);
+
+      // Storage cleanup (best effort)
+      await _deleteOldLogo(uid, oldUrl);
+    } catch (e) {
+      debugPrint('deleteLogo error: $e');
+      // rollback (optional)
+      logoUrl = oldUrl;
+      notifyListeners();
+      rethrow;
+    } finally {
+      setLogoUploadInProgress(false);
+    }
   }
 
   void setShowNameWithLogo(bool value) {
@@ -531,25 +546,27 @@ class SettingsViewModel extends BaseViewModel {
         bucket: 'gs://aldeebtech-1ec64.firebasestorage.app',
       );
 
-      // New logo flow: URL contains /logos/ (encoded or unencoded)
-      if (CdnHelper.isResizedLogoUrl(oldLogoUrl)) {
-        final storagePath = CdnHelper.extractStoragePath(oldLogoUrl);
-        if (storagePath == null) return;
+      // CDN-URL → echten Storage-Pfad ableiten (funktioniert auch ohne /logos/)
+      final storagePath = CdnHelper.extractStoragePath(oldLogoUrl);
+      if (storagePath != null) {
         final baseName = _extractBaseFilename(oldLogoUrl);
         if (baseName == null) return;
 
-        // Determine prefix directory from the decoded storage path
         final lastSlash = storagePath.lastIndexOf('/');
         if (lastSlash == -1) return;
         final dirPath = storagePath.substring(0, lastSlash);
 
-        // Delete webp + png variants of the old baseName
-        final variants = [
+        final variants = <String>{
           '$dirPath/${baseName}_360x360.webp',
           '$dirPath/${baseName}_360x360.png',
+          '$dirPath/${baseName}_1600x1600.webp',
+          '$dirPath/${baseName}_1600x1600.png',
           '$dirPath/$baseName.webp',
           '$dirPath/$baseName.png',
-        ];
+          '$dirPath/$baseName.jpeg',
+          '$dirPath/$baseName.jpg',
+        };
+
         for (final path in variants) {
           try {
             await storage.ref(path).delete();
