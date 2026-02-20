@@ -13,7 +13,7 @@ import '../core/access_manager.dart';
 import '../core/paywall_messages.dart';
 import '../services/products_export_service.dart';
 import 'package:store_controller/widgets/responsive_center.dart';
-
+import 'package:flutter/services.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -493,48 +493,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final deleted = await _runAction(() => _deleteProductNow(p));
     return deleted == true;
   }
-  Future<void> _showProductPolicyDialog(Product p) async {
-    final s = AppLocalizations.of(context)!;
-    final storeId = ApiService.storeId ?? '';
-    final productId = p.id;
-
-    await showDialog(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: Text(s.productPolicyMismatchTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(s.productPolicyMismatchBody),
-            const SizedBox(height: 8),
-            Text(
-              s.productPolicyMismatchSubtext,
-              style: const TextStyle(color: Color(0xFF616161)),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: Text(s.cancel),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final subject = Uri.encodeComponent('Produktprüfung');
-              final body = Uri.encodeComponent('StoreId: $storeId\nProduktId: $productId\n');
-              final uri = Uri.parse(
-                'mailto:contact.aldeebtech@gmail.com?subject=$subject&body=$body',
-              );
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            },
-            child: Text(s.productPolicyMismatchCta),
-          ),
-        ],
-      ),
-    );
-  }
-
   // =======================
   // UI HELPERS
   // =======================
@@ -694,76 +652,141 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   // MODERATION DIALOG
   // =======================
-  void _showModerationDialog(Product p) {
+  void _showModerationDialog(Product p) async {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final s = AppLocalizations.of(context)!;
 
+    final storeId = ApiService.storeId ?? 'unknown';
+    final productId = p.id;
+    final productName = p.name;
+
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         backgroundColor: colors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        icon: Icon(Icons.warning_rounded, color: colors.error, size: 36),
-        title: Text(
-          s.productPolicyMismatchTitle,
-          style: TextStyle(fontWeight: FontWeight.bold),
+        titlePadding: EdgeInsets.zero,
+        title: Container(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+          decoration: BoxDecoration(
+            color: colors.primaryContainer,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.policy_rounded,
+                color: colors.onPrimaryContainer,
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  s.productPolicyMismatchTitle,
+                  style: TextStyle(
+                    color: colors.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               s.productPolicyMismatchBody,
-              style: TextStyle(fontSize: 16),
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: colors.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
               s.productPolicyMismatchSubtext,
-              style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                color: colors.onSurfaceVariant,
+              ),
             ),
+            const SizedBox(height: 32),
+
+            // --- EMAIL BUTTON ---
+            FilledButton.icon(
+              icon: const Icon(Icons.forward_to_inbox_rounded, size: 22),
+              label: Text(
+                s.productPolicyMismatchCta,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: colors.primary,
+                foregroundColor: colors.onPrimary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+
+                final subject = Uri.encodeComponent(s.productPolicyEmailSubject);
+                final body = Uri.encodeComponent(
+                  '${s.productPolicyEmailBodyIntro}\n\n'
+                      'StoreId: $storeId\n'
+                      'ProductId: $productId\n'
+                      'ProductName: $productName\n',
+                );
+
+                final mailUrl =
+                    'mailto:contact.aldeebtech@gmail.com?subject=$subject&body=$body';
+
+                final uri = Uri.parse(mailUrl);
+
+                final ok = await launchUrl(
+                  uri,
+                  mode: LaunchMode.externalApplication,
+                );
+
+                if (!ok && context.mounted) {
+                  // Fallback: Email kopieren
+                  await Clipboard.setData(const ClipboardData(text: 'contact.aldeebtech@gmail.com'));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(s.contactEmailCopied)), // ARB Key
+                  );
+                }
+              },
+            ),
+
+            const SizedBox(height: 8),
           ],
         ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(s.cancel),
-          ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: colors.primary,
-              foregroundColor: colors.onPrimary,
+            child: Text(
+              s.closeButton,
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            icon: const Icon(Icons.email_rounded, size: 18),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final storeId = ApiService.storeId ?? 'unknown';
-              final subject = Uri.encodeComponent('Produktprüfung');
-              final body = Uri.encodeComponent(
-                'StoreId: $storeId\nProduktId: ${p.id}\nProduktname: ${p.name}\n\nIch glaube, diese Sperre ist ein Fehler.',
-              );
-              final mailUrl = 'mailto:contact.aldeebtech@gmail.com?subject=$subject&body=$body';
-
-              if (await canLaunchUrl(Uri.parse(mailUrl))) {
-                await launchUrl(Uri.parse(mailUrl));
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Email: contact.aldeebtech@gmail.com'),
-                      duration: const Duration(seconds: 5),
-                    ),
-                  );
-                }
-              }
-            },
-            label: Text(s.productPolicyMismatchCta),
           ),
         ],
       ),
     );
   }
-
   // FILTER SHEET
   // =======================
   void _openFiltersSheet(List<String> categories) {
