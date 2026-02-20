@@ -113,73 +113,72 @@ class SettingsViewModel extends BaseViewModel {
     notifyListeners();
   }
 
-  /// Polls CDN via HTTP HEAD for the resized logo (webp preferred, png fallback).
-  /// On success: updates logoUrl, persists has_logo to Firestore, updates cache.
-  /// On timeout (45s): falls back to original PNG URL.
+  /// Pollt die CDN-URLs bis das resized Logo existiert (webp bevorzugt, sonst png).
+  /// Wenn nach 45s nichts da ist: KEIN Update (damit kein 404 gespeichert wird).
   Future<void> pollForResizedLogo(String baseName) async {
-    if (storeId.isEmpty) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty) return;
 
     final webpUrl = CdnHelper.buildResizedLogoCdnUrl(
-      storeId: storeId,
+      storeId: uid,
       baseName: baseName,
       ext: '.webp',
     );
+
     final pngUrl = CdnHelper.buildResizedLogoCdnUrl(
-      storeId: storeId,
+      storeId: uid,
       baseName: baseName,
       ext: '.png',
-    );
-    final originalUrl = CdnHelper.buildOriginalLogoCdnUrl(
-      storeId: storeId,
-      baseName: baseName,
     );
 
     String? foundUrl;
 
-    for (var attempt = 0; attempt < 15; attempt++) {
-      // Try webp first
+    for (var attempt = 1; attempt <= 15; attempt++) {
       if (await _cdnHeadOk(webpUrl)) {
         foundUrl = webpUrl;
         break;
       }
-      // Then png
       if (await _cdnHeadOk(pngUrl)) {
         foundUrl = pngUrl;
         break;
       }
 
-      debugPrint(
-        'pollForResizedLogo: attempt ${attempt + 1}/15 — not ready, waiting 3s...',
-      );
+      debugPrint('pollForResizedLogo: attempt $attempt/15 — not ready, wait 3s');
       await Future.delayed(const Duration(seconds: 3));
     }
 
-    // Fallback to original PNG if resize not found
-    foundUrl ??= originalUrl;
+    if (foundUrl == null) {
+      debugPrint('pollForResizedLogo: resize not ready — NOT updating has_logo');
+      return;
+    }
 
     debugPrint('pollForResizedLogo: using $foundUrl');
 
-    // Evict old cached image
-    if (logoUrl.isNotEmpty) {
-      CachedNetworkImage.evictFromCache(logoUrl);
+    // Cache vom alten Bild leeren
+    if (logoUrl.isNotEmpty && logoUrl != foundUrl) {
+      await CachedNetworkImage.evictFromCache(logoUrl);
     }
 
     logoUrl = foundUrl;
     notifyListeners();
 
-    // Persist to Firestore + local cache
+    // Persist
     await StoreConfigService.mergeNonEmpty({'has_logo': foundUrl});
     await ApiService.updateStore({'has_logo': foundUrl});
     debugPrint('pollForResizedLogo: has_logo persisted');
   }
 
-  /// HTTP HEAD check against CDN — returns true if status 200.
+  /// Robust gegen Cloudflare: kein HEAD, sondern GET mit Range + CacheBust.
+  /// true bei 200 oder 206.
   Future<bool> _cdnHeadOk(String url) async {
     try {
-      final response = await http.head(Uri.parse(url)).timeout(
-        const Duration(seconds: 5),
-      );
-      return response.statusCode == 200;
+      final bust = Uri.parse('$url?cb=${DateTime.now().millisecondsSinceEpoch}');
+      final response = await http.get(
+        bust,
+        headers: const {'Range': 'bytes=0-0'},
+      ).timeout(const Duration(seconds: 5));
+
+      return response.statusCode == 200 || response.statusCode == 206;
     } catch (_) {
       return false;
     }
@@ -295,6 +294,9 @@ class SettingsViewModel extends BaseViewModel {
     _phoneWaSyncLock = true;
 
     storeId = (s['store_id'] ?? s['storeId'] ?? '').toString();
+    if (storeId.isEmpty) {
+      storeId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    }
     createdAtRaw = (s['created_at'] ?? s['createdAt'] ?? '').toString();
 
     // Store-Name aus Firestore laden (wird im Wizard vom User ausgefüllt)

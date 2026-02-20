@@ -229,13 +229,17 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
     );
     if (file == null) return;
 
-    if (widget.storeId.isEmpty) {
-      debugPrint('StoreLogoPicker: storeId is empty, cannot upload');
+    final effectiveStoreId = widget.storeId.isNotEmpty
+        ? widget.storeId
+        : (FirebaseAuth.instance.currentUser?.uid ?? '');
+
+    if (effectiveStoreId.isEmpty) {
+      debugPrint('StoreLogoPicker: storeId/auth uid is empty, cannot upload');
       return;
     }
 
     final authUid = FirebaseAuth.instance.currentUser?.uid ?? 'NO_AUTH';
-    debugPrint('Logo Upload: storeId=${widget.storeId}, auth=$authUid');
+    debugPrint('Logo Upload: storeId=$effectiveStoreId, auth=$authUid');
 
     setState(() {
       _uploading = true;
@@ -250,7 +254,7 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final uniqueName = 'logo_$timestamp';
       final imageRef = storage.ref(
-        'stores/${widget.storeId}/logo/original/$uniqueName.png',
+        'stores/$effectiveStoreId/logo/original/$uniqueName.png',
       );
 
       final task = imageRef.putData(
