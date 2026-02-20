@@ -132,6 +132,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       final storeId = result.data?['storeId'] ?? '';
       if (storeId.isNotEmpty) {
+        await StorePrefs.setStoreId(storeId);
         await ApiService.checkAndSetUserRegion();
       }
 

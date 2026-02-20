@@ -517,19 +517,22 @@ class ApiService {
 
           final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
 
+// WICHTIG: Router nutzt dieses Flag um /register zu öffnen
+          _isCurrentUserNew = isNewUser;
+
           final storeExists = await storeDocumentExists(uid);
           if (!storeExists) {
             hasStore = false;
-            return ApiResult.fail(
-              'no_store',
-              details: s?.errorNoStoreFound ?? 'errorNoStoreFound',
-              data: {
-                'uid': uid,
-                'isNewUser': isNewUser,
-                'email': userCredential.user?.email,
-                'displayName': userCredential.user?.displayName,
-              },
-            );
+
+            // ✅ Kein Fehler: User ist eingeloggt, aber noch nicht registriert -> weiter zu Register/Wizard
+            return ApiResult.ok({
+              'storeId': uid,
+              'token': uid,
+              'isNewUser': isNewUser,
+              'hasStore': false,
+              'email': userCredential.user?.email,
+              'displayName': userCredential.user?.displayName,
+            });
           }
 
           hasStore = true;
@@ -548,7 +551,7 @@ class ApiService {
           return ApiResult.ok({
             'storeId': uid,
             'token': uid,
-            'isNewUser': false,
+            'isNewUser': isNewUser,
             'email': userCredential.user?.email,
             'displayName': userCredential.user?.displayName,
           });
@@ -610,21 +613,15 @@ class ApiService {
 
       if (!storeExists) {
         hasStore = false;
-
-        final errorMsg =
-            s?.errorNoStoreFound ??
-                'errorNoStoreFound';
-
-        return ApiResult.fail(
-          'no_store',
-          details: errorMsg,
-          data: {
-            'uid': uid,
-            'isNewUser': isNewUser,
-            'email': email,
-            'displayName': displayName,
-          },
-        );
+        _isCurrentUserNew = true; // damit Router /register nimmt
+        return ApiResult.ok({
+          'storeId': uid,
+          'token': uid,
+          'isNewUser': isNewUser,
+          'hasStore': false,
+          'email': email,
+          'displayName': displayName,
+        });
       }
 
       hasStore = true;

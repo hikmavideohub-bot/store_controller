@@ -260,7 +260,26 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      final storeId = result.data?['storeId'] ?? '';
+      // ✅ NEU: wenn Login ok ist, aber noch kein Store existiert -> /register bzw. Wizard
+      final hasStore = result.data?['hasStore'] == true;
+      if (!hasStore) {
+        setState(() => _googleBusy = false);
+
+        final isNewUser = result.data?['isNewUser'] == true;
+        final uid = (result.data?['uid'] ?? result.data?['storeId'] ?? '').toString();
+        final email = (result.data?['email'] ?? '').toString();
+        final displayName = (result.data?['displayName'] ?? '').toString();
+
+        _showNoStoreDialog(
+          isNewUser: isNewUser,
+          uid: uid.isEmpty ? null : uid,
+          email: email.isEmpty ? null : email,
+          displayName: displayName.isEmpty ? null : displayName,
+        );
+        return;
+      }
+
+      final storeId = (result.data?['storeId'] ?? '').toString();
       if (storeId.isEmpty) {
         setState(() => _googleBusy = false);
         _toast(s.unexpectedError, isError: true);
