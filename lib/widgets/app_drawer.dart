@@ -13,7 +13,6 @@ import '../services/store_config_service.dart';
 import '../services/rating_prompt_service.dart';
 import '../services/version_service.dart';
 import '../repositories/pricing_repository.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 
 class AppDrawer extends StatelessWidget {
