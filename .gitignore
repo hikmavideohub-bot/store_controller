@@ -128,7 +128,7 @@ android/tmpclaude-*
 
 **/tmpclaude-*
 **/tmpclaude-*/
-
+/windows/
 # Windows reserved
 nul
 deploy_refreshFxRates_debug.txt
