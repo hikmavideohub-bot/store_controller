@@ -13,12 +13,12 @@ const db = admin.firestore();
 const REGION_PRIMARY = process.env.REGION_PRIMARY || "europe-west3";
 
 // Azure Translator secrets
-const AZURE_TRANSLATOR_KEY = defineSecret("AZURE_TRANSLATOR_KEY");
-const AZURE_TRANSLATOR_ENDPOINT = defineSecret("AZURE_TRANSLATOR_ENDPOINT");
-const AZURE_TRANSLATOR_REGION = defineSecret("AZURE_TRANSLATOR_REGION");
+const AZURE_TRANSLATOR_KEY = defineSecret("AZURE_TRANSLATOR_KEY__ew3");
+const AZURE_TRANSLATOR_ENDPOINT = defineSecret("AZURE_TRANSLATOR_ENDPOINT__ew3");
+const AZURE_TRANSLATOR_REGION = defineSecret("AZURE_TRANSLATOR_REGION__ew3");
 
 // Gemini API Secret & Import
-const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY__ew3");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Constants

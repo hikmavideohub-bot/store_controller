@@ -11,10 +11,10 @@ const db = admin.firestore();
 const REGION_PRIMARY = process.env.REGION_PRIMARY || "europe-west3";
 
 const DEEPL_ENDPOINT = "https://api-free.deepl.com/v2/translate";
-const DEEPL_AUTH_KEY = defineSecret("DEEPL_AUTH_KEY");
+const DEEPL_AUTH_KEY = defineSecret("DEEPL_AUTH_KEY__ew3");
 
 // Nur EIN Glossary: AR -> EN (classic one language pair)
-const GLOSSARY_AR_EN = defineSecret("GLOSSARY_AR_EN");
+const GLOSSARY_AR_EN = defineSecret("GLOSSARY_AR_EN__ew3");
 
 const memCache = { product: new Map(), category: new Map() };
 const pending = { product: new Map(), category: new Map() };

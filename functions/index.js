@@ -18,6 +18,7 @@ const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https")
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
+const trackingSecret = defineSecret("TRACKING_SECRET__ew3");
 
 // --- WICHTIG: DIESE ZEILE HINZUFÜGEN ---
 const { setGlobalOptions } = require("firebase-functions/v2/options");
@@ -36,10 +37,10 @@ const db = admin.firestore();
 // STRIPE CONFIGURATION
 // =============================================================================
 
-const stripeSecret = defineSecret("STRIPE_SECRET");
-const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
-const googleMapsApiKey = defineSecret("GOOGLE_MAPS_API_KEY");
-const seedSecret = defineSecret("SEED_SECRET");
+const stripeSecret = defineSecret("STRIPE_SECRET__ew3");
+const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET__ew3");
+const googleMapsApiKey = defineSecret("GOOGLE_MAPS_API_KEY__ew3");
+const seedSecret = defineSecret("SEED_SECRET__ew3");
 const seedData = require("./seed_data.json");
 
 
@@ -297,6 +298,99 @@ const EMAIL_TEMPLATES = {
  * - Konsistente Transliteration
  * - MaxLen & sauberes Kürzen
  */
+const ALLOWED_EVENTS = new Set([
+  "page_view",
+  "product_view",
+  "add_to_cart",
+  "checkout_intent",
+  "whatsapp_click",
+]);
+
+function dayKeyUTC(d = new Date()) {
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+}
+
+// ✅ TTL: 366 Tage ab Tagesbeginn (UTC)
+const ONE_YEAR_MS = 366 * 24 * 60 * 60 * 1000;
+
+exports.trackEventBySlug = onRequest(
+  {
+    region: REGION_PRIMARY,
+    cors: true,
+    secrets: [trackingSecret],
+    maxInstances: 20,
+  },
+  async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Cache-Control", "no-store");
+
+    if (req.method === "OPTIONS") return res.status(204).send("");
+    if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
+
+    // ✅ optional: Secret-Header Check (empfohlen)
+    const required = trackingSecret.value();
+    if (required) {
+      const provided = String(req.get("x-aldeeb-track") || "");
+      if (provided !== required) {
+        return res.status(401).json({ success: false, error: "unauthorized" });
+      }
+    }
+
+    const body = req.body || {};
+    const slug = String(body.slug || "").trim();
+    const event = String(body.event || "").trim();
+    const productId = body.productId ? String(body.productId) : null;
+
+    if (!slug || !ALLOWED_EVENTS.has(event)) {
+      return res.status(400).json({ success: false, error: "bad_request" });
+    }
+
+    try {
+      // 1) slug → storeId
+      const slugDoc = await db.collection("slugs").doc(slug).get();
+      if (!slugDoc.exists) {
+        return res.status(404).json({ success: false, error: "slug_not_found" });
+      }
+
+      const storeId = slugDoc.data().store_id;
+
+      // 2) Tagesdoc
+      const day = dayKeyUTC();
+      const ref = db
+        .collection("stores_private")
+        .doc(storeId)
+        .collection("analytics_daily")
+        .doc(day);
+
+      // 3) increment + TTL (✅ ersetzt)
+      // day ist "YYYY-MM-DD"
+      const dayStart = new Date(`${day}T00:00:00.000Z`);
+      const expiresAt = admin.firestore.Timestamp.fromDate(
+        new Date(dayStart.getTime() + ONE_YEAR_MS)
+      );
+
+      const inc = admin.firestore.FieldValue.increment(1);
+      const updates = {
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt, // ✅ TTL Feld (in Firestore TTL aktivieren)
+        [event]: inc,
+      };
+
+      // optional: wenn du später pro Produkt tracken willst (Achtung Doc-Size!)
+      // if (productId && (event === "product_view" || event === "add_to_cart")) {
+      //   updates[`products.${productId}.${event}`] = inc;
+      // }
+
+      await ref.set(updates, { merge: true });
+
+      return res.status(200).json({ success: true });
+    } catch (e) {
+      console.error("trackEventBySlug error:", e);
+      return res.status(500).json({ success: false, error: "internal_error" });
+    }
+  }
+);
+
 function generateArabicSlug(name, maxLen = 60) {
   if (!name) return null;
 
@@ -1071,6 +1165,38 @@ exports.getStoreBySlug = onRequest(
     } catch (error) {
       console.error(error);
       res.status(500).send(error.message);
+    }
+  }
+);
+
+exports.getAllSlugs = onRequest(
+  { region: "europe-west3", cors: true },
+  async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit || "5000", 10), 20000);
+      const cursor = req.query.cursor ? String(req.query.cursor) : null;
+
+      let q = db
+        .collection("slugs")
+        .orderBy(admin.firestore.FieldPath.documentId())
+        .limit(limit);
+
+      if (cursor) q = q.startAfter(cursor);
+
+      const snap = await q.get();
+
+      const slugs = snap.docs.map((d) => ({
+        slug: d.id,
+        updatedAt: d.get("updatedAt")?.toDate?.()?.toISOString?.() || null,
+      }));
+
+      const nextCursor = snap.size === limit ? snap.docs[snap.docs.length - 1].id : null;
+
+      res.set("Cache-Control", "public, max-age=60");
+      return res.status(200).json({ success: true, slugs, nextCursor });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ success: false, error: "internal_error" });
     }
   }
 );

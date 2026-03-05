@@ -39,6 +39,7 @@ import 'screens/reference_price_screen.dart';
 
 // Models
 import 'models/product.dart';
+import 'screens/analytics/analytics_screen.dart';
 
 // --- NEU: Helper für Sprache speichern ---
 class LocalePrefs {
@@ -313,6 +314,10 @@ class MyApp extends StatefulWidget {
       GoRoute(
         path: '/reference_price',
         builder: (context, state) => const ReferencePriceScreen(),
+      ),
+      GoRoute(
+        path: '/analytics',
+        builder: (context, state) => const AnalyticsScreen(),
       ),
     ],
   );

@@ -456,12 +456,13 @@ class AppDrawer extends StatelessWidget {
 
                 _drawerItem(
                   context: context,
-                  icon: Icons.analytics_outlined,
-                  title: s.drawerAdvancedStats,
+                  icon: Icons.insights_rounded,
+                  title: s.drawerAnalytics,
                   onTap: () {
                     Navigator.pop(context);
-                    _showAdvancedStats(context);
+                    context.push('/analytics');
                   },
+                  isActive: currentRoute == '/analytics',
                 ),
 
                 _drawerItem(
@@ -1096,23 +1097,6 @@ class AppDrawer extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(s.closeButton),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAdvancedStats(BuildContext context) {
-    final s = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(s.advancedStatsTitle),
-        content: Text(s.advancedStatsMsg),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(s.okButton),
           ),
         ],
       ),
