@@ -24,8 +24,8 @@ class HomeViewModel extends BaseViewModel {
   String? _storeId;
   List<Product> _products = [];
 
-  // Status für die Kundennachricht (statt FutureBuilder im UI)
-  String _customerMessage = '';
+  // Status für die Kundennachricht (unterstützt jetzt Map für Sprachen)
+  dynamic _customerMessageData;
 
   // ===========================================
   // GETTERS
@@ -36,7 +36,14 @@ class HomeViewModel extends BaseViewModel {
   bool get missingStore => _missingStore;
   String? get storeId => _storeId;
   List<Product> get products => _products;
-  String get customerMessage => _customerMessage; // Getter für UI
+
+  // Getter für UI: Holt die Nachricht passend zur aktuellen Sprache
+  String getLocalizedCustomerMessage(String langCode) {
+    if (_customerMessageData is Map) {
+      return (_customerMessageData[langCode] ?? _customerMessageData['de'] ?? '').toString();
+    }
+    return (_customerMessageData ?? '').toString();
+  }
 
   /// Store-Name - liest von der einzigen Quelle: StoreConfigService
   String? get storeName {
@@ -216,10 +223,10 @@ class HomeViewModel extends BaseViewModel {
       ]);
 
       final productData = results[0] as List<Product>;
-      final msgData = results[1] as String?;
+      final msgData = results[1]; // WICHTIG: KEIN Cast auf String? mehr!
 
       _products = productData.isNotEmpty ? productData : _products;
-      _customerMessage = msgData ?? ''; // Nachricht speichern
+      _customerMessageData = msgData; // Map oder String speichern
 
       _hasInternet = true;
       _loading = false;
@@ -238,8 +245,8 @@ class HomeViewModel extends BaseViewModel {
   // --- NEU: Aktualisiert NUR die Nachricht (für sofortiges UI-Update) ---
   Future<void> refreshMessage() async {
     try {
-      final msg = await ApiService.getCustomerMessage();
-      _customerMessage = msg ?? '';
+      final msgData = await ApiService.getCustomerMessage();
+      _customerMessageData = msgData;
       notifyListeners();
     } catch (_) {
       // Fehler ignorieren, alte Nachricht behalten

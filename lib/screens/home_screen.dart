@@ -250,14 +250,16 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   }
 
   Widget _buildCustomerMessagePreview(
-    BuildContext context,
-    HomeViewModel vm,
-    AppLocalizations s,
-  ) {
+      BuildContext context,
+      HomeViewModel vm,
+      AppLocalizations s,
+      ) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    final msg = vm.customerMessage;
+    // Hole den aktuellen Sprachcode der App (z.B. 'de', 'ar', 'en')
+    final langCode = Localizations.localeOf(context).languageCode;
+    final msg = vm.getLocalizedCustomerMessage(langCode);
     final hasMsg = msg.isNotEmpty;
 
     return GestureDetector(
