@@ -4996,6 +4996,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'December'**
   String get month12;
+
+  /// No description provided for @installAppAppleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Install App (iOS)'**
+  String get installAppAppleTitle;
+
+  /// No description provided for @installAppAppleStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Tap the Share icon at the bottom of Safari (square with arrow).'**
+  String get installAppAppleStep1;
+
+  /// No description provided for @installAppAppleStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'2. Scroll down and select \'Add to Home Screen\'.'**
+  String get installAppAppleStep2;
+
+  /// No description provided for @installAppAppleStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'3. Confirm by tapping \'Add\' in the top right corner.'**
+  String get installAppAppleStep3;
+
+  /// No description provided for @gotItButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get gotItButton;
+
+  /// No description provided for @analyticsPeakVisits.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} visits'**
+  String analyticsPeakVisits(int count);
+
+  /// No description provided for @analyticsPeakWhatsapp.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} clicks'**
+  String analyticsPeakWhatsapp(int count);
 }
 
 class _AppLocalizationsDelegate

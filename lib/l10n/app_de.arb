@@ -947,6 +947,26 @@
   "month09": "September",
   "month10": "Oktober",
   "month11": "November",
-  "month12": "Dezember"
-
+  "month12": "Dezember",
+  "installAppAppleTitle": "App installieren (iOS)",
+  "installAppAppleStep1": "1. Tippe unten im Safari auf das Teilen-Symbol (Viereck mit Pfeil).",
+  "installAppAppleStep2": "2. Scrolle nach unten und wähle 'Zum Home-Bildschirm'.",
+  "installAppAppleStep3": "3. Bestätige oben rechts mit 'Hinzufügen'.",
+  "gotItButton": "Verstanden",
+  "analyticsPeakVisits": "{count} Besuche",
+  "@analyticsPeakVisits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsPeakWhatsapp": "{count} Klicks",
+  "@analyticsPeakWhatsapp": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

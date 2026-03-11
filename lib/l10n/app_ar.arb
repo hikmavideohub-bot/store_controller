@@ -933,8 +933,8 @@
   "analyticsFilterFrom": "من",
   "analyticsFilterTo": "إلى",
   "analyticsPeakTitle": "أعلى يوم",
-  "analyticsAxisDays": "الأيام",
-  "analyticsAxisCount": "العدد",
+  "analyticsAxisDays": "أيام الشهر",
+  "analyticsAxisCount": "",
   "analyticsMonthLabel": "الشهر",
   "month01": "كانون الثاني",
   "month02": "شباط",
@@ -947,5 +947,27 @@
   "month09": "أيلول",
   "month10": "تشرين الأول",
   "month11": "تشرين الثاني",
-  "month12": "كانون الأول"
+  "month12": "كانون الأول",
+  "installAppAppleTitle": "تثبيت التطبيق (iOS)",
+  "installAppAppleStep1": "1. اضغط على أيقونة المشاركة أسفل متصفح سفاري (مربع بسهم).",
+  "installAppAppleStep2": "2. قم بالتمرير لأسفل واختر 'إضافة إلى الشاشة الرئيسية'.",
+  "installAppAppleStep3": "3. قم بالتأكيد بالضغط على 'إضافة' في الزاوية العلوية.",
+  "gotItButton": "تمام",
+
+  "analyticsPeakVisits": "{count} زيارات",
+  "@analyticsPeakVisits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsPeakWhatsapp": "{count} نقرات",
+  "@analyticsPeakWhatsapp": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

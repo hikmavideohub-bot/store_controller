@@ -102,7 +102,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     // ✅ ValueListenableBuilder für sofortige Updates bei Store-Name-Änderungen
     return ValueListenableBuilder<Map<String, dynamic>?>(
       valueListenable: StoreConfigService.storeNotifier,
-      builder: (context, _, __) {
+      builder: (context, storeData, child) {
         final displayName = StoreConfigService.storeName.isNotEmpty
             ? StoreConfigService.storeName
             : s.defaultStoreName;

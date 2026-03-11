@@ -41,6 +41,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
     return out;
   }
+
   String _dayLabel(int day) {
     final dd = day.toString().padLeft(2, '0');
     final monthName = _monthName(AppLocalizations.of(context)!, _selMonth);
@@ -49,32 +50,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   String _monthName(AppLocalizations s, int m) {
     switch (m) {
-      case 1:
-        return s.month01;
-      case 2:
-        return s.month02;
-      case 3:
-        return s.month03;
-      case 4:
-        return s.month04;
-      case 5:
-        return s.month05;
-      case 6:
-        return s.month06;
-      case 7:
-        return s.month07;
-      case 8:
-        return s.month08;
-      case 9:
-        return s.month09;
-      case 10:
-        return s.month10;
-      case 11:
-        return s.month11;
-      case 12:
-        return s.month12;
-      default:
-        return '';
+      case 1: return s.month01;
+      case 2: return s.month02;
+      case 3: return s.month03;
+      case 4: return s.month04;
+      case 5: return s.month05;
+      case 6: return s.month06;
+      case 7: return s.month07;
+      case 8: return s.month08;
+      case 9: return s.month09;
+      case 10: return s.month10;
+      case 11: return s.month11;
+      case 12: return s.month12;
+      default: return '';
     }
   }
 
@@ -97,6 +85,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context)!;
     final colors = Theme.of(context).colorScheme;
+    final now = DateTime.now(); // Zentral definiertes heutiges Datum
 
     return Scaffold(
       appBar: AppBar(
@@ -132,9 +121,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           };
 
           final dim = _daysInMonth(_selYear, _selMonth);
+          // Zukunfts-Filter: Wenn wir im aktuellen Monat sind, stoppen wir beim heutigen Tag
+          final maxDays = (_selYear == now.year && _selMonth == now.month) ? now.day : dim;
 
-          // Monat vollständig 1..dim füllen (auch wenn keine Daten existieren)
-          final monthDays = List<AnalyticsDaily>.generate(dim, (i) {
+          // Monat vollständig 1..maxDays füllen (Zukunft wird ignoriert)
+          final monthDays = List<AnalyticsDaily>.generate(maxDays, (i) {
             final day = i + 1;
             final key = _dayKey(_selYear, _selMonth, day);
             return map[key] ??
@@ -153,7 +144,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           if (!_rangeInitialized) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
-              setState(() => _resetRangeForMonth(dim));
+              setState(() => _resetRangeForMonth(maxDays));
             });
           } else {
             final start = _range.start.clamp(0.0, maxIdx).toDouble();
@@ -166,8 +157,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             }
           }
 
-          final from = min(_range.start.round(), _range.end.round()).clamp(0, dim - 1);
-          final to = max(_range.start.round(), _range.end.round()).clamp(0, dim - 1);
+          final from = min(_range.start.round(), _range.end.round()).clamp(0, maxDays - 1);
+          final to = max(_range.start.round(), _range.end.round()).clamp(0, maxDays - 1);
           final visible = monthDays.sublist(from, to + 1);
 
           int sum(int Function(AnalyticsDaily e) f) => visible.fold(0, (a, b) => a + f(b));
@@ -188,7 +179,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           final peakWhats = _peakOf(visible, (e) => e.whatsappClick);
 
           final monthOptions = _last12Months(s);
-          final selectedLabel = '${_monthName(s, _selMonth)} ${_selYear}';
 
           final bottomPad = MediaQuery.of(context).padding.bottom;
 
@@ -255,14 +245,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
                       const SizedBox(height: 8),
 
-                      RangeSlider(
-                        values: RangeValues(from.toDouble(), to.toDouble()),
-                        min: 0,
-                        max: maxIdx,
-                        divisions: max(1, dim - 1),
-                        labels: RangeLabels(_dayLabel(from + 1), _dayLabel(to + 1)),
-                        onChanged: (v) => setState(() => _range = RangeValues(v.start, v.end)),
-                      ),
+                      // Slider nur anzeigen, wenn es mehr als 1 Tag gibt
+                      if (maxIdx > 0)
+                        RangeSlider(
+                          values: RangeValues(from.toDouble(), to.toDouble()),
+                          min: 0,
+                          max: maxIdx,
+                          divisions: max(1, maxDays - 1),
+                          labels: RangeLabels(_dayLabel(from + 1), _dayLabel(to + 1)),
+                          onChanged: (v) => setState(() => _range = RangeValues(v.start, v.end)),
+                        ),
                     ],
                   ),
                 ),
@@ -290,14 +282,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         icon: Icons.visibility_rounded,
                         title: s.analyticsCardVisits,
                         dayLabel: _dayLabel(from + 1 + peakVisits.index),
-                        value: peakVisits.value,
+                        valueText: s.analyticsPeakVisits(peakVisits.value),
                       ),
                       const SizedBox(height: 8),
                       _PeakRow(
                         icon: Icons.wechat,
                         title: s.analyticsCardWhatsapp,
                         dayLabel: _dayLabel(from + 1 + peakWhats.index),
-                        value: peakWhats.value,
+                        valueText: s.analyticsPeakWhatsapp(peakWhats.value),
                       ),
                     ],
                   ),
@@ -337,14 +329,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   title: s.analyticsTableTitle,
                   count: visible.length,
                   child: Column(
-                    children: visible.reversed.map((e) {
-                      // Tag-Nummer aus dayKey (YYYY-MM-DD)
+                    // Normale Sortierung: Tag 1 bis max
+                    children: visible.map((e) {
                       final dayNum = int.tryParse(e.dayKey.substring(8, 10)) ?? 0;
+                      final isToday = (_selYear == now.year && _selMonth == now.month && dayNum == now.day);
+
                       return _DayRow(
-                        dayKey: '${e.dayKey}  (${dayNum})',
+                        dayKey: '${e.dayKey}  ($dayNum)',
                         pageViews: e.pageView,
                         whatsappClicks: e.whatsappClick,
                         productViews: e.productView,
+                        isToday: isToday,
                       );
                     }).toList(),
                   ),
@@ -399,6 +394,7 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -438,7 +434,7 @@ class _SummaryItem {
 
 class _SummaryGrid extends StatelessWidget {
   final List<_SummaryItem> items;
-  const _SummaryGrid({required this.items});
+  const _SummaryGrid({ required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -501,7 +497,7 @@ class _ChartCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final Widget child;
-  const _ChartCard({required this.title, required this.icon, required this.child});
+  const _ChartCard({ required this.title, required this.icon, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -537,13 +533,14 @@ class _PeakRow extends StatelessWidget {
   final IconData icon;
   final String title;
   final String dayLabel;
-  final int value;
+  final String valueText;
 
   const _PeakRow({
+
     required this.icon,
     required this.title,
     required this.dayLabel,
-    required this.value,
+    required this.valueText,
   });
 
   @override
@@ -571,7 +568,7 @@ class _PeakRow extends StatelessWidget {
               border: Border.all(color: colors.primary.withValues(alpha: 0.5)),
             ),
             child: Text(
-              '${dayLabel} • $value',
+              '$dayLabel • $valueText',
               style: TextStyle(color: colors.onPrimaryContainer, fontWeight: FontWeight.w700, fontSize: 12),
             ),
           ),
@@ -586,11 +583,12 @@ class _DaysExpansion extends StatelessWidget {
   final int count;
   final Widget child;
 
-  const _DaysExpansion({required this.title, required this.count, required this.child});
+  const _DaysExpansion({ required this.title, required this.count, required this.child});
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
@@ -616,12 +614,15 @@ class _DayRow extends StatelessWidget {
   final int pageViews;
   final int whatsappClicks;
   final int productViews;
+  final bool isToday;
 
   const _DayRow({
+
     required this.dayKey,
     required this.pageViews,
     required this.whatsappClicks,
     required this.productViews,
+    this.isToday = false,
   });
 
   @override
@@ -631,13 +632,39 @@ class _DayRow extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.35),
+        color: isToday
+            ? colors.primaryContainer.withValues(alpha: 0.25)
+            : colors.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: isToday
+              ? colors.primary.withValues(alpha: 0.5)
+              : colors.outlineVariant.withValues(alpha: 0.5),
+          width: isToday ? 1.5 : 1.0,
+        ),
       ),
       child: Row(
         children: [
-          SizedBox(width: 120, child: Text(dayKey, style: TextStyle(color: colors.onSurface))),
+          SizedBox(
+            width: 120,
+            child: Row(
+              children: [
+                if (isToday) ...[
+                  Icon(Icons.today_rounded, size: 16, color: colors.primary),
+                  const SizedBox(width: 6),
+                ],
+                Expanded(
+                  child: Text(
+                    dayKey,
+                    style: TextStyle(
+                      color: isToday ? colors.primary : colors.onSurface,
+                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const Spacer(),
           _MiniStat(icon: Icons.visibility_rounded, value: pageViews),
           const SizedBox(width: 10),
@@ -653,7 +680,7 @@ class _DayRow extends StatelessWidget {
 class _MiniStat extends StatelessWidget {
   final IconData icon;
   final int value;
-  const _MiniStat({required this.icon, required this.value});
+  const _MiniStat({ required this.icon, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -853,6 +880,7 @@ class _AxisLineChartPainter extends CustomPainter {
         oldDelegate.axisLabelY != axisLabelY;
   }
 }
+
 class _CollapsibleFilter extends StatelessWidget {
   final String title;
   final String subtitle;

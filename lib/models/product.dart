@@ -139,9 +139,8 @@ class Product {
   }
 
   static Map<String, String> _parseDescriptionMap(dynamic raw) {
-    const empty = {'ar': '', 'de': '', 'en': '', 'tr': ''};
-    if (raw == null) return empty;
-    if (raw is Map) {
+      const empty = {'ar': '', 'de': '', 'en': '', 'tr': ''};
+      if (raw == null || raw is! Map) return empty;
       return {
         'ar': (raw['ar'] ?? '').toString(),
         'de': (raw['de'] ?? '').toString(),
@@ -149,10 +148,6 @@ class Product {
         'tr': (raw['tr'] ?? '').toString(),
       };
     }
-    // Legacy: plain string → put into all fields as fallback
-    final s = raw.toString();
-    return {'ar': s, 'de': s, 'en': s, 'tr': s};
-  }
 
   static String _descriptionFallback(dynamic raw) {
     if (raw == null) return '';
@@ -166,68 +161,47 @@ class Product {
 
 
   factory Product.fromMap(Map<String, dynamic> data) {
-    final rawDesc = data['description'];
-    final rawDescMap = data['descriptionMap'];
+      final modRaw = data['moderation'];
+      final mod = (modRaw is Map)
+          ? Map<String, dynamic>.from(modRaw)
+          : const <String, dynamic>{};
 
-    // ✅ Map bevorzugen, damit leere Strings leer bleiben
-    final rawForMap = (rawDesc is Map)
-        ? rawDesc
-        : (rawDescMap is Map ? rawDescMap : rawDesc);
+      return Product(
+        id: (data['id'] ?? '').toString(),
+        name: (data['name'] ?? '').toString(),
+        price: _toDouble(data['price']),
+        sizeValue: _toDouble(data['size_value']),
+        sizeUnit: (data['size_unit'] ?? '').toString(),
+        image: (data['image'] ?? '').toString(),
+        thumb: (data['thumb'] ?? '').toString(),
 
-    final modRaw = data['moderation'];
-    final mod = (modRaw is Map)
-        ? Map<String, dynamic>.from(modRaw as Map)
-        : const <String, dynamic>{};
+        description: _descriptionFallback(data['description']),
+        descriptionMap: _parseDescriptionMap(data['description']),
 
-    final moderationAutoBlocked = mod['autoBlocked'] == true;
-    final moderationManualBlocked = mod['manualBlocked'] == true;
-    final moderationMessageKey = mod['messageKey']?.toString();
+        autoTranslateUsed: _toBool(
+          data['description_meta'] is Map
+              ? data['description_meta']['autoTranslateUsed']
+              : null,
+        ),
 
-    return Product(
-    id: (data['id'] ?? '').toString(),
-      name: (data['name'] ?? '').toString(),
-      price: _toDouble(data['price']),
-      sizeValue: _toDouble(data['size_value'] ?? data['sizevalue']),
-      sizeUnit: (data['size_unit'] ?? data['sizeunit'] ?? '').toString(),
-      image: (data['image'] ?? '').toString(),
-      thumb: (data['thumb'] ?? data['thrumb'] ?? '').toString(),
+        category: (data['category'] ?? '').toString(),
+        productActive: _toBool(data['product_active']),
+        hasOffer: _toBool(data['has_offer']),
+        offerType: (data['offer_type'] ?? '').toString(),
+        percent: _toDouble(data['percent']),
+        bundleQty: _toInt(data['bundle_qty']),
+        bundlePrice: _toDouble(data['bundle_price']),
+        bulkQty: _toInt(data['bulk_qty']),
+        bulkPrice: _toDouble(data['bulk_price']),
+        offerStartDate: _normalizeDate(data['offer_start_date']),
+        offerEndDate: _normalizeDate(data['offer_end_date']),
+        offerActive: _toBool(data['offer_active']),
 
-      // ✅ hier rawForMap benutzen statt data['description']
-      description: _descriptionFallback(rawForMap),
-      descriptionMap: _parseDescriptionMap(rawForMap),
-
-      // optional: wenn du autoTranslateUsed in description_meta speicherst, dann so:
-      autoTranslateUsed: _toBool(
-        data['autoTranslateUsed'] ??
-            (data['description_meta'] is Map
-                ? (data['description_meta']['autoTranslateUsed'])
-                : null),
-      ),
-
-      category: (data['category'] ?? '').toString(),
-      productActive: _toBool(data['product_active'] ?? data['productActive']),
-      hasOffer: _toBool(data['has_offer'] ?? data['hasOffer']),
-      offerType: (data['offer_type'] ?? data['offerType'] ?? '').toString(),
-      percent: _toDouble(data['percent']),
-      bundleQty: _toInt(data['bundle_qty'] ?? data['bundleQty']),
-      bundlePrice: _toDouble(data['bundle_price'] ?? data['bundlePrice']),
-      bulkQty: _toInt(data['bulk_qty'] ?? data['bulkQty']),
-      bulkPrice: _toDouble(data['bulk_price'] ?? data['bulkPrice']),
-      offerStartDate: _normalizeDate(
-        data['offer_start_date'] ?? data['offerStartDate'],
-      ),
-      offerEndDate: _normalizeDate(
-        data['offer_end_date'] ?? data['offerEndDate'],
-      ),
-      offerActive: _toBool(
-        data['offer_active'] ?? data['offerActive'] ?? data['offer_aktive'],
-      ),
-
-      moderationAutoBlocked: moderationAutoBlocked,
-      moderationManualBlocked: moderationManualBlocked,
-      moderationMessageKey: moderationMessageKey,
-    );
-  }
+        moderationAutoBlocked: mod['autoBlocked'] == true,
+        moderationManualBlocked: mod['manualBlocked'] == true,
+        moderationMessageKey: mod['messageKey']?.toString(),
+      );
+    }
 
 
   @override

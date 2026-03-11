@@ -2657,4 +2657,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get month12 => 'December';
+
+  @override
+  String get installAppAppleTitle => 'Install App (iOS)';
+
+  @override
+  String get installAppAppleStep1 =>
+      '1. Tap the Share icon at the bottom of Safari (square with arrow).';
+
+  @override
+  String get installAppAppleStep2 =>
+      '2. Scroll down and select \'Add to Home Screen\'.';
+
+  @override
+  String get installAppAppleStep3 =>
+      '3. Confirm by tapping \'Add\' in the top right corner.';
+
+  @override
+  String get gotItButton => 'Got it';
+
+  @override
+  String analyticsPeakVisits(int count) {
+    return '$count visits';
+  }
+
+  @override
+  String analyticsPeakWhatsapp(int count) {
+    return '$count clicks';
+  }
 }

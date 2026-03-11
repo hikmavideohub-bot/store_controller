@@ -202,9 +202,15 @@ class StoreCurrencies {
       if (seen.add(c)) out.add(c);
     }
 
-    for (final c in arabFirstCodes) push(c);
-    for (final c in pinnedOtherCodes) push(c);
-    for (final c in supportedCodes) push(c);
+    for (final c in arabFirstCodes) {
+      push(c);
+    }
+    for (final c in pinnedOtherCodes) {
+      push(c);
+    }
+    for (final c in supportedCodes) {
+      push(c);
+    }
 
     return List<String>.unmodifiable(out);
   })();

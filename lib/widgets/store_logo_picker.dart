@@ -144,8 +144,8 @@ class _StoreLogoPickerState extends State<StoreLogoPicker> {
         fit: BoxFit.cover,
         width: widget.size,
         height: widget.size,
-        placeholder: (_, __) => _buildPlaceholder(colors),
-        errorWidget: (_, __, ___) => _buildPlaceholder(colors),
+        placeholder: (context, url) => _buildPlaceholder(colors),
+        errorWidget: (context, url, error) => _buildPlaceholder(colors),
       );
     }
     return _buildPlaceholder(colors);

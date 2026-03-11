@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../services/api_service.dart';
 import '../storage/store_prefs.dart';
+import '../services/icon_a2h/pwa_install_button.dart';
 import '../main.dart' show SessionMessageHelper, MyApp;
+import '../services/icon_a2h/pwa_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,6 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    PwaService.instance.init(); // WICHTIG: Startet den Listener sofort beim App-Start!
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showPendingSessionMessage();
     });
@@ -316,10 +319,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Language Picker
-                    Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: _LanguagePickerButton(),
+                    // PWA Install Button & Language Picker
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: const [
+                        PwaInstallButton(), // <-- DEIN NEUER DOWNLOAD-BUTTON
+                        SizedBox(width: 8),
+                        _LanguagePickerButton(),
+                      ],
                     ),
                     const SizedBox(height: 8),
 

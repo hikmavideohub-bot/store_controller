@@ -102,19 +102,13 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
 
       if (!mounted) return;
 
-      final messageData = results[0];
+      final messageData = results[0] as Map<String, dynamic>?;
 
-      if (messageData is Map) {
+      if (messageData != null) {
         _ctrlAr.text = (messageData['ar'] ?? '').toString();
         _ctrlDe.text = (messageData['de'] ?? '').toString();
         _ctrlEn.text = (messageData['en'] ?? '').toString();
         _ctrlTr.text = (messageData['tr'] ?? '').toString();
-      } else {
-        final legacyMsg = (messageData ?? '').toString();
-        _ctrlAr.text = legacyMsg;
-        _ctrlDe.text = legacyMsg;
-        _ctrlEn.text = legacyMsg;
-        _ctrlTr.text = legacyMsg;
       }
 
       _lastSavedTexts = {
@@ -473,7 +467,7 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
     // --- NEU: PopScope blockiert das Verlassen, wenn es Änderungen gab ---
     return PopScope(
       canPop: !_hasChanged, // True = er darf sofort raus, False = er wird blockiert
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return; // Wenn er schon draußen ist, nichts tun
 
         // Wenn blockiert wurde, zeigen wir den Dialog
@@ -735,7 +729,8 @@ class _CustomerMessageScreenState extends State<CustomerMessageScreen> {
                 onPressed: () async {
                   if (_hasChanged) {
                     final discard = await _showUnsavedDialog();
-                    if (discard && context.mounted) {
+                    if (!context.mounted) return;
+                    if (discard) {
                       context.pop();
                     }
                   } else {

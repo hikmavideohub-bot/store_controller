@@ -29,13 +29,8 @@ class ProductsViewModel extends BaseViewModel {
   String _offerFilter = 'all';
   String _stockFilter = 'all';
 
-  // Cache-Busting
-  String? _revBundle;
-  String _vParam = '';
-
   final NumberFormat _moneyFmt = NumberFormat("#,##0.00", "en");
   final NumberFormat _sizeFmt = NumberFormat("#,##0.##", "en");
-
   // ===========================================
   // GETTERS
   // ===========================================
@@ -130,9 +125,7 @@ class ProductsViewModel extends BaseViewModel {
   // ===========================================
 
   Future<void> boot(AppLocalizations? s) async {
-    await _initVParam();
-
-    String? id = await StorePrefs.getStoreId();
+      String? id = await StorePrefs.getStoreId();
 
     if (id == null || id.isEmpty) {
       id = ApiService.storeId;
@@ -152,19 +145,6 @@ class ProductsViewModel extends BaseViewModel {
     await loadProducts(s);
   }
 
-  Future<void> _initVParam() async {
-    _revBundle = null;
-    _vParam = (_revBundle != null && _revBundle!.trim().isNotEmpty)
-        ? _revBundle!.trim()
-        : DateTime.now().millisecondsSinceEpoch.toString();
-  }
-
-  void _bustVParam() {
-    _vParam = (_revBundle != null && _revBundle!.trim().isNotEmpty)
-        ? _revBundle!.trim()
-        : DateTime.now().millisecondsSinceEpoch.toString();
-  }
-
   Future<void> loadProducts(AppLocalizations? s, {bool silent = false}) async {
     bool showedCache = false;
 
@@ -179,9 +159,9 @@ class ProductsViewModel extends BaseViewModel {
       notifyListeners();
     }
 
-    try {
-      final data = await ApiService.fetchProducts(v: _vParam);
-      _products = data;
+   try {
+         final data = await ApiService.fetchProducts();
+         _products = data;
       _loading = false;
     } catch (e) {
       _loading = false;
@@ -221,8 +201,6 @@ class ProductsViewModel extends BaseViewModel {
       _products[idx] = _products[idx].copyWith(productActive: p.productActive);
     }
 
-    if (success) _bustVParam();
-
     _actionBusy = false;
     notifyListeners();
     return success;
@@ -251,7 +229,6 @@ class ProductsViewModel extends BaseViewModel {
       _products[idx] = _products[idx].copyWith(offerActive: p.offerActive);
     }
 
-    if (success) _bustVParam();
 
     _actionBusy = false;
     notifyListeners();
@@ -264,10 +241,9 @@ class ProductsViewModel extends BaseViewModel {
     final success = await ApiService.deleteProduct(p.id);
 
     if (success) {
-      _products.removeWhere((x) => x.id == p.id);
-      _bustVParam();
-      notifyListeners();
-    }
+          _products.removeWhere((x) => x.id == p.id);
+          notifyListeners();
+        }
 
     return success;
   }
@@ -275,10 +251,9 @@ class ProductsViewModel extends BaseViewModel {
   void updateProductInList(Product updated) {
     final idx = _products.indexWhere((x) => x.id == updated.id);
     if (idx != -1) {
-      _products[idx] = updated;
-      _bustVParam();
-      notifyListeners();
-    }
+          _products[idx] = updated;
+          notifyListeners();
+        }
   }
 
   // ===========================================

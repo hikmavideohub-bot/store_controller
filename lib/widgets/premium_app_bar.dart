@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../services/icon_a2h//pwa_service.dart';
+import '../services/icon_a2h/pwa_install_button.dart';
 /// Premium Animation Utilities
 class PremiumAnimations {
   /// Fade-in animation with staggered delay
@@ -213,7 +214,6 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
   late AnimationController _titleController;
   late Animation<double> _titleAnimation;
   final FocusNode _searchFocusNode = FocusNode();
-  bool _isSearchFocused = false;
   ModalRoute<dynamic>? _route;
 
 
@@ -229,8 +229,7 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
       parent: _titleController,
       curve: Curves.easeOutCubic,
     );
-    
-    _searchFocusNode.addListener(_onSearchFocusChange);
+
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _titleController.forward();
@@ -261,16 +260,10 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
   void dispose() {
     (_route?.secondaryAnimation)?.removeStatusListener(_handleRouteSecondaryStatus);
     _titleController.dispose();
-    _searchFocusNode.removeListener(_onSearchFocusChange);
     _searchFocusNode.dispose();
     super.dispose();
   }
 
-  void _onSearchFocusChange() {
-    setState(() {
-      _isSearchFocused = _searchFocusNode.hasFocus;
-    });
-  }
 
   void _unfocusSearch() {
     if (_searchFocusNode.hasFocus) {
@@ -326,21 +319,10 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
         ),
       ),
         actions: [
-          ValueListenableBuilder<bool>(
-            valueListenable: PwaService.instance.canInstall,
-            builder: (context, canInstall, child) {
-              // Zeigt das Icon nur an, wenn der PWA Prompt verfügbar ist
-              if (!canInstall) return const SizedBox.shrink();
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: _buildScaleOnTapIcon(
-                  onTap: () => PwaService.instance.promptInstall(),
-                  icon: const Icon(Icons.install_mobile_rounded),
-                  color: premiumColor, // Nutzt dein Gold/Premium-Theme
-                ),
-              );
-            },
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            // Nutzt jetzt das universelle Widget (inkl. Apple iOS Fallback!)
+            child: PwaInstallButton(color: premiumColor),
           ),
           if (widget.actions != null) ...widget.actions!,
         ],

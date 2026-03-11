@@ -8,8 +8,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
-import 'package:flutter/foundation.dart'; // kIsWeb
-// Services & Core
 import 'services/api_service.dart';
 import 'services/store_config_service.dart';
 import 'services/version_service.dart';

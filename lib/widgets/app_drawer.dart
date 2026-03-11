@@ -53,8 +53,8 @@ class AppDrawer extends StatelessWidget {
           fit: BoxFit.cover,
           width: 60,
           height: 60,
-          placeholder: (_, __) => _buildInitials(colors, storeName),
-          errorWidget: (_, __, ___) => _buildInitials(colors, storeName),
+          placeholder: (context, url) => _buildInitials(colors, storeName),
+          errorWidget: (context, url, error) => _buildInitials(colors, storeName),
         ),
       );
     }
@@ -127,15 +127,19 @@ class AppDrawer extends StatelessWidget {
       final ok = await launchUrl(uri, mode: LaunchMode.platformDefault);
       if (!ok) {
         await Clipboard.setData(const ClipboardData(text: supportMail));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Keine Mail-App gefunden. Email kopiert: $supportMail')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Keine Mail-App gefunden. Email kopiert: $supportMail')),
+          );
+        }
       }
     } catch (e) {
       await Clipboard.setData(const ClipboardData(text: supportMail));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Mail konnte nicht geöffnet werden. Email kopiert: $supportMail')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Mail konnte nicht geöffnet werden. Email kopiert: $supportMail')),
+        );
+      }
     }
   }
 
@@ -311,7 +315,7 @@ class AppDrawer extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           // ✅ Hier zur Sicherheit auch als direkter String
-          SnackBar(content: Text('${s.whatsappError}')),
+          SnackBar(content: Text(s.whatsappError)),
         );
       }
     }
@@ -1106,7 +1110,9 @@ class AppDrawer extends StatelessWidget {
   static void showAppRatingDialog(BuildContext context) async {
     // Prüfen ob der Nutzer bereits bewertet hat
     final hasRated = await RatingPromptService.hasAlreadyRated();
-    
+
+    if (!context.mounted) return;
+
     if (hasRated) {
       await _showAlreadyRatedDialog(context);
     } else {

@@ -2603,10 +2603,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get analyticsPeakTitle => 'أعلى يوم';
 
   @override
-  String get analyticsAxisDays => 'الأيام';
+  String get analyticsAxisDays => 'أيام الشهر';
 
   @override
-  String get analyticsAxisCount => 'العدد';
+  String get analyticsAxisCount => '';
 
   @override
   String get analyticsMonthLabel => 'الشهر';
@@ -2646,4 +2646,32 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get month12 => 'كانون الأول';
+
+  @override
+  String get installAppAppleTitle => 'تثبيت التطبيق (iOS)';
+
+  @override
+  String get installAppAppleStep1 =>
+      '1. اضغط على أيقونة المشاركة أسفل متصفح سفاري (مربع بسهم).';
+
+  @override
+  String get installAppAppleStep2 =>
+      '2. قم بالتمرير لأسفل واختر \'إضافة إلى الشاشة الرئيسية\'.';
+
+  @override
+  String get installAppAppleStep3 =>
+      '3. قم بالتأكيد بالضغط على \'إضافة\' في الزاوية العلوية.';
+
+  @override
+  String get gotItButton => 'تمام';
+
+  @override
+  String analyticsPeakVisits(int count) {
+    return '$count زيارات';
+  }
+
+  @override
+  String analyticsPeakWhatsapp(int count) {
+    return '$count نقرات';
+  }
 }

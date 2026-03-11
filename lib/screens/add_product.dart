@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:store_controller/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -701,8 +700,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
       return '$intPart,$dec';
     }
 
-    if (dec.length == 0) dec = '00';
-    else if (dec.length == 1) dec = '${dec}0'; // 2 -> 2,50
+    if (dec.isEmpty) {
+      dec = '00';
+    } else if (dec.length == 1) {
+      dec = '${dec}0'; // 2 -> 2,50
+    }
 
     return '$intPart,$dec';
   }

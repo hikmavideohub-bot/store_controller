@@ -16,21 +16,15 @@ class SubscriptionConfig {
     this.pricingMessageSyria,
   });
 
-  /// Parses a pricing message field that may be either a plain string (legacy)
-  /// or a map keyed by language code.
-  static Map<String, String>? _parsePricingMessage(dynamic value) {
-    if (value == null) return null;
-    if (value is Map) {
+  /// Parses a localized pricing message field.
+    static Map<String, String>? _parsePricingMessage(dynamic value) {
+      if (value == null || value is! Map) return null;
       final map = <String, String>{};
       for (final entry in value.entries) {
         map[entry.key.toString()] = entry.value.toString();
       }
       return map.isEmpty ? null : map;
     }
-    // Legacy: plain string → treat as Arabic
-    final s = value.toString();
-    return s.isEmpty ? null : {'ar': s};
-  }
 
   factory SubscriptionConfig.fromMap(Map<String, dynamic> data) {
     final syriaContactPhone = data['syria_contact_phone']?.toString();
@@ -142,25 +136,20 @@ class PlanPricingDetail {
   });
 
   factory PlanPricingDetail.fromMap(Map<String, dynamic> map) {
-    // Fallback: monthly_price → amount (für Altdaten)
-    final monthlyPrice = _toDouble(map['monthly_price']) > 0
-        ? _toDouble(map['monthly_price'])
-        : _toDouble(map['amount']);
-
-    return PlanPricingDetail(
-      monthlyPrice: monthlyPrice,
-      originalMonthlyPrice: map['original_monthly_price'] != null
-          ? _toDouble(map['original_monthly_price'])
-          : null,
-      currency: map['currency']?.toString() ?? 'USD',
-      currencyCode: map['currency_code']?.toString().toLowerCase(),
-      provider: map['provider']?.toString() ?? 'stripe',
-      offerActive: map['offer_active'] == true,
-      isBestValue: map['is_best_value'] == true,
-      qrImageUrl: map['qr_image_url']?.toString(),
-      accountDetails: map['account_details']?.toString(),
-    );
-  }
+      return PlanPricingDetail(
+        monthlyPrice: _toDouble(map['monthly_price']),
+        originalMonthlyPrice: map['original_monthly_price'] != null
+            ? _toDouble(map['original_monthly_price'])
+            : null,
+        currency: map['currency']?.toString() ?? 'USD',
+        currencyCode: map['currency_code']?.toString().toLowerCase(),
+        provider: map['provider']?.toString() ?? 'stripe',
+        offerActive: map['offer_active'] == true,
+        isBestValue: map['is_best_value'] == true,
+        qrImageUrl: map['qr_image_url']?.toString(),
+        accountDetails: map['account_details']?.toString(),
+      );
+    }
 
   static double _toDouble(dynamic v) {
     if (v == null) return 0.0;

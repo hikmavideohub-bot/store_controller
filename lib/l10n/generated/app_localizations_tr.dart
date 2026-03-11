@@ -2661,4 +2661,32 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get month12 => 'Aralık';
+
+  @override
+  String get installAppAppleTitle => 'Uygulamayı Yükle (iOS)';
+
+  @override
+  String get installAppAppleStep1 =>
+      '1. Safari\'nin altındaki Paylaş simgesine dokunun (oklu kare).';
+
+  @override
+  String get installAppAppleStep2 =>
+      '2. Aşağı kaydırın ve \'Ana Ekrana Ekle\'yi seçin.';
+
+  @override
+  String get installAppAppleStep3 =>
+      '3. Sağ üst köşedeki \'Ekle\'ye dokunarak onaylayın.';
+
+  @override
+  String get gotItButton => 'Anladım';
+
+  @override
+  String analyticsPeakVisits(int count) {
+    return '$count ziyaret';
+  }
+
+  @override
+  String analyticsPeakWhatsapp(int count) {
+    return '$count tıklama';
+  }
 }

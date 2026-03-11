@@ -1465,9 +1465,7 @@ class ApiService {
   // ═══════════════════════════════════════════════════════════════════════════
   // CUSTOMER MESSAGE
   // ═══════════════════════════════════════════════════════════════════════════
-
-// ÄNDERUNG 1: Gibt jetzt 'dynamic' statt 'String?' zurück
-  static Future<dynamic> getCustomerMessage({bool forceRefresh = false}) async {
+  static Future<Map<String, dynamic>?> getCustomerMessage({bool forceRefresh = false}) async {
     if (_storeId == null) return null;
     try {
       final doc = await _storesPublic.doc(_storeId).get();
@@ -1477,11 +1475,13 @@ class ApiService {
       if (expiry is Timestamp) {
         if (DateTime.now().isAfter(expiry.toDate())) {
           await clearCustomerMessage();
-          return '';
+          return null;
         }
       }
 
-      return data?['customer_message'];
+      final msg = data?['customer_message'];
+      if (msg is Map) return Map<String, dynamic>.from(msg);
+      return null;
     } catch (e) {
       return null;
     }
@@ -1497,9 +1497,8 @@ class ApiService {
     }
   }
 
-  // ÄNDERUNG 2: Akzeptiert jetzt 'dynamic message' statt 'String message'
   static Future<bool> setCustomerMessage(
-      dynamic message, {
+      Map<String, dynamic> message, {
         DateTime? expiryDate,
       }) async {
     if (_storeId == null) return false;
@@ -1519,15 +1518,18 @@ class ApiService {
   static Future<bool> clearCustomerMessage() async {
     if (_storeId == null) return false;
     try {
+      // Löscht die Felder sauber aus der Datenbank, statt Altlast-Strings zu speichern
       await _storesPublic.doc(_storeId).update({
-        'customer_message': '',
-        'customer_message_expiry': null,
+        'customer_message': FieldValue.delete(),
+        'customer_message_expiry': FieldValue.delete(),
       });
       return true;
     } catch (e) {
       return false;
     }
   }
+
+
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PUBLIC STORE ACCESS (für öffentliche Shop-Seiten)

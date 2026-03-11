@@ -758,12 +758,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   mode: LaunchMode.externalApplication,
                 );
 
-                if (!ok && context.mounted) {
+                if (!ok) {
                   // Fallback: Email kopieren
                   await Clipboard.setData(const ClipboardData(text: 'contact.aldeebtech@gmail.com'));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(s.contactEmailCopied)), // ARB Key
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(s.contactEmailCopied)), // ARB Key
+                    );
+                  }
                 }
               },
             ),

@@ -957,5 +957,28 @@
   "month09": "Eylül",
   "month10": "Ekim",
   "month11": "Kasım",
-  "month12": "Aralık"
+  "month12": "Aralık",
+
+  "installAppAppleTitle": "Uygulamayı Yükle (iOS)",
+  "installAppAppleStep1": "1. Safari'nin altındaki Paylaş simgesine dokunun (oklu kare).",
+  "installAppAppleStep2": "2. Aşağı kaydırın ve 'Ana Ekrana Ekle'yi seçin.",
+  "installAppAppleStep3": "3. Sağ üst köşedeki 'Ekle'ye dokunarak onaylayın.",
+  "gotItButton": "Anladım",
+
+  "analyticsPeakVisits": "{count} ziyaret",
+  "@analyticsPeakVisits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsPeakWhatsapp": "{count} tıklama",
+  "@analyticsPeakWhatsapp": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

@@ -941,5 +941,28 @@
   "month09": "September",
   "month10": "October",
   "month11": "November",
-  "month12": "December"
+
+  "month12": "December",
+
+  "installAppAppleTitle": "Install App (iOS)",
+  "installAppAppleStep1": "1. Tap the Share icon at the bottom of Safari (square with arrow).",
+  "installAppAppleStep2": "2. Scroll down and select 'Add to Home Screen'.",
+  "installAppAppleStep3": "3. Confirm by tapping 'Add' in the top right corner.",
+  "gotItButton": "Got it",
+  "analyticsPeakVisits": "{count} visits",
+  "@analyticsPeakVisits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsPeakWhatsapp": "{count} clicks",
+  "@analyticsPeakWhatsapp": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }
