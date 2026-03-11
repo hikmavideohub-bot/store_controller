@@ -27,6 +27,36 @@
 
 </head>
 <body>
+<script>
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Verhindert, dass der Browser seine eigene Standard-Leiste zeigt
+      e.preventDefault();
+      deferredPrompt = e;
+      // Sagt Flutter Bescheid, dass wir installieren können
+      window.dispatchEvent(new Event('pwaPromptAvailable'));
+    });
+
+    window.addEventListener('appinstalled', (evt) => {
+      deferredPrompt = null;
+      // Sagt Flutter Bescheid, dass das Icon weg kann
+      window.dispatchEvent(new Event('pwaInstalled'));
+    });
+
+    function canPrompt() {
+      return deferredPrompt !== null;
+    }
+
+    function promptInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          deferredPrompt = null;
+          window.dispatchEvent(new Event('pwaInstalled'));
+        });
+      }
+    }
+</script>
 <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

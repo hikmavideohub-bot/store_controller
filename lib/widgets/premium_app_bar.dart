@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:store_controller/l10n/generated/app_localizations.dart';
-
+import '../services/icon_a2h//pwa_service.dart';
 /// Premium Animation Utilities
 class PremiumAnimations {
   /// Fade-in animation with staggered delay
@@ -220,6 +220,7 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
   @override
   void initState() {
     super.initState();
+    PwaService.instance.init(); // Startet den PWA-Listener
     _titleController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -324,8 +325,26 @@ class _PremiumAnimatedAppBarState extends State<PremiumAnimatedAppBar>
           ),
         ),
       ),
-      actions: widget.actions ?? [],
-      bottom: widget.hasSearch
+        actions: [
+          ValueListenableBuilder<bool>(
+            valueListenable: PwaService.instance.canInstall,
+            builder: (context, canInstall, child) {
+              // Zeigt das Icon nur an, wenn der PWA Prompt verfügbar ist
+              if (!canInstall) return const SizedBox.shrink();
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: _buildScaleOnTapIcon(
+                  onTap: () => PwaService.instance.promptInstall(),
+                  icon: const Icon(Icons.install_mobile_rounded),
+                  color: premiumColor, // Nutzt dein Gold/Premium-Theme
+                ),
+              );
+            },
+          ),
+          if (widget.actions != null) ...widget.actions!,
+        ],
+        bottom: widget.hasSearch
           ? PreferredSize(
               preferredSize: const Size.fromHeight(50),
               child: FadeTransition(
