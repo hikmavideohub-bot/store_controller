@@ -2688,4 +2688,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get activeFilters => 'Filter active';
+
+  @override
+  String analyticsVsYesterdayValue(Object value) {
+    return 'Yesterday $value';
+  }
+
+  @override
+  String analyticsAvg7DaysValue(Object value) {
+    return '7-day avg $value';
+  }
+
+  @override
+  String get analyticsCardVisitsToday => 'Visits Today';
+
+  @override
+  String get analyticsCardVisitsRange => 'Visits (Date Range)';
 }

@@ -2692,4 +2692,20 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get activeFilters => 'Filtre aktif';
+
+  @override
+  String analyticsVsYesterdayValue(Object value) {
+    return 'Düne göre $value';
+  }
+
+  @override
+  String analyticsAvg7DaysValue(Object value) {
+    return '7 günlük ortalama $value';
+  }
+
+  @override
+  String get analyticsCardVisitsToday => 'Bugünkü Ziyaretler';
+
+  @override
+  String get analyticsCardVisitsRange => 'Ziyaretler (Tarih Aralığı)';
 }

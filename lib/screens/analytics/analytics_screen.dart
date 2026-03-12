@@ -13,14 +13,17 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   final _repo = AnalyticsRepository();
 
-  // wir laden genug Daten für 12 Monate (~400 Tage)
   static const int _cacheDays = 400;
 
   late int _selYear;
-  late int _selMonth; // 1..12
+  late int _selMonth;
 
   RangeValues _range = const RangeValues(0, 0);
+  RangeValues? _draggingRange;
   bool _rangeInitialized = false;
+
+  // NEU: Speichert das Future, damit es den Filter beim Neuladen nicht zerstört!
+  late Future<List<AnalyticsDaily>> _dataFuture;
 
   @override
   void initState() {
@@ -28,64 +31,142 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     final now = DateTime.now();
     _selYear = now.year;
     _selMonth = now.month;
+    _dataFuture = _loadAll(); // Einmaliges Laden beim Start
   }
 
   Future<List<AnalyticsDaily>> _loadAll() => _repo.fetchLastDays(days: _cacheDays);
 
-  List<_MonthOption> _last12Months(AppLocalizations s) {
+  List<_MonthOption> _last12Months() {
     final now = DateTime.now();
-    final out = <_MonthOption>[];
-    for (int i = 0; i < 12; i++) {
+    return List<_MonthOption>.generate(12, (i) {
       final d = DateTime(now.year, now.month - i, 1);
-      out.add(_MonthOption(year: d.year, month: d.month));
+      return _MonthOption(year: d.year, month: d.month);
+    });
+  }
+
+  String _monthName(AppLocalizations s, int month) {
+    switch (month) {
+      case 1:
+        return s.month01;
+      case 2:
+        return s.month02;
+      case 3:
+        return s.month03;
+      case 4:
+        return s.month04;
+      case 5:
+        return s.month05;
+      case 6:
+        return s.month06;
+      case 7:
+        return s.month07;
+      case 8:
+        return s.month08;
+      case 9:
+        return s.month09;
+      case 10:
+        return s.month10;
+      case 11:
+        return s.month11;
+      case 12:
+        return s.month12;
+      default:
+        return '';
     }
-    return out;
   }
 
-  String _dayLabel(int day) {
-    final dd = day.toString().padLeft(2, '0');
-    final monthName = _monthName(AppLocalizations.of(context)!, _selMonth);
-    return '$dd. $monthName'; // z.B. 05. März:
-  }
-
-  String _monthName(AppLocalizations s, int m) {
-    switch (m) {
-      case 1: return s.month01;
-      case 2: return s.month02;
-      case 3: return s.month03;
-      case 4: return s.month04;
-      case 5: return s.month05;
-      case 6: return s.month06;
-      case 7: return s.month07;
-      case 8: return s.month08;
-      case 9: return s.month09;
-      case 10: return s.month10;
-      case 11: return s.month11;
-      case 12: return s.month12;
-      default: return '';
-    }
-  }
-
-  int _daysInMonth(int year, int month) {
-    // Tag 0 vom nächsten Monat = letzter Tag des Monats
-    return DateTime(year, month + 1, 0).day;
-  }
+  int _daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
 
   String _dayKey(int year, int month, int day) {
     String p2(int v) => v.toString().padLeft(2, '0');
     return '${year.toString().padLeft(4, '0')}-${p2(month)}-${p2(day)}';
   }
 
-  void _resetRangeForMonth(int daysInMonth) {
+  String _dayLabel(AppLocalizations s, int year, int month, int day) {
+    final dd = day.toString().padLeft(2, '0');
+    return '$dd. ${_monthName(s, month)}';
+  }
+
+  String _dateLabel(AppLocalizations s, DateTime date) {
+    final dd = date.day.toString().padLeft(2, '0');
+    return '$dd. ${_monthName(s, date.month)} ${date.year}';
+  }
+
+  AnalyticsDaily _emptyDailyForDate(DateTime date) {
+    return AnalyticsDaily(
+      dayKey: _dayKey(date.year, date.month, date.day),
+      pageView: 0,
+      productView: 0,
+      addToCart: 0,
+      checkoutIntent: 0,
+      whatsappClick: 0,
+    );
+  }
+
+  AnalyticsDaily _dailyForDate(Map<String, AnalyticsDaily> map, DateTime date) {
+    final key = _dayKey(date.year, date.month, date.day);
+    return map[key] ?? _emptyDailyForDate(date);
+  }
+
+  void _resetRangeForMonth(int maxDays) {
+    final full = RangeValues(0, (maxDays - 1).toDouble());
     _rangeInitialized = true;
-    _range = RangeValues(0, (daysInMonth - 1).toDouble());
+    _range = full;
+    _draggingRange = null;
+  }
+
+  RangeValues _clampRange(RangeValues input, int maxDays) {
+    final maxIdx = (maxDays - 1).toDouble();
+    final start = input.start.clamp(0.0, maxIdx).toDouble();
+    final end = input.end.clamp(0.0, maxIdx).toDouble();
+    return RangeValues(start, end);
+  }
+
+  bool _sameRange(RangeValues a, RangeValues b) {
+    return a.start == b.start && a.end == b.end;
+  }
+
+  RangeValues _lastNDaysRange(int maxDays, int count) {
+    final end = maxDays - 1;
+    final start = max(0, maxDays - count);
+    return RangeValues(start.toDouble(), end.toDouble());
+  }
+
+  _Peak _peakOf(List<AnalyticsDaily> list, int Function(AnalyticsDaily e) f) {
+    var bestIdx = 0;
+    var bestVal = -1;
+
+    for (int i = 0; i < list.length; i++) {
+      final v = f(list[i]);
+      if (v > bestVal) {
+        bestVal = v;
+        bestIdx = i;
+      }
+    }
+
+    return _Peak(index: bestIdx, value: bestVal);
+  }
+
+  int _averageBefore(
+      Map<String, AnalyticsDaily> map,
+      DateTime anchorExclusive,
+      int days,
+      int Function(AnalyticsDaily e) pick,
+      ) {
+    if (days <= 0) return 0;
+    var sum = 0;
+    for (int i = 1; i <= days; i++) {
+      sum += pick(_dailyForDate(map, anchorExclusive.subtract(Duration(days: i))));
+    }
+    return (sum / days).round();
   }
 
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context)!;
     final colors = Theme.of(context).colorScheme;
-    final now = DateTime.now(); // Zentral definiertes heutiges Datum
+    final material = MaterialLocalizations.of(context);
+    final now = DateTime.now();
 
     return Scaffold(
       appBar: AppBar(
@@ -93,42 +174,45 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         actions: [
           IconButton(
             tooltip: s.refreshButton,
-            onPressed: () => setState(() {}),
+            // Button zwingt die App jetzt, wirklich neu aus der Datenbank zu laden
+            onPressed: () => setState(() => _dataFuture = _loadAll()),
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
       ),
       body: FutureBuilder<List<AnalyticsDaily>>(
-        future: _loadAll(),
+        future: _dataFuture,
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+
           if (snap.hasError) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text(snap.error.toString(), style: TextStyle(color: colors.error)),
+                child: Text(
+                  snap.error.toString(),
+                  style: TextStyle(color: colors.error),
+                ),
               ),
             );
           }
 
-          final all = snap.data ?? [];
-
-          // Map dayKey -> doc (schnell)
-          final map = <String, AnalyticsDaily>{
+          final all = snap.data ?? <AnalyticsDaily>[];
+          final byDay = <String, AnalyticsDaily>{
             for (final e in all) e.dayKey: e,
           };
 
           final dim = _daysInMonth(_selYear, _selMonth);
-          // Zukunfts-Filter: Wenn wir im aktuellen Monat sind, stoppen wir beim heutigen Tag
-          final maxDays = (_selYear == now.year && _selMonth == now.month) ? now.day : dim;
+          final maxDays = (_selYear == now.year && _selMonth == now.month)
+              ? now.day
+              : dim;
 
-          // Monat vollständig 1..maxDays füllen (Zukunft wird ignoriert)
           final monthDays = List<AnalyticsDaily>.generate(maxDays, (i) {
             final day = i + 1;
             final key = _dayKey(_selYear, _selMonth, day);
-            return map[key] ??
+            return byDay[key] ??
                 AnalyticsDaily(
                   dayKey: key,
                   pageView: 0,
@@ -139,80 +223,150 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 );
           });
 
-          // Range init / clamp (num->double safe)
-          final maxIdx = (monthDays.length - 1).toDouble();
           if (!_rangeInitialized) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
               setState(() => _resetRangeForMonth(maxDays));
             });
-          } else {
-            final start = _range.start.clamp(0.0, maxIdx).toDouble();
-            final end = _range.end.clamp(0.0, maxIdx).toDouble();
-            if (start != _range.start || end != _range.end) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                setState(() => _range = RangeValues(start, end));
-              });
-            }
           }
 
-          final from = min(_range.start.round(), _range.end.round()).clamp(0, maxDays - 1);
-          final to = max(_range.start.round(), _range.end.round()).clamp(0, maxDays - 1);
+          final fullRange = RangeValues(0, (maxDays - 1).toDouble());
+          final appliedRange = _rangeInitialized ? _clampRange(_range, maxDays) : fullRange;
+
+          if (_rangeInitialized && !_sameRange(appliedRange, _range)) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              setState(() {
+                _range = appliedRange;
+              });
+            });
+          }
+
+          final from = min(appliedRange.start.round(), appliedRange.end.round()).clamp(0, maxDays - 1);
+          final to = max(appliedRange.start.round(), appliedRange.end.round()).clamp(0, maxDays - 1);
+
+          // Slider UI-Feedback (nur für die Anzeige beim Ziehen, löst kein Neuladen der Diagramme aus)
+          final activeStart = _draggingRange?.start ?? appliedRange.start;
+          final activeEnd = _draggingRange?.end ?? appliedRange.end;
+          final draftFrom = min(activeStart.round(), activeEnd.round()).clamp(0, maxDays - 1);
+          final draftTo = max(activeStart.round(), activeEnd.round()).clamp(0, maxDays - 1);
+
           final visible = monthDays.sublist(from, to + 1);
+          final reversedVisible = visible.reversed.toList();
 
-          int sum(int Function(AnalyticsDaily e) f) => visible.fold(0, (a, b) => a + f(b));
+          int sumVisible(int Function(AnalyticsDaily e) pick) {
+            return visible.fold(0, (a, b) => a + pick(b));
+          }
 
-          final totalVisits = sum((e) => e.pageView);
-          final totalWhatsApp = sum((e) => e.whatsappClick);
-          final totalProductViews = sum((e) => e.productView);
-          final totalAddToCart = sum((e) => e.addToCart);
-          final totalCheckout = sum((e) => e.checkoutIntent);
+          final totalVisits = sumVisible((e) => e.pageView);
+          final totalWhatsApp = sumVisible((e) => e.whatsappClick);
+          final totalProductViews = sumVisible((e) => e.productView);
+          final totalAddToCart = sumVisible((e) => e.addToCart);
+          final totalCheckout = sumVisible((e) => e.checkoutIntent);
+
+          final today = _dailyForDate(byDay, now);
+          final yesterday = _dailyForDate(byDay, now.subtract(const Duration(days: 1)));
+
+          final avg7Visits = _averageBefore(byDay, now, 7, (e) => e.pageView);
+          final avg7WhatsApp = _averageBefore(byDay, now, 7, (e) => e.whatsappClick);
+          final avg7ProductViews = _averageBefore(byDay, now, 7, (e) => e.productView);
+          final avg7AddToCart = _averageBefore(byDay, now, 7, (e) => e.addToCart);
+          final avg7Checkout = _averageBefore(byDay, now, 7, (e) => e.checkoutIntent);
 
           final pvSeries = visible.map((e) => e.pageView.toDouble()).toList();
           final waSeries = visible.map((e) => e.whatsappClick.toDouble()).toList();
-
-          // X labels: 1..dim (sichtbarer Ausschnitt)
           final xLabels = List<String>.generate(visible.length, (i) => (from + i + 1).toString());
 
           final peakVisits = _peakOf(visible, (e) => e.pageView);
           final peakWhats = _peakOf(visible, (e) => e.whatsappClick);
 
-          final monthOptions = _last12Months(s);
-
+          final monthOptions = _last12Months();
           final bottomPad = MediaQuery.of(context).padding.bottom;
 
           return RefreshIndicator(
-            onRefresh: () async => setState(() {}),
+            onRefresh: () async {
+              setState(() => _dataFuture = _loadAll());
+              await _dataFuture;
+            },
             child: ListView(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomPad + 18),
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 20 + bottomPad + 18),
               children: [
-                // Filter Card: Month dropdown + range slider
+                _TodayHeroCard(
+                  title: material.currentDateLabel,
+                  subtitle: _dateLabel(s, now),
+                  items: [
+                    _HeroStatItem(
+                      icon: Icons.visibility_rounded,
+                      label: s.analyticsCardVisitsToday, // NEU: Key für Heute
+                      value: today.pageView,
+                      delta: today.pageView - yesterday.pageView,
+                      avg: avg7Visits,
+                    ),
+                    _HeroStatItem(
+                      icon: Icons.shopping_bag_rounded,
+                      label: s.analyticsCardProductViews,
+                      value: today.productView,
+                      delta: today.productView - yesterday.productView,
+                      avg: avg7ProductViews,
+                    ),
+                    _HeroStatItem(
+                      icon: Icons.add_shopping_cart_rounded,
+                      label: s.analyticsCardAddToCart,
+                      value: today.addToCart,
+                      delta: today.addToCart - yesterday.addToCart,
+                      avg: avg7AddToCart,
+                    ),
+                    _HeroStatItem(
+                      icon: Icons.payments_rounded,
+                      label: s.analyticsCardCheckout,
+                      value: today.checkoutIntent,
+                      delta: today.checkoutIntent - yesterday.checkoutIntent,
+                      avg: avg7Checkout,
+                    ),
+                    _HeroStatItem(
+                      icon: Icons.wechat,
+                      label: s.analyticsCardWhatsapp,
+                      value: today.whatsappClick,
+                      delta: today.whatsappClick - yesterday.whatsappClick,
+                      avg: avg7WhatsApp,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 _CollapsibleFilter(
                   title: s.analyticsFilterTitle,
-                  subtitle: '${_monthName(s, _selMonth)} $_selYear • ${_dayLabel(from + 1)} → ${_dayLabel(to + 1)}',
+                  subtitle:
+                  '${_monthName(s, _selMonth)} $_selYear • ${_dayLabel(s, _selYear, _selMonth, from + 1)} → ${_dayLabel(s, _selYear, _selMonth, to + 1)}',
                   initiallyExpanded: false,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Month Dropdown
                       Row(
                         children: [
-                          Icon(Icons.calendar_month_rounded, size: 18, color: colors.onSurfaceVariant),
+                          Icon(
+                            Icons.calendar_month_rounded,
+                            size: 18,
+                            color: colors.onSurfaceVariant,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             s.analyticsMonthLabel,
-                            style: TextStyle(color: colors.onSurfaceVariant, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: colors.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           const Spacer(),
                           DropdownButtonHideUnderline(
                             child: DropdownButton<_MonthOption>(
                               value: _MonthOption(year: _selYear, month: _selMonth),
                               items: monthOptions
-                                  .map((m) => DropdownMenuItem<_MonthOption>(
-                                value: m,
-                                child: Text('${_monthName(s, m.month)} ${m.year}'),
-                              ))
+                                  .map(
+                                    (m) => DropdownMenuItem<_MonthOption>(
+                                  value: m,
+                                  child: Text('${_monthName(s, m.month)} ${m.year}'),
+                                ),
+                              )
                                   .toList(),
                               onChanged: (v) {
                                 if (v == null) return;
@@ -221,58 +375,144 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                   _selMonth = v.month;
                                   _rangeInitialized = false;
                                   _range = const RangeValues(0, 0);
+                                  _draggingRange = null; // <-- Hier war der Fehler!
                                 });
                               },
                             ),
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 10),
-
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _PresetChip(
+                            label: _monthName(s, _selMonth),
+                            selected: from == 0 && to == maxDays - 1,
+                            onTap: () {
+                              final full = RangeValues(0, (maxDays - 1).toDouble());
+                              setState(() {
+                                _draggingRange = null;
+                                _range = full;
+                              });
+                            },
+                          ),
+                          _PresetChip(
+                            label: '7 ${s.analyticsAxisDays}',
+                            selected: from == max(0, maxDays - 7) && to == maxDays - 1,
+                            onTap: () {
+                              final r = _lastNDaysRange(maxDays, 7);
+                              setState(() {
+                                _draggingRange = null;
+                                _range = r;
+                              });
+                            },
+                          ),
+                          _PresetChip(
+                            label: '14 ${s.analyticsAxisDays}',
+                            selected: from == max(0, maxDays - 14) && to == maxDays - 1,
+                            onTap: () {
+                              final r = _lastNDaysRange(maxDays, 14);
+                              setState(() {
+                                _draggingRange = null;
+                                _range = r;
+                              });
+                            },
+                          ),
+                          if (_selYear == now.year && _selMonth == now.month)
+                            _PresetChip(
+                              label: material.currentDateLabel,
+                              selected: from == now.day - 1 && to == now.day - 1,
+                              onTap: () {
+                                final r = RangeValues((now.day - 1).toDouble(), (now.day - 1).toDouble());
+                                setState(() {
+                                  _draggingRange = null;
+                                  _range = r;
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
-                          Icon(Icons.filter_alt_rounded, size: 18, color: colors.onSurfaceVariant),
+                          Icon(
+                            Icons.filter_alt_rounded,
+                            size: 18,
+                            color: colors.onSurfaceVariant,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              '${s.analyticsFilterFrom} ${_dayLabel(from + 1)}  •  ${s.analyticsFilterTo} ${_dayLabel(to + 1)}',
-                              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+                              '${s.analyticsFilterFrom} ${_dayLabel(s, _selYear, _selMonth, draftFrom + 1)}  •  ${s.analyticsFilterTo} ${_dayLabel(s, _selYear, _selMonth, draftTo + 1)}',
+                              style: TextStyle(
+                                color: colors.onSurfaceVariant,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 8),
-
-                      // Slider nur anzeigen, wenn es mehr als 1 Tag gibt
-                      if (maxIdx > 0)
+                      if (maxDays > 1)
                         RangeSlider(
-                          values: RangeValues(from.toDouble(), to.toDouble()),
+                          values: RangeValues(activeStart, activeEnd),
                           min: 0,
-                          max: maxIdx,
+                          max: (maxDays - 1).toDouble(),
                           divisions: max(1, maxDays - 1),
-                          labels: RangeLabels(_dayLabel(from + 1), _dayLabel(to + 1)),
-                          onChanged: (v) => setState(() => _range = RangeValues(v.start, v.end)),
+                          labels: RangeLabels(
+                            _dayLabel(s, _selYear, _selMonth, draftFrom + 1),
+                            _dayLabel(s, _selYear, _selMonth, draftTo + 1),
+                          ),
+                          // onChanged updatet NUR das UI (den Text drüber), NICHT die eigentlichen Daten!
+                          onChanged: (v) {
+                            setState(() {
+                              _draggingRange = v;
+                            });
+                          },
+                          // onChangeEnd feuert, wenn du loslässt -> Jetzt erst Daten updaten!
+                          onChangeEnd: (v) {
+                            setState(() {
+                              _range = _clampRange(v, maxDays);
+                              _draggingRange = null;
+                            });
+                          },
                         ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 _SummaryGrid(
                   items: [
-                    _SummaryItem(icon: Icons.visibility_rounded, title: s.analyticsCardVisits, value: totalVisits),
-                    _SummaryItem(icon: Icons.wechat, title: s.analyticsCardWhatsapp, value: totalWhatsApp),
-                    _SummaryItem(icon: Icons.shopping_bag_rounded, title: s.analyticsCardProductViews, value: totalProductViews),
-                    _SummaryItem(icon: Icons.add_shopping_cart_rounded, title: s.analyticsCardAddToCart, value: totalAddToCart),
-                    _SummaryItem(icon: Icons.payments_rounded, title: s.analyticsCardCheckout, value: totalCheckout),
+                    _SummaryItem(
+                      icon: Icons.visibility_rounded,
+                      title: s.analyticsCardVisitsRange, // NEU: Key für Bereich
+                      value: totalVisits,
+                    ),
+                    _SummaryItem(
+                      icon: Icons.wechat,
+                      title: s.analyticsCardWhatsapp,
+                      value: totalWhatsApp,
+                    ),
+                    _SummaryItem(
+                      icon: Icons.shopping_bag_rounded,
+                      title: s.analyticsCardProductViews,
+                      value: totalProductViews,
+                    ),
+                    _SummaryItem(
+                      icon: Icons.add_shopping_cart_rounded,
+                      title: s.analyticsCardAddToCart,
+                      value: totalAddToCart,
+                    ),
+                    _SummaryItem(
+                      icon: Icons.payments_rounded,
+                      title: s.analyticsCardCheckout,
+                      value: totalCheckout,
+                    ),
                   ],
                 ),
-
                 const SizedBox(height: 12),
-
                 _Card(
                   title: s.analyticsPeakTitle,
                   leading: Icons.emoji_events_rounded,
@@ -281,22 +521,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       _PeakRow(
                         icon: Icons.visibility_rounded,
                         title: s.analyticsCardVisits,
-                        dayLabel: _dayLabel(from + 1 + peakVisits.index),
+                        dayLabel: _dayLabel(s, _selYear, _selMonth, from + 1 + peakVisits.index),
                         valueText: s.analyticsPeakVisits(peakVisits.value),
                       ),
                       const SizedBox(height: 8),
                       _PeakRow(
                         icon: Icons.wechat,
                         title: s.analyticsCardWhatsapp,
-                        dayLabel: _dayLabel(from + 1 + peakWhats.index),
+                        dayLabel: _dayLabel(s, _selYear, _selMonth, from + 1 + peakWhats.index),
                         valueText: s.analyticsPeakWhatsapp(peakWhats.value),
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 _ChartCard(
                   title: s.analyticsChartVisits,
                   icon: Icons.show_chart_rounded,
@@ -308,9 +546,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     highlightIndex: peakVisits.index,
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 _ChartCard(
                   title: s.analyticsChartWhatsapp,
                   icon: Icons.trending_up_rounded,
@@ -322,20 +558,18 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     highlightIndex: peakWhats.index,
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 _DaysExpansion(
                   title: s.analyticsTableTitle,
-                  count: visible.length,
+                  count: reversedVisible.length,
                   child: Column(
-                    // Normale Sortierung: Tag 1 bis max
-                    children: visible.map((e) {
+                    children: reversedVisible.map((e) {
                       final dayNum = int.tryParse(e.dayKey.substring(8, 10)) ?? 0;
-                      final isToday = (_selYear == now.year && _selMonth == now.month && dayNum == now.day);
+                      final isToday =
+                          _selYear == now.year && _selMonth == now.month && dayNum == now.day;
 
                       return _DayRow(
-                        dayKey: '${e.dayKey}  ($dayNum)',
+                        dayKey: e.dayKey,
                         pageViews: e.pageView,
                         whatsappClicks: e.whatsappClick,
                         productViews: e.productView,
@@ -351,29 +585,18 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       ),
     );
   }
-
-  _Peak _peakOf(List<AnalyticsDaily> list, int Function(AnalyticsDaily e) f) {
-    var bestIdx = 0;
-    var bestVal = -1;
-    for (int i = 0; i < list.length; i++) {
-      final v = f(list[i]);
-      if (v > bestVal) {
-        bestVal = v;
-        bestIdx = i;
-      }
-    }
-    return _Peak(index: bestIdx, value: bestVal);
-  }
 }
 
 class _MonthOption {
   final int year;
   final int month;
+
   const _MonthOption({required this.year, required this.month});
 
   @override
-  bool operator ==(Object other) =>
-      other is _MonthOption && other.year == year && other.month == month;
+  bool operator ==(Object other) {
+    return other is _MonthOption && other.year == year && other.month == month;
+  }
 
   @override
   int get hashCode => Object.hash(year, month);
@@ -382,6 +605,7 @@ class _MonthOption {
 class _Peak {
   final int index;
   final int value;
+
   const _Peak({required this.index, required this.value});
 }
 
@@ -389,7 +613,12 @@ class _Card extends StatelessWidget {
   final String title;
   final IconData leading;
   final Widget child;
-  const _Card({required this.title, required this.leading, required this.child});
+
+  const _Card({
+    required this.title,
+    required this.leading,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -412,7 +641,10 @@ class _Card extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: colors.onSurface),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colors.onSurface,
+                  ),
                 ),
               ),
             ],
@@ -429,66 +661,333 @@ class _SummaryItem {
   final IconData icon;
   final String title;
   final int value;
-  _SummaryItem({required this.icon, required this.title, required this.value});
+
+  _SummaryItem({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
 }
 
 class _SummaryGrid extends StatelessWidget {
   final List<_SummaryItem> items;
-  const _SummaryGrid({ required this.items});
+
+  const _SummaryGrid({required this.items});
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final w = MediaQuery.of(context).size.width;
-    final cols = w >= 900 ? 3 : 2;
-    const spacing = 12.0;
-    final cardW = (w - 16 * 2 - spacing * (cols - 1)) / cols;
 
-    return Wrap(
-      spacing: spacing,
-      runSpacing: spacing,
-      children: items.map((it) {
-        return Container(
-          width: cardW,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.6)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: colors.primaryContainer.withValues(alpha: 0.45),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(it.icon, color: colors.onPrimaryContainer),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final cols = maxWidth >= 900 ? 3 : 2;
+        const spacing = 12.0;
+        final cardW = (maxWidth - spacing * (cols - 1)) / cols;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: items.map((it) {
+            return Container(
+              width: cardW,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.6)),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(it.title, style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12)),
-                    const SizedBox(height: 4),
-                    Text(
-                      it.value.toString(),
-                      style: TextStyle(
-                        color: colors.onSurface,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(it.icon, color: colors.onPrimaryContainer),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          it.title,
+                          style: TextStyle(
+                            color: colors.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          it.value.toString(),
+                          style: TextStyle(
+                            color: colors.onSurface,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+}
+
+class _HeroStatItem {
+  final IconData icon;
+  final String label;
+  final int value;
+  final int delta;
+  final int avg;
+
+  const _HeroStatItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.delta,
+    required this.avg,
+  });
+}
+
+class _TodayHeroCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final List<_HeroStatItem> items;
+
+  const _TodayHeroCard({
+    required this.title,
+    required this.subtitle,
+    required this.items,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context)!;
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.primaryContainer.withValues(alpha: 0.9),
+            colors.surface,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.25)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxWidth = constraints.maxWidth;
+          final columns = maxWidth >= 980 ? 5 : maxWidth >= 760 ? 3 : 2;
+          const spacing = 10.0;
+          final tileWidth = (maxWidth - spacing * (columns - 1)) / columns;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: colors.surface.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(Icons.today_rounded, color: colors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: colors.onSurface,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            color: colors.onSurfaceVariant,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: items.map((item) {
+                  return Container(
+                    width: tileWidth,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.surface.withValues(alpha: 0.78),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: colors.outlineVariant.withValues(alpha: 0.45),
                       ),
                     ),
-                  ],
-                ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(item.icon, size: 18, color: colors.primary),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                item.label,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: colors.onSurfaceVariant,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          item.value.toString(),
+                          style: TextStyle(
+                            color: colors.onSurface,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _TinyPill(
+                              icon: item.delta >= 0
+                                  ? Icons.north_rounded
+                                  : Icons.south_rounded,
+                              text: item.delta == 0
+                                  ? s.analyticsVsYesterdayValue('0')
+                                  : item.delta > 0
+                                  ? s.analyticsVsYesterdayValue('+${item.delta}')
+                                  : s.analyticsVsYesterdayValue('${item.delta}'),
+                            ),
+                            _TinyPill(
+                              icon: Icons.timeline_rounded,
+                              text: s.analyticsAvg7DaysValue('${item.avg}'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
               ),
             ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TinyPill extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _TinyPill({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: colors.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colors.onPrimaryContainer),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              color: colors.onPrimaryContainer,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        );
-      }).toList(),
+        ],
+      ),
+    );
+  }
+}
+
+class _PresetChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PresetChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? colors.primaryContainer.withValues(alpha: 0.85)
+              : colors.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? colors.primary.withValues(alpha: 0.4)
+                : colors.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? colors.onPrimaryContainer : colors.onSurface,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -497,7 +996,12 @@ class _ChartCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final Widget child;
-  const _ChartCard({ required this.title, required this.icon, required this.child});
+
+  const _ChartCard({
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -517,7 +1021,13 @@ class _ChartCard extends StatelessWidget {
               Icon(icon, size: 18, color: colors.onSurfaceVariant),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: colors.onSurface)),
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colors.onSurface,
+                  ),
+                ),
               ),
             ],
           ),
@@ -536,7 +1046,6 @@ class _PeakRow extends StatelessWidget {
   final String valueText;
 
   const _PeakRow({
-
     required this.icon,
     required this.title,
     required this.dayLabel,
@@ -558,7 +1067,13 @@ class _PeakRow extends StatelessWidget {
           Icon(icon, size: 18, color: colors.onSurfaceVariant),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(title, style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w600)),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: colors.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -569,7 +1084,11 @@ class _PeakRow extends StatelessWidget {
             ),
             child: Text(
               '$dayLabel • $valueText',
-              style: TextStyle(color: colors.onPrimaryContainer, fontWeight: FontWeight.w700, fontSize: 12),
+              style: TextStyle(
+                color: colors.onPrimaryContainer,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
           ),
         ],
@@ -578,12 +1097,17 @@ class _PeakRow extends StatelessWidget {
   }
 }
 
+
 class _DaysExpansion extends StatelessWidget {
   final String title;
   final int count;
   final Widget child;
 
-  const _DaysExpansion({ required this.title, required this.count, required this.child});
+  const _DaysExpansion({
+    required this.title,
+    required this.count,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -601,8 +1125,17 @@ class _DaysExpansion extends StatelessWidget {
         tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
         leading: Icon(Icons.list_alt_rounded, color: colors.onSurfaceVariant),
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: colors.onSurface)),
-        subtitle: Text('$count', style: TextStyle(color: colors.onSurfaceVariant)),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colors.onSurface,
+          ),
+        ),
+        subtitle: Text(
+          '$count',
+          style: TextStyle(color: colors.onSurfaceVariant),
+        ),
         children: [child],
       ),
     );
@@ -617,7 +1150,6 @@ class _DayRow extends StatelessWidget {
   final bool isToday;
 
   const _DayRow({
-
     required this.dayKey,
     required this.pageViews,
     required this.whatsappClicks,
@@ -628,6 +1160,7 @@ class _DayRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
@@ -646,7 +1179,7 @@ class _DayRow extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 120,
+            width: 128,
             child: Row(
               children: [
                 if (isToday) ...[
@@ -680,7 +1213,8 @@ class _DayRow extends StatelessWidget {
 class _MiniStat extends StatelessWidget {
   final IconData icon;
   final int value;
-  const _MiniStat({ required this.icon, required this.value});
+
+  const _MiniStat({required this.icon, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -689,13 +1223,18 @@ class _MiniStat extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: colors.onSurfaceVariant),
         const SizedBox(width: 4),
-        Text(value.toString(), style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w600)),
+        Text(
+          value.toString(),
+          style: TextStyle(
+            color: colors.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
 }
 
-/// Chart mit Achsen + vertikalem Y Label
 class AxisLineChart extends StatelessWidget {
   final List<double> values;
   final List<String> xLabels;
@@ -714,14 +1253,14 @@ class AxisLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).colorScheme;
     return CustomPaint(
       painter: _AxisLineChartPainter(
         values: values,
         xLabels: xLabels,
-        color: c.primary,
-        grid: c.outlineVariant.withValues(alpha: 0.55),
-        text: c.onSurfaceVariant,
+        color: colors.primary,
+        grid: colors.outlineVariant.withValues(alpha: 0.55),
+        text: colors.onSurfaceVariant,
         highlightIndex: highlightIndex,
         axisLabelX: xAxisLabel,
         axisLabelY: yAxisLabel,
@@ -756,7 +1295,7 @@ class _AxisLineChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (values.isEmpty) return;
 
-    const leftPad = 54.0; // mehr Platz wegen vertikalem Y Label
+    const leftPad = 54.0;
     const rightPad = 10.0;
     const topPad = 10.0;
     const bottomPad = 34.0;
@@ -771,7 +1310,6 @@ class _AxisLineChartPainter extends CustomPainter {
       ..color = grid
       ..strokeWidth = 1;
 
-    // y grid lines + y ticks
     for (int i = 0; i <= 4; i++) {
       final t = i / 4;
       final y = topPad + h * (1 - t);
@@ -781,10 +1319,12 @@ class _AxisLineChartPainter extends CustomPainter {
       _drawText(canvas, val.toString(), Offset(8, y - 7), 11, text);
     }
 
-    // x baseline
-    canvas.drawLine(Offset(leftPad, topPad + h), Offset(leftPad + w, topPad + h), gridPaint);
+    canvas.drawLine(
+      Offset(leftPad, topPad + h),
+      Offset(leftPad + w, topPad + h),
+      gridPaint,
+    );
 
-    // x labels: start/mid/end
     void drawX(int idx, Alignment align) {
       if (idx < 0 || idx >= xLabels.length) return;
       final x = leftPad + (values.length == 1 ? 0 : (w * idx / (values.length - 1)));
@@ -804,17 +1344,14 @@ class _AxisLineChartPainter extends CustomPainter {
     drawX((values.length - 1) ~/ 2, Alignment.center);
     drawX(values.length - 1, Alignment.centerRight);
 
-    // X axis label (center bottom)
     _drawText(canvas, axisLabelX, Offset(leftPad + w / 2 - 20, size.height - 18), 11, text);
 
-    // Y axis label (VERTIKAL links)
     canvas.save();
     canvas.translate(14, topPad + h / 2 + 18);
     canvas.rotate(-pi / 2);
     _drawText(canvas, axisLabelY, const Offset(0, 0), 11, text);
     canvas.restore();
 
-    // Line
     final linePaint = Paint()
       ..color = color
       ..strokeWidth = 2.4
@@ -832,7 +1369,6 @@ class _AxisLineChartPainter extends CustomPainter {
     }
     canvas.drawPath(path, linePaint);
 
-    // Highlight dot
     final hi = highlightIndex;
     if (hi != null && hi >= 0 && hi < values.length) {
       final x = leftPad + (values.length == 1 ? 0 : (w * hi / (values.length - 1)));
@@ -853,7 +1389,11 @@ class _AxisLineChartPainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
         text: textStr,
-        style: TextStyle(fontSize: fontSize, color: color, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontSize: fontSize,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       textDirection: TextDirection.ltr,
       maxLines: 1,
@@ -911,8 +1451,20 @@ class _CollapsibleFilter extends StatelessWidget {
         tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
         leading: Icon(Icons.tune_rounded, color: colors.onSurfaceVariant),
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: colors.onSurface)),
-        subtitle: Text(subtitle, style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12)),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colors.onSurface,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            color: colors.onSurfaceVariant,
+            fontSize: 12,
+          ),
+        ),
         children: [child],
       ),
     );

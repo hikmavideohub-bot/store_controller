@@ -968,5 +968,20 @@
       }
     }
   },
-  "activeFilters": "الفلتر مفعّل"
+  "activeFilters": "الفلتر مفعّل",
+
+  "analyticsVsYesterdayValue": "مقارنة بالأمس: ({value})",
+  "@analyticsVsYesterdayValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "analyticsAvg7DaysValue": "المتوسط الأسبوعي: {value}",
+  "@analyticsAvg7DaysValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "analyticsCardVisitsToday": "زيارات اليوم",
+  "analyticsCardVisitsRange": "زيارات الفترة المحددة"
 }

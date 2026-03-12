@@ -969,5 +969,20 @@
       }
     }
   },
-  "activeFilters": "Filter aktiv"
+  "activeFilters": "Filter aktiv",
+
+  "analyticsVsYesterdayValue": "Gestern {value}",
+  "@analyticsVsYesterdayValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "analyticsAvg7DaysValue": "Ø 7 Tage {value}",
+  "@analyticsAvg7DaysValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "analyticsCardVisitsToday": "Besuche heute",
+  "analyticsCardVisitsRange": "Besuche im Zeitraum"
 }

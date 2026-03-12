@@ -982,5 +982,20 @@
     }
   },
 
-  "activeFilters": "Filtre aktif"
+  "activeFilters": "Filtre aktif",
+
+  "analyticsVsYesterdayValue": "Düne göre {value}",
+  "@analyticsVsYesterdayValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "analyticsAvg7DaysValue": "7 günlük ortalama {value}",
+  "@analyticsAvg7DaysValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "analyticsCardVisitsToday": "Bugünkü Ziyaretler",
+  "analyticsCardVisitsRange": "Ziyaretler (Tarih Aralığı)"
 }

@@ -2679,4 +2679,20 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get activeFilters => 'الفلتر مفعّل';
+
+  @override
+  String analyticsVsYesterdayValue(Object value) {
+    return 'مقارنة بالأمس: ($value)';
+  }
+
+  @override
+  String analyticsAvg7DaysValue(Object value) {
+    return 'المتوسط الأسبوعي: $value';
+  }
+
+  @override
+  String get analyticsCardVisitsToday => 'زيارات اليوم';
+
+  @override
+  String get analyticsCardVisitsRange => 'زيارات الفترة المحددة';
 }

@@ -5044,6 +5044,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Filter active'**
   String get activeFilters;
+
+  /// No description provided for @analyticsVsYesterdayValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday {value}'**
+  String analyticsVsYesterdayValue(Object value);
+
+  /// No description provided for @analyticsAvg7DaysValue.
+  ///
+  /// In en, this message translates to:
+  /// **'7-day avg {value}'**
+  String analyticsAvg7DaysValue(Object value);
+
+  /// No description provided for @analyticsCardVisitsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Visits Today'**
+  String get analyticsCardVisitsToday;
+
+  /// No description provided for @analyticsCardVisitsRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Visits (Date Range)'**
+  String get analyticsCardVisitsRange;
 }
 
 class _AppLocalizationsDelegate
