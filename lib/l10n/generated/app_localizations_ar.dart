@@ -268,14 +268,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get step1Title => 'لنبدأ بالأساسيات';
 
   @override
-  String get step1Subtitle => 'اختر اسماً وشعاراً لمتجرك ليتعرف عليه العملاء';
+  String get step1Subtitle => 'اختر اسماً وشعاراً لمتجرك';
 
   @override
   String get step2Title => 'معلومات التواصل';
 
   @override
   String get step2Subtitle =>
-      'أدخل رقم الهاتف والعنوان ليتمكن العملاء من التواصل';
+      'أدخل رقم الهاتف والعنوان ليتمكن الزبون من التواصل';
 
   @override
   String get step3Title => 'خدمة التوصيل';
@@ -426,7 +426,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get visibleToCustomers => 'يظهر للعملاء';
 
   @override
-  String get hiddenFromCustomers => 'مخفي عن العملاء';
+  String get hiddenFromCustomers => 'مخفي عن الزبائن';
 
   @override
   String get specialOfferAvailable => 'إضافة عرض خاص';
@@ -1223,10 +1223,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get storeNameTooShort => 'اسم المتجر قصير جداً (3 أحرف على الأقل)';
 
   @override
-  String get requireEmailVerifyLabel => 'طلب تأكيد البريد من العملاء';
+  String get requireEmailVerifyLabel =>
+      'Require email verification from customers';
 
   @override
-  String get requireEmailVerifySubtitle => 'العملاء الجدد يحتاجون تأكيد بريدهم';
+  String get requireEmailVerifySubtitle =>
+      'New customers need to verify their email';
 
   @override
   String get createAccountButton => 'إنشاء الحساب';
@@ -2674,4 +2676,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String analyticsPeakWhatsapp(int count) {
     return '$count نقرات';
   }
+
+  @override
+  String get activeFilters => 'الفلتر مفعّل';
 }

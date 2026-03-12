@@ -2689,4 +2689,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String analyticsPeakWhatsapp(int count) {
     return '$count tıklama';
   }
+
+  @override
+  String get activeFilters => 'Filtre aktif';
 }

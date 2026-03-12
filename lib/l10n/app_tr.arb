@@ -980,5 +980,7 @@
         "type": "int"
       }
     }
-  }
+  },
+
+  "activeFilters": "Filtre aktif"
 }

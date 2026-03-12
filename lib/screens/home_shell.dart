@@ -19,6 +19,10 @@ import '../widgets/app_drawer.dart';
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
+  // NEU: Erlaubt anderen Screens den Zugriff auf die Shell (für Navigation)
+  static _HomeShellState? of(BuildContext context) =>
+      context.findAncestorStateOfType<_HomeShellState>();
+
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
@@ -26,6 +30,24 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _index = 0;
   late final PageController _pageController;
+
+  // Filter-State für den ProductsScreen
+  String? _stockFilter;
+  String? _offerFilter;
+  String? _catFilter;
+  String? _imageFilter;
+
+  // NEU: Setzt Filter und wechselt sanft den Tab
+  void navigateToProducts({String? stock, String? offer, String? cat, String? image}) {
+    setState(() {
+      _stockFilter = stock;
+      _offerFilter = offer;
+      _catFilter = cat;
+      _imageFilter = image;
+    });
+    // WICHTIG: clearFilters: false verhindert, dass unsere Filter sofort wieder gelöscht werden!
+    _goToPage(1, clearFilters: false);
+  }
 
   @override
   void initState() {
@@ -289,10 +311,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
   }
 
-  late final List<Widget> pages = const [
-    HomeScreen(),
-    ProductsScreen(),
-    CategoriesScreen(),
+  // Nutzt einen dynamischen Getter statt const, damit sich Filter aktualisieren!
+  List<Widget> get _pages => [
+    const HomeScreen(),
+    ProductsScreen(
+      // KEIN ValueKey mehr nötig! Der Screen aktualisiert sich jetzt fließend ohne zu flackern.
+      initialStockFilter: _stockFilter,
+      initialOfferFilter: _offerFilter,
+      initialCatFilter: _catFilter,
+      initialImageFilter: _imageFilter,
+    ),
+    const CategoriesScreen(),
   ];
 
   @override
@@ -311,7 +340,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             child: PageView(
               controller: _pageController,
               onPageChanged: (idx) => setState(() => _index = idx),
-              children: pages,
+              children: _pages, // Nutzt jetzt den dynamischen Getter
             ),
           ),
         ],
@@ -527,7 +556,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
   }
 
-  void _goToPage(int idx) {
+  // NEU: Akzeptiert jetzt den Parameter clearFilters (standardmäßig true für Klicks auf die Nav-Bar)
+  void _goToPage(int idx, {bool clearFilters = true}) {
+    if (idx == 1 && clearFilters) {
+      // Löscht die Filter NUR, wenn der Nutzer wirklich manuell unten auf das Icon tippt
+      setState(() {
+        _stockFilter = null;
+        _offerFilter = null;
+        _catFilter = null;
+        _imageFilter = null;
+      });
+    }
+
     _pageController.animateToPage(
       idx,
       duration: const Duration(milliseconds: 300),

@@ -84,9 +84,9 @@
   "stepHours": "الأوقات",
   "stepFinish": "النهاية",
   "step1Title": "لنبدأ بالأساسيات",
-  "step1Subtitle": "اختر اسماً وشعاراً لمتجرك ليتعرف عليه العملاء",
+  "step1Subtitle": "اختر اسماً وشعاراً لمتجرك",
   "step2Title": "معلومات التواصل",
-  "step2Subtitle": "أدخل رقم الهاتف والعنوان ليتمكن العملاء من التواصل",
+  "step2Subtitle": "أدخل رقم الهاتف والعنوان ليتمكن الزبون من التواصل",
   "step3Title": "خدمة التوصيل",
   "step3Subtitle": "هل توفر خدمة التوصيل لزبائنك؟",
   "enableDeliveryLabel": "تفعيل التوصيل",
@@ -132,7 +132,7 @@
   "descNatural": "طبيعي 100%",
   "productAvailable": "المنتج متوفر",
   "visibleToCustomers": "يظهر للعملاء",
-  "hiddenFromCustomers": "مخفي عن العملاء",
+  "hiddenFromCustomers": "مخفي عن الزبائن",
   "specialOfferAvailable": "إضافة عرض خاص",
   "specialOfferSubtitle": "تفعيل الخصومات أو عروض الجملة",
   "offerTypeLabel": "نوع العرض",
@@ -380,8 +380,6 @@
   "googleRegistering": "جاري التسجيل...",
   "storeNameHint": "مثال: متجر الأصيل",
   "storeNameTooShort": "اسم المتجر قصير جداً (3 أحرف على الأقل)",
-  "requireEmailVerifyLabel": "طلب تأكيد البريد من العملاء",
-  "requireEmailVerifySubtitle": "العملاء الجدد يحتاجون تأكيد بريدهم",
   "createAccountButton": "إنشاء الحساب",
   "alreadyHaveAccount": "لديك حساب بالفعل؟",
   "loginLink": "تسجيل الدخول",
@@ -969,5 +967,6 @@
         "type": "int"
       }
     }
-  }
+  },
+  "activeFilters": "الفلتر مفعّل"
 }

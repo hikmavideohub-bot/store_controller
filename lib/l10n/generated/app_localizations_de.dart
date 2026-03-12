@@ -2718,4 +2718,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String analyticsPeakWhatsapp(int count) {
     return '$count Klicks';
   }
+
+  @override
+  String get activeFilters => 'Filter aktiv';
 }

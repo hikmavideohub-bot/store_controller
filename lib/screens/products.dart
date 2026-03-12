@@ -16,7 +16,18 @@ import 'package:store_controller/widgets/responsive_center.dart';
 import 'package:flutter/services.dart';
 
 class ProductsScreen extends StatefulWidget {
-  const ProductsScreen({super.key});
+  final String? initialStockFilter;
+  final String? initialOfferFilter;
+  final String? initialCatFilter;
+  final String? initialImageFilter;
+
+  const ProductsScreen({
+    super.key,
+    this.initialStockFilter,
+    this.initialOfferFilter,
+    this.initialCatFilter,
+    this.initialImageFilter,
+  });
 
   @override
   State<ProductsScreen> createState() => _ProductsScreenState();
@@ -45,6 +56,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   String _catFilter = 'all';
   String _offerFilter = 'all';
   String _stockFilter = 'all';
+  String _imageFilter = 'all'; // NEU: Für fehlende Bilder
 
   // =======================
   // CACHED HANDLES
@@ -215,6 +227,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
   @override
   void initState() {
     super.initState();
+    // Übernimmt die Start-Werte (z.B. vom Home Screen) oder setzt 'all'
+    _catFilter = widget.initialCatFilter ?? 'all';
+    _offerFilter = widget.initialOfferFilter ?? 'all';
+    _stockFilter = widget.initialStockFilter ?? 'all';
+    _imageFilter = widget.initialImageFilter ?? 'all';
+
     _boot();
     ApiService.productsNotifier.addListener(_onProductsChanged);
   }
@@ -227,6 +245,23 @@ class _ProductsScreenState extends State<ProductsScreen> {
     _searchCtrl.clear();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  // NEU: Reagiert auf Filter-Änderungen von der HomeShell, ohne die Seite neu zu laden!
+  @override
+  void didUpdateWidget(ProductsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialStockFilter != oldWidget.initialStockFilter ||
+        widget.initialOfferFilter != oldWidget.initialOfferFilter ||
+        widget.initialCatFilter != oldWidget.initialCatFilter ||
+        widget.initialImageFilter != oldWidget.initialImageFilter) {
+      setState(() {
+        _stockFilter = widget.initialStockFilter ?? 'all';
+        _offerFilter = widget.initialOfferFilter ?? 'all';
+        _catFilter = widget.initialCatFilter ?? 'all';
+        _imageFilter = widget.initialImageFilter ?? 'all';
+      });
+    }
   }
 
 
@@ -1154,9 +1189,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
           (_offerFilter == 'without' && !hasActiveOfferToday);
       final matchesStock =
           (_stockFilter == 'all') ||
-          (_stockFilter == 'active' && p.productActive == true) ||
-          (_stockFilter == 'inactive' && p.productActive == false);
-      return matchesSearch && matchesCat && matchesOffer && matchesStock;
+              (_stockFilter == 'active' && p.productActive == true) ||
+              (_stockFilter == 'inactive' && p.productActive == false);
+
+      final matchesImage =
+          (_imageFilter == 'all') ||
+              (_imageFilter == 'without' && p.image.isEmpty && p.thumb.isEmpty);
+
+      return matchesSearch && matchesCat && matchesOffer && matchesStock && matchesImage;
     }).toList();
   }
 
@@ -1452,6 +1492,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final theme = Theme.of(context);
     final s = AppLocalizations.of(context)!;
 
+    final hasActiveFilter = _catFilter != 'all' || _offerFilter != 'all' || _stockFilter != 'all' || _imageFilter != 'all';
+
     if (_products.isEmpty) {
       return Center(
         child: Column(
@@ -1494,17 +1536,66 @@ class _ProductsScreenState extends State<ProductsScreen> {
       );
     }
 
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(
-        0,
-        16,
-        0,
-        20 + MediaQuery.of(context).viewPadding.bottom,
-      ),
-      itemCount: filtered.length,
-      itemBuilder: (context, index) =>
-          _buildProductCard(filtered[index], context),
+    return Column(
+      children: [
+        if (hasActiveFilter)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.filter_alt_rounded, color: theme.colorScheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    s.activeFilters,
+                    style: TextStyle(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _catFilter = 'all';
+                      _offerFilter = 'all';
+                      _stockFilter = 'all';
+                      _imageFilter = 'all';
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.close_rounded, color: theme.colorScheme.onPrimary, size: 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              0,
+              16,
+              0,
+              20 + MediaQuery.of(context).viewPadding.bottom,
+            ),
+            itemCount: filtered.length,
+            itemBuilder: (context, index) =>
+                _buildProductCard(filtered[index], context),
+          ),
+        ),
+      ],
     );
   }
 

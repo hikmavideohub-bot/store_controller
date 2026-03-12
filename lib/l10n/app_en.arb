@@ -964,5 +964,6 @@
         "type": "int"
       }
     }
-  }
+  },
+  "activeFilters": "Filter active"
 }

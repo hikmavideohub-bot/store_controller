@@ -5,9 +5,10 @@ import 'package:store_controller/l10n/generated/app_localizations.dart';
 import '../widgets/premium_app_bar.dart';
 import '../widgets/app_drawer.dart';
 import '../viewmodels/home_viewmodel.dart';
-import '../models/product.dart';
 import '../services/store_config_service.dart';
 import 'package:store_controller/widgets/responsive_center.dart';
+import 'products.dart';
+import 'home_shell.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -340,30 +341,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     );
   }
 
-  void _showProductsByFilter(
-    BuildContext context,
-    String title,
-    List<Product> list,
-    AppLocalizations s,
-  ) {
-    if (list.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(s.noProductsFoundTitle(title)),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            _FilteredProductsScreen(title: title, products: list),
-      ),
-    );
-  }
+
 
   void _showCategoriesWithOffers(
     BuildContext context,
@@ -459,13 +437,10 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                       ),
                       child: InkWell(
                         onTap: () {
-                          final products = vm.getProductsByCategory(cat);
                           Navigator.pop(context);
-                          _showProductsByFilter(
-                            context,
-                            s.filterCategoryPrefix(cat),
-                            products,
-                            s,
+                          HomeShell.of(context)?.navigateToProducts(
+                            cat: cat,
+                            offer: 'with',
                           );
                         },
                         borderRadius: BorderRadius.circular(16),
@@ -605,12 +580,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
               value: '${vm.totalProducts}',
               icon: Icons.inventory_2_rounded,
               iconColor: colors.primary,
-              onTap: () => _showProductsByFilter(
-                context,
-                s.filterAllProducts,
-                vm.products,
-                s,
-              ),
+              onTap: () => HomeShell.of(context)?.navigateToProducts(),
             );
           case 1:
             return _StatCard(
@@ -618,12 +588,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
               value: '${vm.activeProducts}',
               icon: Icons.check_circle_rounded,
               iconColor: Colors.green,
-              onTap: () => _showProductsByFilter(
-                context,
-                s.filterAvailable,
-                vm.getActiveProducts(),
-                s,
-              ),
+              onTap: () => HomeShell.of(context)?.navigateToProducts(stock: 'active'),
             );
           case 2:
             return _StatCard(
@@ -631,12 +596,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
               value: '${vm.inactiveProducts}',
               icon: Icons.pause_circle_rounded,
               iconColor: Colors.orange,
-              onTap: () => _showProductsByFilter(
-                context,
-                s.filterUnavailable,
-                vm.getInactiveProducts(),
-                s,
-              ),
+              onTap: () => HomeShell.of(context)?.navigateToProducts(stock: 'inactive'),
             );
           case 3:
             return _StatCard(
@@ -644,12 +604,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
               value: '${vm.productsWithOffer}',
               icon: Icons.local_offer_rounded,
               iconColor: Colors.purple,
-              onTap: () => _showProductsByFilter(
-                context,
-                s.filterActiveOffers,
-                vm.getProductsWithOffer(),
-                s,
-              ),
+              onTap: () => HomeShell.of(context)?.navigateToProducts(offer: 'with'),
             );
           case 4:
             return _StatCard(
@@ -667,12 +622,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
               value: '${vm.productsWithoutImage}',
               icon: Icons.no_photography_rounded,
               iconColor: Colors.blueGrey,
-              onTap: () => _showProductsByFilter(
-                context,
-                s.filterNoImage,
-                vm.getProductsWithoutImage(),
-                s,
-              ),
+              onTap: () => HomeShell.of(context)?.navigateToProducts(image: 'without'),
             );
         }
         return null;
@@ -791,79 +741,6 @@ class _StatCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _FilteredProductsScreen extends StatelessWidget {
-  final String title;
-  final List<Product> products;
-
-  const _FilteredProductsScreen({required this.title, required this.products});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return Scaffold(
-      appBar: PremiumAnimatedAppBar(
-        title: title,
-        showBackButton: true,
-        showSettings: false,
-      ),
-        body: ResponsiveCenter(
-          maxWidth: 1000,
-          child: ListView.builder(
-
-          padding: const EdgeInsets.all(16),
-        itemCount: products.length,
-        itemBuilder: (context, index) {
-          final p = products[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(12),
-              leading: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: colors.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: p.image.isNotEmpty
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          p.image,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              const Icon(Icons.image_not_supported),
-                        ),
-                      )
-                    : const Icon(Icons.image_not_supported),
-              ),
-              title: Text(
-                p.name,
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-              subtitle: Text(
-                '${p.price} € / ${p.sizeValue} ${p.sizeUnit}',
-                style: TextStyle(
-                  color: colors.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-              onTap: () => context.push('/edit/${p.id}', extra: p),
-            ),
-          );
-        },
-      ),
-        ),
     );
   }
 }

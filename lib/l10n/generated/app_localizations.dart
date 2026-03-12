@@ -5038,6 +5038,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} clicks'**
   String analyticsPeakWhatsapp(int count);
+
+  /// No description provided for @activeFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter active'**
+  String get activeFilters;
 }
 
 class _AppLocalizationsDelegate
